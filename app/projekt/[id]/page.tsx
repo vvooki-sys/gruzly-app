@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
   ArrowLeft, Upload, Wand2, Image, Loader2, Download,
-  Settings, Sun, Moon, BookmarkPlus, Trash2, Zap, Target,
+  Settings, Sun, Moon, BookmarkPlus, Trash2, Zap, Target, PenLine,
 } from 'lucide-react';
 
 interface Project {
@@ -73,7 +73,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
   const [assets, setAssets] = useState<Asset[]>([]);
   const [generations, setGenerations] = useState<Generation[]>([]);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<'generate' | 'settings'>('generate');
+  const [tab, setTab] = useState<'generate' | 'settings' | 'copy'>('generate');
   const [isDark, setIsDark] = useState(true);
   const [toast, setToast] = useState<string | null>(null);
 
@@ -102,6 +102,14 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
   const [analyzing, setAnalyzing] = useState(false);
   const [savingSettings, setSavingSettings] = useState(false);
   const [savingAnalysis, setSavingAnalysis] = useState(false);
+  const [brandbookAsset, setBrandbookAsset] = useState<Asset | null>(null);
+
+  // Copywriter state
+  const [copyFile, setCopyFile] = useState<File | null>(null);
+  const [copyBrief, setCopyBrief] = useState('');
+  const [copyFormat, setCopyFormat] = useState('ogólny');
+  const [generatingCopy, setGeneratingCopy] = useState(false);
+  const [copyResults, setCopyResults] = useState<Array<{ headline: string; subtext: string; cta?: string }>>([]);
 
   useEffect(() => {
     params.then(p => {
@@ -117,6 +125,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
           setEditColors(d.project.color_palette || '');
           setEditRules(d.project.brand_rules || '');
           setEditAnalysis(d.project.brand_analysis || '');
+          setBrandbookAsset(d.assets.find((a: Asset) => a.type === 'brandbook') || null);
           setLoading(false);
         });
     });
@@ -174,6 +183,86 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
     } finally {
       setAnalyzing(false);
     }
+  };
+
+  const analyzeFromBrandbook = async () => {
+    if (!id) return;
+    setAnalyzing(true);
+    try {
+      const res = await fetch(`/api/projects/${id}/analyze`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ source: 'brandbook' }),
+      });
+      const data = await res.json();
+      if (data.analysis) {
+        setEditAnalysis(data.analysis);
+        if (data.suggestedRules) {
+          showToast('Brandbook zawiera zasady — przejrzyj je w sekcji Zasady obowiązkowe');
+        }
+      } else {
+        alert('Błąd analizy: ' + (data.error || 'Spróbuj ponownie'));
+      }
+    } catch {
+      alert('Błąd połączenia');
+    } finally {
+      setAnalyzing(false);
+    }
+  };
+
+  const handleBrandbookUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !id) return;
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('type', 'brandbook');
+    const res = await fetch(`/api/projects/${id}/assets`, { method: 'POST', body: fd });
+    if (res.ok) {
+      const asset = await res.json();
+      setBrandbookAsset(asset);
+      showToast('Brandbook wgrany ✓');
+    }
+  };
+
+  const deleteBrandbook = async () => {
+    if (!brandbookAsset || !id) return;
+    await fetch(`/api/projects/${id}/assets?assetId=${brandbookAsset.id}`, { method: 'DELETE' });
+    setBrandbookAsset(null);
+  };
+
+  const handleCopyFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) setCopyFile(file);
+  };
+
+  const generateCopy = async () => {
+    if (!id || (!copyFile && !copyBrief)) return;
+    setGeneratingCopy(true);
+    try {
+      const fd = new FormData();
+      if (copyFile) fd.append('file', copyFile);
+      if (copyBrief) fd.append('text', copyBrief);
+      fd.append('format', copyFormat);
+
+      const res = await fetch(`/api/projects/${id}/copy`, { method: 'POST', body: fd });
+      const data = await res.json();
+      if (data.results) {
+        setCopyResults(data.results);
+      } else {
+        alert('Błąd generowania: ' + (data.error || 'Spróbuj ponownie'));
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Błąd połączenia');
+    } finally {
+      setGeneratingCopy(false);
+    }
+  };
+
+  const useCopyInGenerator = (r: { headline: string; subtext: string; cta?: string }) => {
+    setHeadline(r.headline);
+    setSubtext(r.subtext || '');
+    setTab('generate');
   };
 
   const saveAnalysis = async () => {
@@ -323,6 +412,13 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
           >
             <Settings className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Brand</span>
+          </button>
+          <button
+            onClick={() => setTab('copy')}
+            className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 ${tab === 'copy' ? 'holo-gradient text-teal-deep shadow-sm' : 'opacity-50 hover:opacity-80'}`}
+          >
+            <PenLine className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Copywriter</span>
           </button>
         </div>
 
@@ -828,6 +924,43 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
               </div>
             </div>
 
+            {/* Brandbook */}
+            <div className="pt-4 border-t border-teal-deep/10 dark:border-holo-mint/10">
+              <div className="flex items-center justify-between mb-2">
+                <div>
+                  <h3 className="font-bold text-sm">Brandbook (PDF)</h3>
+                  <p className="text-xs opacity-40 mt-0.5">
+                    Wgraj brandbook — Gruzly wyciągnie z niego kolory, fonty i zasady automatycznie
+                  </p>
+                </div>
+                <label className="cursor-pointer h-8 px-3 rounded-full border border-teal-deep/15 dark:border-holo-mint/15 text-xs font-semibold flex items-center gap-1.5 hover:border-holo-mint/50 transition-colors opacity-70 hover:opacity-100 shrink-0">
+                  <Upload className="h-3 w-3" />
+                  {brandbookAsset ? 'Zmień' : 'Wgraj PDF'}
+                  <input type="file" accept="application/pdf" className="hidden" onChange={handleBrandbookUpload} />
+                </label>
+              </div>
+              {brandbookAsset && (
+                <div className="flex items-center justify-between bg-white dark:bg-teal-mid rounded-xl px-3 py-2 border border-teal-deep/10 dark:border-holo-mint/10">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs">📄 {brandbookAsset.filename}</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={analyzeFromBrandbook}
+                      disabled={analyzing}
+                      className="h-7 px-3 rounded-full bg-holo-mint text-teal-deep disabled:opacity-50 text-xs font-bold flex items-center gap-1 hover:opacity-90 transition-opacity"
+                    >
+                      {analyzing ? <><Loader2 className="h-3 w-3 animate-spin" /> Analizuję...</> : <><Wand2 className="h-3 w-3" /> Analizuj brandbook</>}
+                    </button>
+                    <button
+                      onClick={deleteBrandbook}
+                      className="h-7 w-7 rounded-full border border-red-500/20 flex items-center justify-center opacity-40 hover:opacity-100 hover:border-red-500/50 hover:text-red-400 transition-all text-sm"
+                    >×</button>
+                  </div>
+                </div>
+              )}
+            </div>
+
             {/* Upload referencji */}
             <div className="pt-5 border-t border-teal-deep/10 dark:border-holo-mint/10">
               <div className="flex items-center justify-between mb-3">
@@ -873,6 +1006,108 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
                 </div>
               ) : (
                 <p className="text-sm opacity-30">Brak referencji — wgraj przykładowe posty marki.</p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ── TAB: COPYWRITER ───────────────────────────────────────────────────── */}
+        {tab === 'copy' && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Left column: Input */}
+            <div className="space-y-4">
+              <h2 className="font-black text-base">Brief do copy</h2>
+
+              {/* Upload file */}
+              <div>
+                <label className="text-xs font-semibold opacity-50 mb-1.5 block uppercase tracking-wide">
+                  Wgraj brief (DOCX, TXT, PDF)
+                </label>
+                <label className="cursor-pointer w-full h-20 border-2 border-dashed border-teal-deep/10 dark:border-holo-mint/10 hover:border-holo-mint/30 rounded-xl flex flex-col items-center justify-center gap-1 text-sm transition-colors">
+                  <Upload className="h-5 w-5 opacity-50" />
+                  <span className="opacity-50">Przeciągnij plik lub kliknij</span>
+                  <input
+                    type="file"
+                    accept=".docx,.txt,.pdf,text/plain,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                    className="hidden"
+                    onChange={handleCopyFileUpload}
+                  />
+                </label>
+                {copyFile && <p className="text-xs opacity-50 mt-1">📄 {copyFile.name}</p>}
+              </div>
+
+              {/* OR: textarea */}
+              <div>
+                <label className="text-xs font-semibold opacity-50 mb-1.5 block uppercase tracking-wide">
+                  lub wklej brief tekstem
+                </label>
+                <textarea
+                  className={`${inputCls} resize-none`}
+                  rows={6}
+                  placeholder="Wklej treść briefu, opisu kampanii lub notatki..."
+                  value={copyBrief}
+                  onChange={e => setCopyBrief(e.target.value)}
+                />
+              </div>
+
+              {/* Format */}
+              <div>
+                <label className="text-xs font-semibold opacity-50 mb-1.5 block uppercase tracking-wide">Format</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {['facebook', 'linkedin', 'instagram', 'ogólny'].map(f => (
+                    <button
+                      key={f}
+                      onClick={() => setCopyFormat(f)}
+                      className={`p-2 rounded-xl text-sm border transition-all ${
+                        copyFormat === f
+                          ? 'border-holo-mint bg-holo-mint/10 text-holo-mint'
+                          : 'border-teal-deep/10 dark:border-holo-mint/10 bg-white dark:bg-teal-mid opacity-60 hover:opacity-100'
+                      }`}
+                    >
+                      {f.charAt(0).toUpperCase() + f.slice(1)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Generate button */}
+              <button
+                onClick={generateCopy}
+                disabled={generatingCopy || (!copyFile && !copyBrief)}
+                className="w-full h-12 rounded-full holo-gradient text-teal-deep font-black disabled:opacity-40 hover:opacity-90 transition-opacity flex items-center justify-center gap-2 text-sm"
+              >
+                {generatingCopy
+                  ? <><Loader2 className="h-4 w-4 animate-spin" /> Piszę copy...</>
+                  : <><PenLine className="h-4 w-4" /> Napisz copy</>
+                }
+              </button>
+            </div>
+
+            {/* Right column: Results */}
+            <div className="space-y-3">
+              <h2 className="font-black text-base">Wyniki ({copyResults.length})</h2>
+              {copyResults.length === 0 ? (
+                <div className="bg-white dark:bg-teal-mid border border-teal-deep/10 dark:border-holo-mint/10 rounded-2xl p-8 text-center">
+                  <div className="text-4xl mb-3">✍️</div>
+                  <p className="text-sm opacity-30">Wygenerowane warianty pojawią się tutaj</p>
+                </div>
+              ) : (
+                copyResults.map((r, i) => (
+                  <div
+                    key={i}
+                    className="bg-white dark:bg-teal-mid border border-teal-deep/10 dark:border-holo-mint/10 rounded-xl p-4 space-y-2"
+                  >
+                    <p className="font-mono text-sm font-semibold">{r.headline}</p>
+                    {r.subtext && <p className="text-sm opacity-60">{r.subtext}</p>}
+                    {r.cta && <p className="text-xs text-holo-mint font-medium">{r.cta}</p>}
+                    <button
+                      onClick={() => useCopyInGenerator(r)}
+                      className="w-full h-8 bg-teal-deep/5 dark:bg-teal-deep hover:bg-holo-mint/20 hover:border-holo-mint border border-teal-deep/10 dark:border-holo-mint/10 rounded-full text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors"
+                    >
+                      <Wand2 className="h-3 w-3" /> Użyj w generatorze
+                    </button>
+                  </div>
+                ))
               )}
             </div>
           </div>
