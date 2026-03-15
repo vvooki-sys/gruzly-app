@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { neon } from '@neondatabase/serverless';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-export const maxDuration = 30;
+export const maxDuration = 300;
 
 const sql = neon(process.env.DATABASE_URL!);
 
@@ -123,9 +123,10 @@ Return this exact JSON structure:
 
 RULES:
 - Return ONLY valid JSON — no markdown, no explanation
-- Maximum 30 words per section content
+- Be thorough and precise — each section should be 2-5 sentences with specific values
 - Only describe recurring, non-optional patterns
-- Include exact hex codes when visible
+- Include exact hex codes, exact font names, exact measurements when visible
+- More detail is better — this drives AI image generation quality
 
 Return this exact JSON:
 {
@@ -141,8 +142,7 @@ Return this exact JSON:
   }
 
   const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_KEY!);
-  // Use multimodal text model — NOT the image-generation model (which returns empty text parts)
-  const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
   try {
     const result = await model.generateContent({

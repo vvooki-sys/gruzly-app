@@ -97,12 +97,12 @@ export default function HomePage() {
           >
             Gruzly
           </h1>
-          <p className="text-lg text-white/50 font-medium tracking-wide">
+          <p className="text-lg font-medium tracking-wide text-teal-deep/60 dark:text-white/50">
             🧱 Wieziemy Twój kreatywny gruz…
           </p>
         </div>
 
-        <p className="text-xs font-bold uppercase tracking-widest text-white/30 mb-4">Projekty</p>
+        <p className="text-xs font-bold uppercase tracking-widest text-teal-deep/30 dark:text-white/30 mb-4">Projekty</p>
 
         {loading ? (
           <div className="text-center py-16 opacity-40 text-sm">Ładowanie...</div>
