@@ -447,9 +447,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
                   ) : (
                     <div className={`${FORMAT_ASPECT[format] || 'aspect-square'} flex items-center justify-center`}>
                       <div className="text-center space-y-3">
-                        <div className="w-16 h-16 mx-auto rounded-2xl border-2 border-dashed border-teal-deep/15 dark:border-holo-mint/15 flex items-center justify-center">
-                          <Image className="h-7 w-7 opacity-20" />
-                        </div>
+                        <div className="text-5xl mb-3">🧱</div>
                         <p className="text-sm opacity-30">Wygeneruj grafikę lub kliknij w historię</p>
                       </div>
                     </div>
@@ -591,6 +589,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
                       </>
                   }
                   <p className="opacity-30">📎 {references.length} grafik referencyjnych</p>
+                  <p className="text-xs text-zinc-700 mt-2 text-right">🧱</p>
                 </div>
               </div>
             </div>

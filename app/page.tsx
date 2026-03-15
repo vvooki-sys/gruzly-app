@@ -98,7 +98,7 @@ export default function HomePage() {
             Gruzly
           </h1>
           <p className="text-lg text-white/50 font-medium tracking-wide">
-            Wieziemy Twój kreatywny gruz…
+            🧱 Wieziemy Twój kreatywny gruz…
           </p>
         </div>
 
@@ -108,9 +108,7 @@ export default function HomePage() {
           <div className="text-center py-16 opacity-40 text-sm">Ładowanie...</div>
         ) : projects.length === 0 ? (
           <div className="text-center py-20">
-            <div className="w-16 h-16 mx-auto mb-4 rounded-2xl holo-gradient flex items-center justify-center">
-              <Layers className="h-8 w-8 text-teal-deep" />
-            </div>
+            <div className="text-5xl mb-4">🧱</div>
             <p className="font-bold mb-1">Brak projektów</p>
             <p className="text-sm opacity-40">Stwórz pierwszy projekt żeby zacząć generować grafiki</p>
           </div>
