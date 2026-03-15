@@ -6,6 +6,15 @@ export const maxDuration = 30;
 
 const sql = neon(process.env.DATABASE_URL!);
 
+interface BrandSection {
+  id: string;
+  title: string;
+  content: string;
+  type: 'standard' | 'custom';
+  order: number;
+  icon?: string;
+}
+
 async function urlToBase64(url: string): Promise<{ data: string; mimeType: string } | null> {
   try {
     const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
@@ -24,7 +33,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const { id } = await params;
   const projectId = parseInt(id);
 
-  // Check for optional source parameter
   const { source } = await req.json().catch(() => ({}));
 
   const [project] = await sql`SELECT * FROM projects WHERE id = ${projectId}`;
@@ -35,7 +43,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   let analysisPrompt: string;
   let imageParts: Array<{ inlineData: { data: string; mimeType: string } }> = [];
 
-  // Handle brandbook PDF analysis
   if (source === 'brandbook') {
     const brandbook = (assets as Array<{ type: string; url: string; filename: string }>)
       .find(a => a.type === 'brandbook');
@@ -44,42 +51,58 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       return NextResponse.json({ error: 'No brandbook uploaded' }, { status: 400 });
     }
 
-    // Load PDF as base64
     const b64 = await urlToBase64(brandbook.url);
     if (!b64) {
       return NextResponse.json({ error: 'Failed to load brandbook PDF' }, { status: 500 });
     }
 
-    // Override mimeType to PDF
     imageParts.push({ inlineData: { data: b64.data, mimeType: 'application/pdf' } });
 
-    analysisPrompt = `You are a brand visual identity expert. Read this brand book PDF for the brand "${project.name}" and extract a precise, actionable visual style guide.
+    analysisPrompt = `You are a senior brand identity analyst. Read this brand book PDF for "${project.name}" and extract ALL brand identity information into structured sections.
 
-RULES:
-- Be concise: maximum 200 words total
-- Only describe elements explicitly defined in the brand book
-- Resolve ambiguities: pick ONE value for each property
-- Use specific hex codes from the brand book when available
-- Write in imperative style ("Use X", "Always Y", "Never Z")
+CRITICAL RULES:
+1. Return ONLY valid JSON — no markdown, no explanation, no text outside the JSON
+2. Extract EVERY section you find in the brand book
+3. For standard sections (listed below), use the exact IDs provided
+4. For anything unique/special not in the standard list — create a custom section with id starting with "custom_"
+5. Content must be precise and actionable — include exact hex codes, exact measurements, exact rules
+6. Write content in Polish if the brand book is in Polish
 
-Structure your response in exactly these 5 sections:
+STANDARD SECTION IDs (use these exact ids when the content matches):
+- "modul" — Construction module, margins, safety fields, measurements
+- "tlo" — Background color/treatment
+- "gradient" — Brand gradient (colors, direction, usage rules)
+- "kolorystyka" — Primary color palette with hex codes
+- "kolorystyka_dodatkowa" — Secondary/additional colors
+- "typografia" — Typography — fonts, weights, sizes, kerning, line height, rules
+- "logo" — Logotype — versions, placement, size, safety zone
+- "blob" — Decorative elements, shapes, organic elements
+- "copy" — Text/copy rules — case, alignment, hierarchy
+- "cta" — Call to Action — construction, colors, sizes, placement
+- "stickery" — Stickers, badges, labels, stamps, tabs (patki)
+- "packshot" — Product photography rules
+- "legal" — Legal text — size, color, placement
+- "animacje" — Animation rules (if present)
 
-BACKGROUND: [Single sentence. The exact background color/treatment. Include hex.]
-
-TYPOGRAPHY: [Single sentence. The primary font family + weights. Case style. Color.]
-
-LAYOUT: [1-2 sentences. The repeating compositional pattern.]
-
-GRAPHIC ELEMENTS: [1-2 sentences. Signature decorative elements that appear consistently.]
-
-TONE: [Single sentence. The visual mood in 3-4 adjectives.]
-
-Additionally, if the brand book contains explicit DO's and DON'Ts rules, list them separately after the 5 sections under the header:
-BRAND RULES:
-(one rule per line, imperative style)`;
+Return this exact JSON structure:
+{
+  "sections": [
+    {
+      "id": "gradient",
+      "title": "Gradient NCO",
+      "content": "Gradient przechodzi od #6e46a0 (jasny, góra) do #2d1464 (ciemny, dół). Dla formatów 1200x1200px i 360x640px: góra jasna, dół ciemna. Dla formatów 336x280px i 750x300px: lewa jasna, prawa ciemna.",
+      "type": "standard",
+      "order": 1,
+      "icon": "🎨"
+    }
+  ],
+  "brandRules": [
+    "Gradient NCO jest obowiązkowy we wszystkich kampaniach",
+    "Font tylko Manrope Regular i Extra Bold — bez wyjątków"
+  ]
+}`;
 
   } else {
-    // Original reference images analysis
     const refs = (assets as Array<{ type: string; url: string; filename: string }>)
       .filter(a => a.type === 'reference' && !a.url.endsWith('.svg'));
 
@@ -87,7 +110,6 @@ BRAND RULES:
       return NextResponse.json({ error: 'No reference images to analyze. Upload at least one reference graphic.' }, { status: 400 });
     }
 
-    // Konwertuj referencje na base64
     for (const ref of refs) {
       const b64 = await urlToBase64(ref.url);
       if (b64) imageParts.push({ inlineData: b64 });
@@ -97,27 +119,25 @@ BRAND RULES:
       return NextResponse.json({ error: 'Failed to load reference images' }, { status: 500 });
     }
 
-    analysisPrompt = `You are a senior brand visual identity analyst. Analyze the ${imageParts.length} reference graphics provided and extract a precise, actionable visual style guide for the brand "${project.name}".
+    analysisPrompt = `You are a brand visual identity analyst. Analyze the ${imageParts.length} reference graphics for brand "${project.name}".
 
-RULES FOR YOUR ANALYSIS:
-- Be concise: maximum 200 words total
-- Only describe elements that appear in ALL or MOST references (recurring patterns only)
-- Never describe exceptions, one-off choices, or "sometimes" elements
-- Resolve ambiguities: pick ONE font name, ONE background color hex, ONE layout rule
-- Use specific hex codes when visible, or closest approximation
-- Write in imperative style ("Use X", "Always Y", "Never Z")
+RULES:
+- Return ONLY valid JSON — no markdown, no explanation
+- Maximum 30 words per section content
+- Only describe recurring, non-optional patterns
+- Include exact hex codes when visible
 
-Structure your response in exactly these 5 sections (no other sections):
-
-BACKGROUND: [Single sentence. The exact background color/treatment used in every graphic. Include hex.]
-
-TYPOGRAPHY: [Single sentence. The one primary font family + weights used. Case style (all-caps/mixed). Color.]
-
-LAYOUT: [1-2 sentences. The repeating compositional pattern — where is the focal element, where is the logo, how is space divided.]
-
-GRAPHIC ELEMENTS: [1-2 sentences. The 1-2 signature decorative/graphic elements that appear consistently. Describe shape, color, position.]
-
-TONE: [Single sentence. The visual mood in 3-4 adjectives. What this brand looks like, not what it values.]`;
+Return this exact JSON:
+{
+  "sections": [
+    { "id": "tlo", "title": "Tło", "content": "...", "type": "standard", "order": 1, "icon": "🖼" },
+    { "id": "typografia", "title": "Typografia", "content": "...", "type": "standard", "order": 2, "icon": "📝" },
+    { "id": "modul", "title": "Kompozycja i layout", "content": "...", "type": "standard", "order": 3, "icon": "📐" },
+    { "id": "blob", "title": "Elementy graficzne", "content": "...", "type": "standard", "order": 4, "icon": "✨" },
+    { "id": "copy", "title": "Ton i nastrój", "content": "...", "type": "standard", "order": 5, "icon": "💬" }
+  ],
+  "brandRules": []
+}`;
   }
 
   const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_KEY!);
@@ -134,41 +154,58 @@ TONE: [Single sentence. The visual mood in 3-4 adjectives. What this brand looks
       }],
     });
 
-    const fullResponse = result.response.candidates?.[0]?.content?.parts
+    const responseText = result.response.candidates?.[0]?.content?.parts
       ?.filter((p: { text?: string }) => p.text)
       ?.map((p: { text?: string }) => p.text)
       ?.join('\n') || '';
 
-    if (!fullResponse) throw new Error('Empty analysis response');
+    if (!responseText) throw new Error('Empty analysis response');
 
-    // Extract brand rules if present (from brandbook)
-    let analysis = fullResponse;
+    // Parse JSON response
+    const cleaned = responseText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    let parsed: { sections: BrandSection[]; brandRules: string[] };
+
+    try {
+      parsed = JSON.parse(cleaned);
+    } catch {
+      // Fallback: wrap plain text as a single section
+      parsed = {
+        sections: [{ id: 'analiza', title: 'Analiza marki', content: cleaned, type: 'standard', order: 1 }],
+        brandRules: [],
+      };
+    }
+
+    // Build brand_analysis text fallback (for generate route backward compat)
+    const brandAnalysis = [...parsed.sections]
+      .sort((a, b) => a.order - b.order)
+      .map(s => `${s.title.toUpperCase()}: ${s.content}`)
+      .join('\n\n');
+
+    // Save brand_sections and brand_analysis
+    await sql`
+      UPDATE projects
+      SET brand_sections = ${JSON.stringify(parsed.sections)}::jsonb,
+          brand_analysis = ${brandAnalysis},
+          updated_at = NOW()
+      WHERE id = ${projectId}
+    `;
+
     let brandRules: string | null = null;
     let suggestedRules: string | null = null;
 
-    if (source === 'brandbook' && fullResponse.includes('BRAND RULES:')) {
-      const parts = fullResponse.split('BRAND RULES:');
-      analysis = parts[0].trim();
-      const extractedRules = parts[1].trim();
-
-      // If project already has brand_rules, don't overwrite - return as suggestedRules
+    if (parsed.brandRules && parsed.brandRules.length > 0) {
+      const rulesText = parsed.brandRules.join('\n');
       if (project.brand_rules) {
-        suggestedRules = extractedRules;
+        suggestedRules = rulesText;
       } else {
-        brandRules = extractedRules;
+        brandRules = rulesText;
+        await sql`UPDATE projects SET brand_rules = ${rulesText} WHERE id = ${projectId}`;
       }
     }
 
-    // Update DB - always update brand_analysis
-    await sql`UPDATE projects SET brand_analysis = ${analysis} WHERE id = ${projectId}`;
-
-    // Update brand_rules only if we have new rules and no existing rules
-    if (brandRules) {
-      await sql`UPDATE projects SET brand_rules = ${brandRules} WHERE id = ${projectId}`;
-    }
-
     return NextResponse.json({
-      analysis,
+      sections: parsed.sections,
+      analysis: brandAnalysis,
       brandRules: brandRules || undefined,
       suggestedRules: suggestedRules || undefined,
     });

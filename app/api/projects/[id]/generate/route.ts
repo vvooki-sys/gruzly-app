@@ -91,21 +91,33 @@ ${project.brand_rules.split('\n').filter((r: string) => r.trim()).map((r: string
     ? `Provided visual assets:${logoAsset ? '\n- First image: brand LOGO — reproduce it exactly, place it prominently' : ''}${mode !== 'fast' && refs.length > 0 ? `\n- Next ${refs.length} image(s): brand reference graphics — match this visual style closely` : ''}\n\n`
     : '';
 
-  // Brand DNA content — prefer auto-analysis, fallback to manual fields
-  const brandDna = project.brand_analysis
-    ? project.brand_analysis
-    : `Visual style: ${project.style_description || 'modern, professional, event agency aesthetic'}
-Color palette: ${project.color_palette || 'dark navy background #103958, coral accent #EF4853'}
-Typography: ${project.typography_notes || 'bold geometric sans-serif, clean hierarchy'}`;
+  // Brand DNA — prefer brand_sections, then brand_analysis text, then manual fields
+  type BrandSec = { id: string; title: string; content: string; order: number };
+  const brandSections: BrandSec[] = project.brand_sections || [];
+  let layer2Content: string;
+
+  if (brandSections.length > 0) {
+    layer2Content = [...brandSections]
+      .sort((a: BrandSec, b: BrandSec) => a.order - b.order)
+      .map((s: BrandSec) => `[${s.title.toUpperCase()}]\n${s.content}`)
+      .join('\n\n');
+  } else if (project.brand_analysis) {
+    layer2Content = project.brand_analysis;
+  } else {
+    layer2Content = [
+      project.style_description && `Visual style: ${project.style_description}`,
+      project.color_palette && `Colors: ${project.color_palette}`,
+      project.typography_notes && `Typography: ${project.typography_notes}`,
+    ].filter(Boolean).join('\n') || 'modern, professional, event agency aesthetic';
+  }
 
   // 2a: Layer 2 — Brand DNA with directive intro
   const layer2 = `
 ${sep}
 LAYER 2 — BRAND DNA (visual identity — follow precisely)
-These are the non-negotiable visual rules extracted from brand references.
-Apply them to every element of the graphic: background, typography, layout, decoration.
+Apply rules from every section below to your design.
 ${sep}
-${assetNote}${brandDna}
+${assetNote}${layer2Content}
 `;
 
   // 2b: Layer 3 — directive Creative Brief

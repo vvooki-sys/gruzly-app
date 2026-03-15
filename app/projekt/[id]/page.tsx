@@ -38,6 +38,15 @@ interface Asset {
   created_at: string;
 }
 
+interface BrandSection {
+  id: string;
+  title: string;
+  content: string;
+  type: 'standard' | 'custom';
+  order: number;
+  icon?: string;
+}
+
 const FORMATS = [
   { value: 'fb_post', label: 'Facebook Post', size: '1080×1080' },
   { value: 'ln_post', label: 'LinkedIn Post',  size: '1200×627' },
@@ -94,15 +103,13 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
   const [editing, setEditing] = useState(false);
 
   // Settings state
-  const [editStyle, setEditStyle] = useState('');
   const [editRules, setEditRules] = useState('');
-  const [editTypo, setEditTypo] = useState('');
-  const [editColors, setEditColors] = useState('');
-  const [editAnalysis, setEditAnalysis] = useState('');
   const [analyzing, setAnalyzing] = useState(false);
-  const [savingSettings, setSavingSettings] = useState(false);
-  const [savingAnalysis, setSavingAnalysis] = useState(false);
+  const [savingRules, setSavingRules] = useState(false);
   const [brandbookAsset, setBrandbookAsset] = useState<Asset | null>(null);
+  const [brandSections, setBrandSections] = useState<BrandSection[]>([]);
+  const [editingSectionId, setEditingSectionId] = useState<string | null>(null);
+  const [editingSectionContent, setEditingSectionContent] = useState('');
 
   // Copywriter state
   const [copyFile, setCopyFile] = useState<File | null>(null);
@@ -120,12 +127,9 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
           setProject(d.project);
           setAssets(d.assets);
           setGenerations(d.generations);
-          setEditStyle(d.project.style_description || '');
-          setEditTypo(d.project.typography_notes || '');
-          setEditColors(d.project.color_palette || '');
           setEditRules(d.project.brand_rules || '');
-          setEditAnalysis(d.project.brand_analysis || '');
           setBrandbookAsset(d.assets.find((a: Asset) => a.type === 'brandbook') || null);
+          setBrandSections(d.project.brand_sections || []);
           setLoading(false);
         });
     });
@@ -173,8 +177,9 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
     try {
       const res = await fetch(`/api/projects/${id}/analyze`, { method: 'POST' });
       const data = await res.json();
-      if (data.analysis) {
-        setEditAnalysis(data.analysis);
+      if (data.sections) {
+        setBrandSections(data.sections);
+        setProject(p => p ? { ...p, brand_analysis: data.analysis, updated_at: new Date().toISOString() } : p);
       } else {
         alert('Błąd analizy: ' + (data.error || 'Spróbuj ponownie'));
       }
@@ -195,8 +200,9 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
         body: JSON.stringify({ source: 'brandbook' }),
       });
       const data = await res.json();
-      if (data.analysis) {
-        setEditAnalysis(data.analysis);
+      if (data.sections) {
+        setBrandSections(data.sections);
+        setProject(p => p ? { ...p, brand_analysis: data.analysis, updated_at: new Date().toISOString() } : p);
         if (data.suggestedRules) {
           showToast('Brandbook zawiera zasady — przejrzyj je w sekcji Zasady obowiązkowe');
         }
@@ -265,34 +271,38 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
     setTab('generate');
   };
 
-  const saveAnalysis = async () => {
+  const saveRules = async () => {
     if (!id) return;
-    setSavingAnalysis(true);
+    setSavingRules(true);
     await fetch(`/api/projects/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ brandAnalysis: editAnalysis }),
+      body: JSON.stringify({ brandRules: editRules }),
     });
-    setProject(p => p ? { ...p, brand_analysis: editAnalysis, updated_at: new Date().toISOString() } : p);
-    setSavingAnalysis(false);
-    showToast('Analiza zapisana ✓');
+    setProject(p => p ? { ...p, brand_rules: editRules } : p);
+    setSavingRules(false);
+    showToast('Zasady zapisane ✓');
   };
 
-  const saveSettings = async () => {
-    if (!id) return;
-    setSavingSettings(true);
+  const saveSection = async (sectionId: string, content: string) => {
     await fetch(`/api/projects/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        styleDescription: editStyle,
-        typographyNotes: editTypo,
-        colorPalette: editColors,
-        brandRules: editRules,
-      }),
+      body: JSON.stringify({ sectionId, sectionContent: content }),
     });
-    if (project) setProject({ ...project, style_description: editStyle, typography_notes: editTypo, color_palette: editColors, brand_rules: editRules });
-    setSavingSettings(false);
+    setBrandSections(prev => prev.map(s => s.id === sectionId ? { ...s, content } : s));
+    setEditingSectionId(null);
+    showToast('Sekcja zapisana ✓');
+  };
+
+  const deleteSection = async (sectionId: string) => {
+    const updated = brandSections.filter(s => s.id !== sectionId);
+    await fetch(`/api/projects/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ brandSections: updated }),
+    });
+    setBrandSections(updated);
   };
 
   const editImage = async () => {
@@ -669,23 +679,21 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
 
                 {/* Brand context indicator */}
                 <div className={`rounded-xl p-4 text-xs space-y-1 border transition-colors ${
-                  project.brand_analysis
+                  brandSections.length > 0 || project.brand_analysis
                     ? 'border-holo-mint/20 bg-holo-mint/5'
                     : 'border-teal-deep/10 dark:border-holo-mint/10 bg-white dark:bg-teal-mid'
                 }`}>
-                  <p className={`font-bold mb-1.5 ${project.brand_analysis ? 'text-holo-mint' : 'opacity-50'}`}>
-                    {project.brand_analysis ? '✅ Kontekst marki — auto-analiza aktywna' : '⚙️ Kontekst marki — pola ręczne'}
+                  <p className={`font-bold mb-1.5 ${brandSections.length > 0 || project.brand_analysis ? 'text-holo-mint' : 'opacity-50'}`}>
+                    {brandSections.length > 0
+                      ? `✅ ${brandSections.length} sekcji brandowych`
+                      : project.brand_analysis
+                        ? '✅ Analiza tekstowa aktywna'
+                        : '⚙️ Brak analizy — przejdź do zakładki Brand'}
                   </p>
-                  {project.brand_analysis
-                    ? <p className="opacity-50">Gemini zna styl marki z analizy referencji. <span className="text-holo-mint opacity-100">Jakość generacji lepsza.</span></p>
-                    : <>
-                        {project.style_description && <p className="opacity-50">🎨 {project.style_description}</p>}
-                        {project.color_palette && <p className="opacity-50">🎨 {project.color_palette}</p>}
-                        {project.typography_notes && <p className="opacity-50">🔤 {project.typography_notes}</p>}
-                      </>
-                  }
+                  {brandSections.length > 0 && (
+                    <p className="opacity-50">{brandSections.slice(0, 3).map(s => s.title).join(', ')}{brandSections.length > 3 ? ` +${brandSections.length - 3} więcej` : ''}</p>
+                  )}
                   <p className="opacity-30">📎 {references.length} grafik referencyjnych</p>
-                  <p className="text-xs text-zinc-700 mt-2 text-right">🧱</p>
                 </div>
               </div>
             </div>
@@ -787,56 +795,133 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
           <div className="max-w-xl space-y-5">
             <h2 className="font-black text-base">Ustawienia marki</h2>
 
-            {/* AUTO-ANALIZA — PR 3a: editable textarea */}
-            <div className={`rounded-2xl p-4 border transition-colors ${
-              project.brand_analysis
-                ? 'border-holo-mint/25 bg-holo-mint/5'
-                : 'border-teal-deep/10 dark:border-holo-mint/10 bg-white dark:bg-teal-mid'
-            }`}>
-              <div className="flex items-start justify-between gap-3 mb-3">
+            {/* ANALIZA MARKI — trigger */}
+            <div className="rounded-2xl border border-teal-deep/10 dark:border-holo-mint/10 bg-white dark:bg-teal-mid p-4 space-y-3">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
                 <div>
-                  <p className={`text-sm font-bold flex items-center gap-2 flex-wrap ${project.brand_analysis ? 'text-holo-mint' : ''}`}>
-                    {project.brand_analysis ? '✅ Analiza marki' : '🔍 Analiza marki'}
-                    {analysisStale && (
-                      <span className="text-holo-yellow text-xs font-semibold bg-holo-yellow/10 px-2 py-0.5 rounded-full">
-                        ⚠️ Referencje zmienione
-                      </span>
-                    )}
+                  <p className="text-sm font-bold">
+                    {brandSections.length > 0 ? `✅ Analiza marki — ${brandSections.length} sekcji` : '🔍 Analiza marki'}
                   </p>
-                  <p className="text-xs opacity-50 mt-0.5">
-                    {project.brand_analysis
-                      ? 'Edytuj poniżej i zapisz, lub ponów analizę AI'
-                      : 'Wgraj referencje i kliknij Analizuj — Gemini zbada styl marki'}
-                  </p>
+                  <p className="text-xs opacity-40 mt-0.5">Wgraj brandbook lub analizuj z grafik referencyjnych</p>
                 </div>
                 <button
                   onClick={analyzeBrand}
                   disabled={analyzing || references.length === 0}
-                  className="h-9 px-4 rounded-full bg-holo-mint text-teal-deep text-xs font-bold disabled:opacity-40 flex items-center gap-1.5 hover:opacity-90 transition-opacity whitespace-nowrap shrink-0"
+                  className="h-8 px-3 rounded-full border border-teal-deep/15 dark:border-holo-mint/15 text-xs font-semibold flex items-center gap-1.5 hover:border-holo-mint/50 disabled:opacity-40 transition-colors whitespace-nowrap shrink-0"
                 >
                   {analyzing
-                    ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Analizuję...</>
-                    : <><Wand2 className="h-3.5 w-3.5" /> {project.brand_analysis ? 'Ponów analizę' : 'Analizuj markę'}</>
+                    ? <><Loader2 className="h-3 w-3 animate-spin" /> Analizuję...</>
+                    : <><Wand2 className="h-3 w-3" /> Analizuj z referencji</>
                   }
                 </button>
               </div>
 
-              {/* Editable analysis */}
-              <textarea
-                className={`${inputCls} resize-none`}
-                rows={8}
-                placeholder="Analiza pojawi się tutaj po kliknięciu 'Analizuj markę'. Możesz ją edytować przed zapisem."
-                value={editAnalysis}
-                onChange={e => setEditAnalysis(e.target.value)}
-              />
-              <button
-                onClick={saveAnalysis}
-                disabled={savingAnalysis || editAnalysis === (project.brand_analysis || '')}
-                className="mt-2 h-9 px-4 rounded-full holo-gradient text-teal-deep text-xs font-bold disabled:opacity-40 hover:opacity-90 transition-opacity"
-              >
-                {savingAnalysis ? 'Zapisuję...' : 'Zapisz analizę'}
-              </button>
+              {analysisStale && (
+                <div className="flex items-center gap-2 text-xs text-holo-yellow bg-holo-yellow/10 px-3 py-2 rounded-xl">
+                  <span>⚠️</span>
+                  <span>Referencje zmieniły się od ostatniej analizy — rozważ ponowną analizę</span>
+                </div>
+              )}
+
+              {/* Brandbook */}
+              <div className="border-t border-teal-deep/10 dark:border-holo-mint/10 pt-3">
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <p className="text-xs font-semibold opacity-50 uppercase tracking-wide">Brandbook (PDF)</p>
+                  <label className="cursor-pointer h-7 px-3 rounded-full border border-teal-deep/15 dark:border-holo-mint/15 text-xs font-semibold flex items-center gap-1.5 hover:border-holo-mint/50 transition-colors opacity-70 hover:opacity-100 shrink-0">
+                    <Upload className="h-3 w-3" />
+                    {brandbookAsset ? 'Zmień' : 'Wgraj PDF'}
+                    <input type="file" accept="application/pdf" className="hidden" onChange={handleBrandbookUpload} />
+                  </label>
+                </div>
+                {brandbookAsset ? (
+                  <div className="flex items-center justify-between bg-offwhite dark:bg-teal-deep rounded-xl px-3 py-2">
+                    <span className="text-xs opacity-60 truncate">📄 {brandbookAsset.filename}</span>
+                    <div className="flex gap-2 shrink-0">
+                      <button
+                        onClick={analyzeFromBrandbook}
+                        disabled={analyzing}
+                        className="h-7 px-3 rounded-full bg-holo-mint text-teal-deep disabled:opacity-50 text-xs font-bold flex items-center gap-1 hover:opacity-90 transition-opacity"
+                      >
+                        {analyzing ? <><Loader2 className="h-3 w-3 animate-spin" /> Analizuję...</> : <><Wand2 className="h-3 w-3" /> Analizuj brandbook</>}
+                      </button>
+                      <button onClick={deleteBrandbook} className="h-7 w-7 rounded-full border border-red-500/20 flex items-center justify-center opacity-40 hover:opacity-100 hover:border-red-500/50 hover:text-red-400 transition-all text-sm">×</button>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-xs opacity-30">Wgraj brandbook — AI wyciągnie z niego kolory, fonty i zasady automatycznie</p>
+                )}
+              </div>
             </div>
+
+            {/* SEKCJE MARKI */}
+            {brandSections.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs font-bold opacity-30 uppercase tracking-wide">Sekcje marki ({brandSections.length})</p>
+                {[...brandSections].sort((a, b) => a.order - b.order).map(section => (
+                  <div
+                    key={section.id}
+                    className={`rounded-xl border p-4 ${
+                      section.type === 'custom'
+                        ? 'border-holo-peach/30 bg-holo-peach/5'
+                        : 'border-teal-deep/10 dark:border-holo-mint/10 bg-white dark:bg-teal-mid'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <span className="text-base shrink-0">{section.icon || '📌'}</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="text-sm font-semibold">{section.title}</p>
+                            {section.type === 'custom' && (
+                              <span className="text-xs bg-holo-peach/20 text-holo-peach px-1.5 py-0.5 rounded-full">auto</span>
+                            )}
+                          </div>
+                          {editingSectionId !== section.id && (
+                            <p className="text-xs opacity-50 mt-0.5 line-clamp-2">{section.content}</p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex gap-1 shrink-0">
+                        <button
+                          onClick={() => { setEditingSectionId(section.id); setEditingSectionContent(section.content); }}
+                          className="h-7 px-2.5 bg-teal-deep/5 dark:bg-teal-deep hover:bg-holo-mint/10 border border-teal-deep/10 dark:border-holo-mint/10 rounded-lg text-xs font-medium transition-colors"
+                        >
+                          Edytuj
+                        </button>
+                        {section.type === 'custom' && (
+                          <button
+                            onClick={() => deleteSection(section.id)}
+                            className="h-7 w-7 border border-red-500/20 hover:border-red-500/50 hover:text-red-400 rounded-lg text-sm flex items-center justify-center opacity-40 hover:opacity-100 transition-all"
+                          >×</button>
+                        )}
+                      </div>
+                    </div>
+
+                    {editingSectionId === section.id && (
+                      <div className="mt-3 space-y-2">
+                        <textarea
+                          className="w-full bg-offwhite dark:bg-teal-deep text-teal-deep dark:text-offwhite border border-teal-deep/15 dark:border-holo-mint/10 focus:border-holo-mint rounded-xl px-3 py-2 text-sm resize-none outline-none transition-colors"
+                          rows={4}
+                          value={editingSectionContent}
+                          onChange={e => setEditingSectionContent(e.target.value)}
+                          autoFocus
+                        />
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => setEditingSectionId(null)}
+                            className="h-8 px-3 rounded-full border border-teal-deep/15 dark:border-holo-mint/15 text-xs font-semibold opacity-50 hover:opacity-100 transition-opacity"
+                          >Anuluj</button>
+                          <button
+                            onClick={() => saveSection(section.id, editingSectionContent)}
+                            className="h-8 px-4 rounded-full bg-holo-mint/20 hover:bg-holo-mint/30 text-holo-mint border border-holo-mint/30 text-xs font-semibold transition-colors"
+                          >Zapisz sekcję</button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
 
             {/* ZASADY OBOWIĄZKOWE */}
             <div className="rounded-2xl border-2 border-red-500/30 bg-red-500/5 p-4 space-y-2">
@@ -851,52 +936,16 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
                 value={editRules}
                 onChange={e => setEditRules(e.target.value)}
               />
+              <button
+                onClick={saveRules}
+                disabled={savingRules || editRules === (project.brand_rules || '')}
+                className="h-9 px-4 rounded-full holo-gradient text-teal-deep text-xs font-bold disabled:opacity-40 hover:opacity-90 transition-opacity"
+              >
+                {savingRules ? 'Zapisuję...' : 'Zapisz zasady'}
+              </button>
             </div>
 
-            <p className="text-xs opacity-40 font-medium">Pola poniżej są używane gdy brak automatycznej analizy.</p>
-
-            <div>
-              <label className="text-xs font-semibold opacity-50 mb-1.5 block uppercase tracking-wide">Opis stylu graficznego</label>
-              <textarea
-                className={`${inputCls} resize-none`}
-                rows={3}
-                placeholder="np. Minimalistyczny, sportowy. Duże białe przestrzenie, dynamiczne ujęcia, realistyczne zdjęcia produktów."
-                value={editStyle}
-                onChange={e => setEditStyle(e.target.value)}
-              />
-            </div>
-
-            <div>
-              <label className="text-xs font-semibold opacity-50 mb-1.5 block uppercase tracking-wide">Typografia</label>
-              <input
-                type="text"
-                className={inputCls}
-                placeholder="np. Nagłówki: Helvetica Neue Bold, treść: Light. Tekst zawsze biały lub czarny."
-                value={editTypo}
-                onChange={e => setEditTypo(e.target.value)}
-              />
-            </div>
-
-            <div>
-              <label className="text-xs font-semibold opacity-50 mb-1.5 block uppercase tracking-wide">Paleta kolorów</label>
-              <input
-                type="text"
-                className={inputCls}
-                placeholder="np. Czarny #000000, biały #FFFFFF, akcent pomarańczowy #FF6B35"
-                value={editColors}
-                onChange={e => setEditColors(e.target.value)}
-              />
-            </div>
-
-            <button
-              onClick={saveSettings}
-              disabled={savingSettings}
-              className="h-10 px-6 rounded-full holo-gradient text-teal-deep text-sm font-bold disabled:opacity-40 hover:opacity-90 transition-opacity"
-            >
-              {savingSettings ? 'Zapisuję...' : 'Zapisz ustawienia'}
-            </button>
-
-            {/* Upload logo */}
+            {/* LOGO */}
             <div className="pt-5 border-t border-teal-deep/10 dark:border-holo-mint/10">
               <h3 className="font-bold text-sm mb-0.5">Logo</h3>
               <p className="text-xs opacity-40 mb-3">Gemini nie obsługuje SVG — wgraj PNG lub JPG</p>
@@ -924,44 +973,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
               </div>
             </div>
 
-            {/* Brandbook */}
-            <div className="pt-4 border-t border-teal-deep/10 dark:border-holo-mint/10">
-              <div className="flex items-center justify-between mb-2">
-                <div>
-                  <h3 className="font-bold text-sm">Brandbook (PDF)</h3>
-                  <p className="text-xs opacity-40 mt-0.5">
-                    Wgraj brandbook — Gruzly wyciągnie z niego kolory, fonty i zasady automatycznie
-                  </p>
-                </div>
-                <label className="cursor-pointer h-8 px-3 rounded-full border border-teal-deep/15 dark:border-holo-mint/15 text-xs font-semibold flex items-center gap-1.5 hover:border-holo-mint/50 transition-colors opacity-70 hover:opacity-100 shrink-0">
-                  <Upload className="h-3 w-3" />
-                  {brandbookAsset ? 'Zmień' : 'Wgraj PDF'}
-                  <input type="file" accept="application/pdf" className="hidden" onChange={handleBrandbookUpload} />
-                </label>
-              </div>
-              {brandbookAsset && (
-                <div className="flex items-center justify-between bg-white dark:bg-teal-mid rounded-xl px-3 py-2 border border-teal-deep/10 dark:border-holo-mint/10">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs">📄 {brandbookAsset.filename}</span>
-                  </div>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={analyzeFromBrandbook}
-                      disabled={analyzing}
-                      className="h-7 px-3 rounded-full bg-holo-mint text-teal-deep disabled:opacity-50 text-xs font-bold flex items-center gap-1 hover:opacity-90 transition-opacity"
-                    >
-                      {analyzing ? <><Loader2 className="h-3 w-3 animate-spin" /> Analizuję...</> : <><Wand2 className="h-3 w-3" /> Analizuj brandbook</>}
-                    </button>
-                    <button
-                      onClick={deleteBrandbook}
-                      className="h-7 w-7 rounded-full border border-red-500/20 flex items-center justify-center opacity-40 hover:opacity-100 hover:border-red-500/50 hover:text-red-400 transition-all text-sm"
-                    >×</button>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Upload referencji */}
+            {/* GRAFIKI REFERENCYJNE */}
             <div className="pt-5 border-t border-teal-deep/10 dark:border-holo-mint/10">
               <div className="flex items-center justify-between mb-3">
                 <div>

@@ -4,6 +4,9 @@ import { neon } from '@neondatabase/serverless';
 const sql = neon(process.env.DATABASE_URL!);
 
 export async function GET() {
+  // Migration: add brand_sections column if not yet present
+  await sql`ALTER TABLE projects ADD COLUMN IF NOT EXISTS brand_sections JSONB DEFAULT '[]'::jsonb`.catch(() => {});
+
   const rows = await sql`
     SELECT p.*, COUNT(g.id)::int as generation_count
     FROM projects p
