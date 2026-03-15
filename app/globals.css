@@ -1,26 +1,54 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* Dark mode: data-theme attribute (overrides Tailwind's default media query variant) */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+/* Design system tokens */
+@theme {
+  --color-teal-deep: #1B334B;
+  --color-teal-mid:  #223D55;
+  --color-offwhite:  #F5F5F0;
+
+  --color-holo-mint:     #B3F5DC;
+  --color-holo-lavender: #C8B5E6;
+  --color-holo-pink:     #F5C7D4;
+  --color-holo-aqua:     #9BE5E0;
+  --color-holo-peach:    #FFCBA4;
+  --color-holo-yellow:   #FFE5A8;
+
+  --color-plej-navy:  #103958;
+  --color-plej-coral: #DF5B3F;
+
+  --font-sans: var(--font-poppins), system-ui, sans-serif;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+/* Utility: holographic gradient background */
+.holo-gradient {
+  background: linear-gradient(
+    135deg,
+    #B3F5DC 0%,
+    #C8B5E6 25%,
+    #F5C7D4 50%,
+    #9BE5E0 75%,
+    #FFE5A8 100%
+  );
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* Utility: holographic gradient text */
+.holo-text {
+  background: linear-gradient(135deg, #B3F5DC 0%, #C8B5E6 40%, #F5C7D4 70%, #9BE5E0 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Utility: glass panel / nav */
+.glass-nav {
+  backdrop-filter: blur(20px) saturate(1.8);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }

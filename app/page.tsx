@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Plus, Layers, Image, Clock } from 'lucide-react';
+import { Plus, Layers, Image, Sun, Moon } from 'lucide-react';
 
 interface Project {
   id: number;
@@ -20,10 +20,19 @@ export default function HomePage() {
   const [newName, setNewName] = useState('');
   const [newClient, setNewClient] = useState('');
   const [saving, setSaving] = useState(false);
+  const [isDark, setIsDark] = useState(true);
 
   useEffect(() => {
     fetch('/api/projects').then(r => r.json()).then(d => { setProjects(d); setLoading(false); });
+    setIsDark(document.documentElement.getAttribute('data-theme') !== 'light');
   }, []);
+
+  const toggleTheme = () => {
+    const next = isDark ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem('gruzly-theme', next);
+    setIsDark(!isDark);
+  };
 
   const createProject = async () => {
     if (!newName) return;
@@ -42,33 +51,48 @@ export default function HomePage() {
   };
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100">
-      {/* Header */}
-      <div className="border-b border-zinc-800 px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center font-bold text-sm">G</div>
-          <span className="text-lg font-semibold">Gruzly</span>
-          <span className="text-zinc-500 text-sm">Brand Graphics AI</span>
-        </div>
-        <button
-          onClick={() => setShowNew(true)}
-          className="flex items-center gap-2 bg-orange-500 hover:bg-orange-400 text-white px-4 py-2 rounded-lg text-sm font-medium"
-        >
-          <Plus className="h-4 w-4" />
-          Nowy projekt
-        </button>
-      </div>
+    <div className="min-h-screen bg-offwhite dark:bg-teal-deep text-teal-deep dark:text-offwhite transition-colors">
 
-      <div className="max-w-5xl mx-auto px-6 py-8">
-        <h1 className="text-2xl font-bold mb-6">Projekty</h1>
+      {/* Header */}
+      <header className="glass-nav sticky top-0 z-40 border-b border-teal-deep/10 dark:border-holo-mint/10 bg-offwhite/85 dark:bg-teal-deep/85 px-4 sm:px-6 py-3 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center font-black text-sm holo-gradient text-teal-deep shrink-0">
+            G
+          </div>
+          <span className="text-lg font-black tracking-tight">Gruzly</span>
+          <span className="hidden sm:block text-sm opacity-40 font-medium">Brand Graphics AI</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={toggleTheme}
+            className="w-9 h-9 rounded-full flex items-center justify-center border border-teal-deep/15 dark:border-holo-mint/15 hover:border-holo-mint/50 transition-colors opacity-60 hover:opacity-100"
+            aria-label="Przełącz motyw"
+          >
+            {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          </button>
+          <button
+            onClick={() => setShowNew(true)}
+            className="holo-gradient flex items-center gap-1.5 text-teal-deep px-4 py-2 rounded-full text-sm font-bold hover:opacity-90 transition-opacity"
+          >
+            <Plus className="h-4 w-4" />
+            <span className="hidden sm:inline">Nowy projekt</span>
+            <span className="sm:hidden">Nowy</span>
+          </button>
+        </div>
+      </header>
+
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
+        <h1 className="text-2xl font-black mb-6">Projekty</h1>
 
         {loading ? (
-          <div className="text-zinc-500 text-center py-16">Ładowanie...</div>
+          <div className="text-center py-16 opacity-40 text-sm">Ładowanie...</div>
         ) : projects.length === 0 ? (
-          <div className="text-center py-16">
-            <Layers className="h-12 w-12 text-zinc-700 mx-auto mb-4" />
-            <p className="text-zinc-400 mb-2">Brak projektów</p>
-            <p className="text-zinc-600 text-sm">Stwórz pierwszy projekt żeby zacząć generować grafiki</p>
+          <div className="text-center py-20">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-2xl holo-gradient flex items-center justify-center">
+              <Layers className="h-8 w-8 text-teal-deep" />
+            </div>
+            <p className="font-bold mb-1">Brak projektów</p>
+            <p className="text-sm opacity-40">Stwórz pierwszy projekt żeby zacząć generować grafiki</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -76,24 +100,26 @@ export default function HomePage() {
               <Link
                 key={p.id}
                 href={`/projekt/${p.id}`}
-                className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 hover:border-zinc-600 transition-colors group"
+                className="bg-white dark:bg-teal-mid border border-teal-deep/10 dark:border-holo-mint/10 rounded-2xl p-5 hover:border-holo-mint/60 dark:hover:border-holo-mint/40 transition-all group"
               >
                 <div className="flex items-start justify-between mb-4">
-                  <div className="w-10 h-10 bg-zinc-800 rounded-lg flex items-center justify-center overflow-hidden">
+                  <div className="w-10 h-10 bg-offwhite dark:bg-teal-deep rounded-xl flex items-center justify-center overflow-hidden border border-teal-deep/10 dark:border-holo-mint/10">
                     {p.logo_url ? (
                       <img src={p.logo_url} alt={p.name} className="w-8 h-8 object-contain" />
                     ) : (
-                      <span className="text-zinc-400 font-bold text-sm">{p.name[0]}</span>
+                      <span className="font-black text-sm holo-text">{p.name[0]}</span>
                     )}
                   </div>
-                  <span className="text-xs text-zinc-600">
+                  <span className="text-xs opacity-30">
                     {new Date(p.created_at).toLocaleDateString('pl-PL')}
                   </span>
                 </div>
-                <h3 className="font-semibold text-zinc-100 group-hover:text-orange-400 transition-colors">{p.name}</h3>
-                {p.client_name && <p className="text-sm text-zinc-500 mt-1">{p.client_name}</p>}
-                <div className="flex items-center gap-3 mt-4 text-xs text-zinc-600">
-                  <span className="flex items-center gap-1"><Image className="h-3 w-3" /> {p.generation_count ?? 0} grafik</span>
+                <h3 className="font-bold group-hover:text-holo-mint transition-colors">{p.name}</h3>
+                {p.client_name && <p className="text-sm opacity-40 mt-0.5">{p.client_name}</p>}
+                <div className="flex items-center gap-3 mt-4 text-xs opacity-30">
+                  <span className="flex items-center gap-1">
+                    <Image className="h-3 w-3" /> {p.generation_count ?? 0} grafik
+                  </span>
                 </div>
               </Link>
             ))}
@@ -103,14 +129,14 @@ export default function HomePage() {
 
       {/* Modal: Nowy projekt */}
       {showNew && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-          <div className="bg-zinc-900 border border-zinc-700 rounded-xl w-full max-w-md p-6 space-y-4">
-            <h2 className="text-lg font-semibold">Nowy projekt</h2>
+        <div className="fixed inset-0 bg-teal-deep/60 dark:bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-teal-mid border border-teal-deep/15 dark:border-holo-mint/15 rounded-2xl w-full max-w-md p-6 space-y-4 shadow-2xl">
+            <h2 className="text-lg font-black">Nowy projekt</h2>
             <div>
-              <label className="text-xs text-zinc-400 mb-1 block">Nazwa projektu *</label>
+              <label className="text-xs opacity-50 mb-1.5 block font-semibold uppercase tracking-wide">Nazwa projektu *</label>
               <input
                 type="text"
-                className="w-full bg-zinc-800 rounded-lg px-3 py-2.5 text-sm border border-zinc-700 focus:border-orange-500 outline-none"
+                className="w-full bg-offwhite dark:bg-teal-deep rounded-xl px-3 py-2.5 text-sm border border-teal-deep/15 dark:border-holo-mint/10 focus:border-holo-mint outline-none transition-colors"
                 placeholder="np. Nike Summer 2026"
                 value={newName}
                 onChange={e => setNewName(e.target.value)}
@@ -119,23 +145,28 @@ export default function HomePage() {
               />
             </div>
             <div>
-              <label className="text-xs text-zinc-400 mb-1 block">Klient (opcjonalnie)</label>
+              <label className="text-xs opacity-50 mb-1.5 block font-semibold uppercase tracking-wide">Klient (opcjonalnie)</label>
               <input
                 type="text"
-                className="w-full bg-zinc-800 rounded-lg px-3 py-2.5 text-sm border border-zinc-700 focus:border-orange-500 outline-none"
+                className="w-full bg-offwhite dark:bg-teal-deep rounded-xl px-3 py-2.5 text-sm border border-teal-deep/15 dark:border-holo-mint/10 focus:border-holo-mint outline-none transition-colors"
                 placeholder="np. Nike Polska"
                 value={newClient}
                 onChange={e => setNewClient(e.target.value)}
               />
             </div>
             <div className="flex gap-3 pt-2">
-              <button onClick={() => setShowNew(false)} className="flex-1 h-10 rounded-lg bg-zinc-800 text-zinc-400 text-sm hover:bg-zinc-700">Anuluj</button>
+              <button
+                onClick={() => setShowNew(false)}
+                className="flex-1 h-10 rounded-full border border-teal-deep/15 dark:border-holo-mint/15 text-sm font-semibold opacity-50 hover:opacity-100 transition-opacity"
+              >
+                Anuluj
+              </button>
               <button
                 onClick={createProject}
                 disabled={saving || !newName}
-                className="flex-1 h-10 rounded-lg bg-orange-500 text-white text-sm font-medium hover:bg-orange-400 disabled:opacity-50"
+                className="flex-1 h-10 rounded-full holo-gradient text-teal-deep text-sm font-bold disabled:opacity-40 hover:opacity-90 transition-opacity"
               >
-                {saving ? 'Tworzę...' : 'Utwórz'}
+                {saving ? 'Tworzę...' : 'Utwórz projekt'}
               </button>
             </div>
           </div>
