@@ -46,18 +46,27 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: 'Failed to load reference images' }, { status: 500 });
   }
 
-  const analysisPrompt = `You are a brand visual identity expert. Analyze these ${imageParts.length} reference graphics from the brand "${project.name}" and provide a detailed visual style analysis.
+  const analysisPrompt = `You are a senior brand visual identity analyst. Analyze the ${imageParts.length} reference graphics provided and extract a precise, actionable visual style guide for the brand "${project.name}".
 
-Describe precisely:
-1. COLOR PALETTE — exact colors used (backgrounds, headlines, accents, gradients). Include hex codes if visible.
-2. TYPOGRAPHY — font style (serif/sans-serif/geometric), weight usage, case (uppercase/mixed), sizing hierarchy
-3. LAYOUT PATTERNS — how elements are arranged, use of white space, grid/composition style
-4. GRAPHIC ELEMENTS — shapes, icons, lines, decorative elements, photography style
-5. MOOD & TONE — what feeling does the brand visual communicate (professional/playful/premium/bold etc.)
-6. RECURRING PATTERNS — elements that appear consistently across graphics
+RULES FOR YOUR ANALYSIS:
+- Be concise: maximum 200 words total
+- Only describe elements that appear in ALL or MOST references (recurring patterns only)
+- Never describe exceptions, one-off choices, or "sometimes" elements
+- Resolve ambiguities: pick ONE font name, ONE background color hex, ONE layout rule
+- Use specific hex codes when visible, or closest approximation
+- Write in imperative style ("Use X", "Always Y", "Never Z")
 
-Be specific and actionable — this analysis will be used to generate new graphics that match this brand.
-Format your response as structured paragraphs, not bullet lists.`;
+Structure your response in exactly these 5 sections (no other sections):
+
+BACKGROUND: [Single sentence. The exact background color/treatment used in every graphic. Include hex.]
+
+TYPOGRAPHY: [Single sentence. The one primary font family + weights used. Case style (all-caps/mixed). Color.]
+
+LAYOUT: [1-2 sentences. The repeating compositional pattern — where is the focal element, where is the logo, how is space divided.]
+
+GRAPHIC ELEMENTS: [1-2 sentences. The 1-2 signature decorative/graphic elements that appear consistently. Describe shape, color, position.]
+
+TONE: [Single sentence. The visual mood in 3-4 adjectives. What this brand looks like, not what it values.]`;
 
   const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_KEY!);
   const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-image-preview' });

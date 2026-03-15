@@ -90,32 +90,47 @@ ${project.brand_rules.split('\n').filter((r: string) => r.trim()).map((r: string
 Color palette: ${project.color_palette || 'dark navy background #103958, coral accent #EF4853'}
 Typography: ${project.typography_notes || 'bold geometric sans-serif, clean hierarchy'}`;
 
+  // 2a: Layer 2 — Brand DNA with directive intro
   const layer2 = `
 ${sep}
-LAYER 2 — BRAND DNA (visual identity to replicate)
-Study and follow this brand style. The provided reference images and logo are visual references.
+LAYER 2 — BRAND DNA (visual identity — follow precisely)
+These are the non-negotiable visual rules extracted from brand references.
+Apply them to every element of the graphic: background, typography, layout, decoration.
 ${sep}
 ${assetNote}${brandDna}
 `;
 
+  // 2b: Layer 3 — directive Creative Brief
   const layer3 = `
 ${sep}
-LAYER 3 — CREATIVE BRIEF (what to create)
-Interpret creatively within the constraints above.
+LAYER 3 — CREATIVE BRIEF
+Create a graphic that satisfies all layers above. Be creative within constraints.
 ${sep}
-Brand: ${project.name}
-Headline (large, prominent on graphic): "${headline}"
-${subtext ? `Subtext (smaller, secondary): "${subtext}"\n` : ''}${brief ? `Creative context (for AI only, do not render verbatim): "${brief}"\n` : ''}Format: ${FORMAT_SIZES[format] || '1080x1080px square'}
+BRAND: ${project.name}
+FORMAT: ${FORMAT_SIZES[format] || '1080x1080px square'} — design for this exact canvas size and ratio
+HEADLINE TEXT (render prominently on the graphic): "${headline}"
+${subtext ? `SUBTEXT (render smaller, secondary): "${subtext}"` : ''}
+${brief ? `CREATIVE DIRECTION (context for you, do not render verbatim): "${brief}"` : ''}
 
-ADDITIONAL RULES:
-1. Reproduce the provided logo exactly — never invent a new one
-2. No random stock people unless explicitly requested in the brief
-3. Typography must be accurate — no typos
-4. Professional graphic design quality`;
+OUTPUT REQUIREMENTS:
+- Reproduce the exact provided logo — placement per brand DNA rules, or top-left if unspecified
+- No human photography unless explicitly requested in creative direction
+- Zero typos — double-check all text before rendering
+- Fill the entire canvas — no white borders or padding outside the design
+- Professional print-quality output`;
+
+  // 2c: Closing priority reminder
+  const closing = `
+
+${sep}
+PRIORITY REMINDER: Layer 1 > Layer 2 > Layer 3.
+If brand DNA conflicts with the brief — brand DNA wins.
+If absolute rules conflict with anything — absolute rules win.
+Generate ONE complete, publication-ready graphic.`;
 
   const textPrompt = `You are a professional graphic designer creating social media graphics.
 Follow the three-layer instruction hierarchy below. Higher layers override lower ones.
-${layer1}${layer2}${layer3}`;
+${layer1}${layer2}${layer3}${closing}`;
 
   // ── Generate via Gemini ────────────────────────────────────────────────────
   const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_KEY!);
