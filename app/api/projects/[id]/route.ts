@@ -15,7 +15,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const body = await req.json();
-  const { name, clientName, styleDescription, typographyNotes, colorPalette, logoUrl, brandRules } = body;
+  const { name, clientName, styleDescription, typographyNotes, colorPalette, logoUrl, brandRules, brandAnalysis } = body;
   const rows = await sql`
     UPDATE projects SET
       name = COALESCE(${name}, name),
@@ -24,6 +24,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       typography_notes = COALESCE(${typographyNotes}, typography_notes),
       color_palette = COALESCE(${colorPalette}, color_palette),
       brand_rules = COALESCE(${brandRules ?? null}, brand_rules),
+      brand_analysis = COALESCE(${brandAnalysis ?? null}, brand_analysis),
       logo_url = COALESCE(${logoUrl}, logo_url),
       updated_at = NOW()
     WHERE id = ${parseInt(id)} RETURNING *

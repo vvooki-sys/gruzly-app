@@ -4,10 +4,34 @@ import { put } from '@vercel/blob';
 
 const sql = neon(process.env.DATABASE_URL!);
 
-// POST /api/projects/[id]/assets — upload logo lub reference
+// POST /api/projects/[id]/assets — upload file (FormData) or register existing URL (JSON)
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const projectId = parseInt(id);
+
+  // JSON body: register an existing URL as an asset (e.g. "add generated image as reference")
+  const contentType = req.headers.get('content-type') || '';
+  if (contentType.includes('application/json')) {
+    const { url, type, filename } = await req.json();
+    if (!url || !type || !filename) {
+      return NextResponse.json({ error: 'url, type and filename required' }, { status: 400 });
+    }
+    if (type === 'reference') {
+      const [{ count }] = await sql`
+        SELECT COUNT(*)::int as count FROM brand_assets
+        WHERE project_id = ${projectId} AND type = 'reference'
+      `;
+      if (count >= 5) {
+        return NextResponse.json({ error: 'Max 5 reference images allowed' }, { status: 400 });
+      }
+    }
+    const [asset] = await sql`
+      INSERT INTO brand_assets (project_id, type, url, filename)
+      VALUES (${projectId}, ${type}, ${url}, ${filename})
+      RETURNING *
+    `;
+    return NextResponse.json(asset, { status: 201 });
+  }
 
   const formData = await req.formData();
   const file = formData.get('file') as File | null;

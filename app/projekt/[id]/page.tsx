@@ -2,7 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Upload, Wand2, Image, Loader2, Download, Settings, Sun, Moon } from 'lucide-react';
+import {
+  ArrowLeft, Upload, Wand2, Image, Loader2, Download,
+  Settings, Sun, Moon, BookmarkPlus, Trash2, Zap, Target,
+} from 'lucide-react';
 
 interface Project {
   brand_analysis?: string | null;
@@ -14,6 +17,7 @@ interface Project {
   style_description: string | null;
   typography_notes: string | null;
   color_palette: string | null;
+  updated_at: string | null;
 }
 
 interface Generation {
@@ -31,14 +35,29 @@ interface Asset {
   type: string;
   url: string;
   filename: string;
+  created_at: string;
 }
 
 const FORMATS = [
   { value: 'fb_post', label: 'Facebook Post', size: '1080×1080' },
-  { value: 'ln_post', label: 'LinkedIn Post', size: '1200×627' },
-  { value: 'story', label: 'Story / Reel', size: '1080×1920' },
-  { value: 'banner', label: 'Baner', size: '1200×400' },
+  { value: 'ln_post', label: 'LinkedIn Post',  size: '1200×627' },
+  { value: 'story',   label: 'Story / Reel',   size: '1080×1920' },
+  { value: 'banner',  label: 'Baner',           size: '1200×400' },
 ];
+
+const FORMAT_ASPECT: Record<string, string> = {
+  fb_post: 'aspect-square',
+  ln_post: 'aspect-video',
+  story:   'aspect-[9/16]',
+  banner:  'aspect-[3/1]',
+};
+
+function getBaseFormat(fmt: string) {
+  return fmt.split(':')[0];
+}
+function getFormatLabel(fmt: string) {
+  return FORMATS.find(f => f.value === getBaseFormat(fmt))?.label ?? fmt;
+}
 
 export default function ProjectPage({ params }: { params: Promise<{ id: string }> }) {
   const [id, setId] = useState('');
@@ -48,14 +67,17 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<'generate' | 'settings'>('generate');
   const [isDark, setIsDark] = useState(true);
+  const [toast, setToast] = useState<string | null>(null);
 
   // Generator state
+  const [headline, setHeadline] = useState('');
+  const [subtext, setSubtext] = useState('');
   const [brief, setBrief] = useState('');
-  const [tekst, setTekst] = useState('');
   const [format, setFormat] = useState('fb_post');
+  const [mode, setMode] = useState<'precise' | 'fast'>('precise');
   const [generating, setGenerating] = useState(false);
-  const [lastResult, setLastResult] = useState<{ imageUrls: string[], prompt: string } | null>(null);
   const [selectedGeneration, setSelectedGeneration] = useState<Generation | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
   // Edit state
   const [editingImage, setEditingImage] = useState<{ url: string; generationId?: number } | null>(null);
@@ -65,10 +87,12 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
   // Settings state
   const [editStyle, setEditStyle] = useState('');
   const [editRules, setEditRules] = useState('');
-  const [analyzing, setAnalyzing] = useState(false);
   const [editTypo, setEditTypo] = useState('');
   const [editColors, setEditColors] = useState('');
+  const [editAnalysis, setEditAnalysis] = useState('');
+  const [analyzing, setAnalyzing] = useState(false);
   const [savingSettings, setSavingSettings] = useState(false);
+  const [savingAnalysis, setSavingAnalysis] = useState(false);
 
   useEffect(() => {
     params.then(p => {
@@ -83,11 +107,17 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
           setEditTypo(d.project.typography_notes || '');
           setEditColors(d.project.color_palette || '');
           setEditRules(d.project.brand_rules || '');
+          setEditAnalysis(d.project.brand_analysis || '');
           setLoading(false);
         });
     });
     setIsDark(document.documentElement.getAttribute('data-theme') !== 'light');
   }, []);
+
+  const showToast = (msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 3000);
+  };
 
   const toggleTheme = () => {
     const next = isDark ? 'light' : 'dark';
@@ -97,22 +127,19 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
   };
 
   const generate = async () => {
-    if ((!brief && !tekst) || !id) return;
+    if (!headline || !id) return;
     setGenerating(true);
-    setLastResult(null);
     try {
       const res = await fetch(`/api/projects/${id}/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ headline: tekst, brief, format }),
+        body: JSON.stringify({ headline, subtext, brief, format, mode }),
       });
       const data = await res.json();
       if (data.imageUrls && data.imageUrls.length > 0) {
-        setLastResult({ imageUrls: data.imageUrls, prompt: data.prompt });
         setSelectedGeneration(data.generation);
         setGenerations(prev => [data.generation, ...prev]);
       } else {
-        console.error('Generation error:', data.error || 'No images returned');
         alert('Błąd generowania: ' + (data.error || 'Spróbuj ponownie'));
       }
     } catch (e) {
@@ -129,15 +156,28 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
       const res = await fetch(`/api/projects/${id}/analyze`, { method: 'POST' });
       const data = await res.json();
       if (data.analysis) {
-        setProject(p => p ? { ...p, brand_analysis: data.analysis } : p);
+        setEditAnalysis(data.analysis);
       } else {
         alert('Błąd analizy: ' + (data.error || 'Spróbuj ponownie'));
       }
-    } catch (e) {
+    } catch {
       alert('Błąd połączenia');
     } finally {
       setAnalyzing(false);
     }
+  };
+
+  const saveAnalysis = async () => {
+    if (!id) return;
+    setSavingAnalysis(true);
+    await fetch(`/api/projects/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ brandAnalysis: editAnalysis }),
+    });
+    setProject(p => p ? { ...p, brand_analysis: editAnalysis, updated_at: new Date().toISOString() } : p);
+    setSavingAnalysis(false);
+    showToast('Analiza zapisana ✓');
   };
 
   const saveSettings = async () => {
@@ -171,11 +211,8 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
         }),
       });
       const data = await res.json();
-
-      setLastResult({ imageUrls: [data.imageUrl], prompt: data.prompt });
       setSelectedGeneration(data.generation);
       setGenerations(prev => [data.generation, ...prev]);
-
       setEditingImage(null);
       setEditInstruction('');
     } catch (e) {
@@ -183,6 +220,29 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
     } finally {
       setEditing(false);
     }
+  };
+
+  const addAsReference = async (url: string) => {
+    if (!id) return;
+    const res = await fetch(`/api/projects/${id}/assets`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url, type: 'reference', filename: `generated-ref-${Date.now()}.jpg` }),
+    });
+    if (res.ok) {
+      const asset = await res.json();
+      setAssets(prev => [...prev, asset]);
+      showToast('Dodano do referencji ✓');
+    }
+  };
+
+  const deleteGeneration = async (genId: number) => {
+    if (!confirm('Usunąć tę grafikę z historii?')) return;
+    setDeletingId(genId);
+    await fetch(`/api/projects/${id}/generations?generationId=${genId}`, { method: 'DELETE' });
+    setGenerations(prev => prev.filter(g => g.id !== genId));
+    if (selectedGeneration?.id === genId) setSelectedGeneration(null);
+    setDeletingId(null);
   };
 
   if (loading) return (
@@ -198,19 +258,35 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
 
   const references = assets.filter(a => a.type === 'reference');
 
-  /* Shared input classes */
-  const inputCls = "w-full bg-offwhite dark:bg-teal-deep rounded-xl px-4 py-3 text-sm border border-teal-deep/15 dark:border-holo-mint/10 focus:border-holo-mint outline-none transition-colors";
+  // PR 3d: stale analysis — references added after last save of brand_analysis
+  const latestRefAt = references.reduce((max, r) => {
+    const t = new Date(r.created_at).getTime();
+    return t > max ? t : max;
+  }, 0);
+  const analysisStale = !!(
+    project.brand_analysis &&
+    project.updated_at &&
+    latestRefAt > new Date(project.updated_at).getTime()
+  );
+
+  const inputCls = 'w-full bg-offwhite dark:bg-teal-deep text-teal-deep dark:text-offwhite rounded-xl px-4 py-3 text-sm border border-teal-deep/15 dark:border-holo-mint/10 focus:border-holo-mint outline-none transition-colors';
 
   return (
     <div className="min-h-screen bg-offwhite dark:bg-teal-deep text-teal-deep dark:text-offwhite transition-colors">
 
-      {/* Header */}
+      {/* Toast */}
+      {toast && (
+        <div className="fixed top-20 right-4 z-50 bg-holo-mint text-teal-deep text-sm font-bold px-4 py-2.5 rounded-full shadow-lg pointer-events-none">
+          {toast}
+        </div>
+      )}
+
+      {/* ── Header ────────────────────────────────────────────────────────────── */}
       <header className="glass-nav sticky top-0 z-40 border-b border-teal-deep/10 dark:border-holo-mint/10 bg-offwhite/85 dark:bg-teal-deep/85 px-4 sm:px-6 py-3 flex items-center gap-3">
         <Link href="/" className="opacity-50 hover:opacity-100 transition-opacity shrink-0">
           <ArrowLeft className="h-5 w-5" />
         </Link>
 
-        {/* Logo */}
         <div className="w-8 h-8 bg-offwhite dark:bg-teal-mid rounded-lg flex items-center justify-center overflow-hidden border border-teal-deep/10 dark:border-holo-mint/10 shrink-0">
           {project.logo_url
             ? <img src={project.logo_url} alt={project.name} className="w-6 h-6 object-contain" />
@@ -227,29 +303,20 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
         <div className="flex gap-1 bg-teal-deep/10 dark:bg-teal-mid rounded-full p-1 shrink-0">
           <button
             onClick={() => setTab('generate')}
-            className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 ${
-              tab === 'generate'
-                ? 'holo-gradient text-teal-deep shadow-sm'
-                : 'opacity-50 hover:opacity-80'
-            }`}
+            className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 ${tab === 'generate' ? 'holo-gradient text-teal-deep shadow-sm' : 'opacity-50 hover:opacity-80'}`}
           >
             <Wand2 className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Generuj</span>
           </button>
           <button
             onClick={() => setTab('settings')}
-            className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 ${
-              tab === 'settings'
-                ? 'holo-gradient text-teal-deep shadow-sm'
-                : 'opacity-50 hover:opacity-80'
-            }`}
+            className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 ${tab === 'settings' ? 'holo-gradient text-teal-deep shadow-sm' : 'opacity-50 hover:opacity-80'}`}
           >
             <Settings className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Brand</span>
           </button>
         </div>
 
-        {/* Theme toggle */}
         <button
           onClick={toggleTheme}
           className="w-9 h-9 rounded-full flex items-center justify-center border border-teal-deep/15 dark:border-holo-mint/15 hover:border-holo-mint/50 transition-colors opacity-50 hover:opacity-100 shrink-0"
@@ -261,248 +328,356 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
 
-        {/* ───── TAB: GENERUJ ───── */}
+        {/* ── TAB: GENERUJ ─────────────────────────────────────────────────────── */}
         {tab === 'generate' && (
-          <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-6 lg:gap-8">
+          <div className="space-y-8">
 
-            {/* Lewa: formularz */}
-            <div className="space-y-4">
-              <h2 className="font-black text-base">Nowa grafika</h2>
+            {/* Main grid: Preview LEFT (sticky) | Form RIGHT */}
+            <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_420px] gap-6 lg:gap-8 items-start">
 
-              {/* Tekst na grafice */}
-              <div>
-                <label className="text-xs font-semibold opacity-50 mb-1.5 block uppercase tracking-wide">
-                  Tekst na grafice
-                  <span className="ml-1.5 normal-case opacity-70 font-normal">— dokładna treść, która pojawi się na obrazie</span>
-                </label>
-                <textarea
-                  className={`${inputCls} resize-none font-mono`}
-                  rows={3}
-                  placeholder={"np.:\n23 marca, Warszawa\nZapisz się teraz →"}
-                  value={tekst}
-                  onChange={e => setTekst(e.target.value)}
-                />
-              </div>
+              {/* ── LEFT: Preview (sticky on desktop) ───────────────────────────── */}
+              <div className="lg:sticky lg:top-[72px] space-y-3">
+                <h2 className="font-black text-base">Podgląd</h2>
 
-              {/* Brief */}
-              <div>
-                <label className="text-xs font-semibold opacity-50 mb-1.5 block uppercase tracking-wide">
-                  Brief
-                  <span className="ml-1.5 normal-case opacity-70 font-normal">— kontekst wizualny, czego NIE ma być dosłownie na grafice</span>
-                </label>
-                <textarea
-                  className={`${inputCls} resize-none`}
-                  rows={3}
-                  placeholder="np. Post zapowiadający event Nike — buty Air Max na tle miejskiej ulicy, dynamiczna atmosfera"
-                  value={brief}
-                  onChange={e => setBrief(e.target.value)}
-                />
-              </div>
+                <div className="bg-white dark:bg-teal-mid border border-teal-deep/10 dark:border-holo-mint/10 rounded-2xl overflow-hidden">
+                  {generating ? (
+                    <div className={`${FORMAT_ASPECT[format] || 'aspect-square'} flex items-center justify-center`}>
+                      <div className="text-center space-y-3">
+                        <div className="w-16 h-16 mx-auto rounded-full holo-gradient flex items-center justify-center">
+                          <Loader2 className="h-7 w-7 animate-spin text-teal-deep" />
+                        </div>
+                        <p className="text-sm opacity-50 font-medium">Generuję grafikę...</p>
+                      </div>
+                    </div>
+                  ) : selectedGeneration ? (
+                    <div>
+                      {/* Image */}
+                      {(() => {
+                        const urls: string[] = JSON.parse(selectedGeneration.image_urls || '[]');
+                        return urls.map((u, i) => <img key={i} src={u} alt="Grafika" className="w-full" />);
+                      })()}
 
-              {/* Format */}
-              <div>
-                <label className="text-xs font-semibold opacity-50 mb-1.5 block uppercase tracking-wide">Format</label>
-                <div className="grid grid-cols-2 gap-2">
-                  {FORMATS.map(f => (
-                    <button
-                      key={f.value}
-                      onClick={() => setFormat(f.value)}
-                      className={`p-3 rounded-xl text-left border text-sm transition-all ${
-                        format === f.value
-                          ? 'border-holo-mint bg-holo-mint/10 text-holo-mint dark:text-holo-mint'
-                          : 'border-teal-deep/10 dark:border-holo-mint/10 bg-white dark:bg-teal-mid opacity-60 hover:opacity-100'
-                      }`}
-                    >
-                      <div className="font-bold text-xs">{f.label}</div>
-                      <div className="text-xs opacity-50 mt-0.5">{f.size}</div>
-                    </button>
-                  ))}
+                      {/* Actions */}
+                      <div className="p-3 flex items-center gap-2 border-t border-teal-deep/10 dark:border-holo-mint/10">
+                        <button
+                          onClick={() => {
+                            const urls: string[] = JSON.parse(selectedGeneration.image_urls || '[]');
+                            if (urls[0]) window.open(urls[0], '_blank');
+                          }}
+                          className="flex-1 h-9 bg-teal-deep/5 dark:bg-teal-deep hover:bg-teal-deep/10 dark:hover:bg-teal-deep/80 border border-teal-deep/10 dark:border-holo-mint/10 rounded-full text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors"
+                        >
+                          <Download className="h-3.5 w-3.5" /> Pobierz
+                        </button>
+                        <button
+                          onClick={() => {
+                            const urls: string[] = JSON.parse(selectedGeneration.image_urls || '[]');
+                            if (urls[0]) { setEditingImage({ url: urls[0], generationId: selectedGeneration.id }); setEditInstruction(''); }
+                          }}
+                          className="flex-1 h-9 rounded-full holo-gradient text-teal-deep text-xs font-bold flex items-center justify-center gap-1.5 hover:opacity-90 transition-opacity"
+                        >
+                          <Wand2 className="h-3.5 w-3.5" /> Edytuj
+                        </button>
+                        <button
+                          onClick={() => {
+                            const urls: string[] = JSON.parse(selectedGeneration.image_urls || '[]');
+                            if (urls[0]) addAsReference(urls[0]);
+                          }}
+                          title="Dodaj jako referencję"
+                          className="w-9 h-9 rounded-full border border-teal-deep/15 dark:border-holo-mint/15 flex items-center justify-center opacity-50 hover:opacity-100 hover:border-holo-mint/50 transition-all shrink-0"
+                        >
+                          <BookmarkPlus className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+
+                      {/* Details */}
+                      <div className="px-4 pb-4 space-y-2 border-t border-teal-deep/10 dark:border-holo-mint/10 pt-3">
+                        <p className="text-xs font-bold opacity-30 uppercase tracking-wide">Szczegóły</p>
+                        <div className="text-xs space-y-1 opacity-50">
+                          <p><span className="opacity-60">Tekst:</span> {selectedGeneration.brief}</p>
+                          <p><span className="opacity-60">Format:</span> {getFormatLabel(selectedGeneration.format)}</p>
+                          <p><span className="opacity-60">Data:</span> {new Date(selectedGeneration.created_at).toLocaleString('pl-PL')}</p>
+                        </div>
+                        <details className="mt-2">
+                          <summary className="text-xs opacity-30 cursor-pointer hover:opacity-60 transition-opacity">Pokaż prompt systemowy</summary>
+                          <p className="mt-2 text-xs opacity-40 leading-relaxed bg-offwhite dark:bg-teal-deep rounded-xl p-3 whitespace-pre-wrap">{selectedGeneration.prompt}</p>
+                        </details>
+                      </div>
+
+                      {/* Edit panel */}
+                      {editingImage && (
+                        <div className="px-4 pb-4 space-y-3 border-t border-holo-lavender/30 pt-3">
+                          <p className="text-xs font-bold text-holo-lavender">Instrukcja edycji</p>
+                          <textarea
+                            className="w-full bg-offwhite dark:bg-teal-deep text-teal-deep dark:text-offwhite border border-holo-lavender/20 rounded-xl px-3 py-2 text-sm resize-none focus:border-holo-lavender outline-none transition-colors"
+                            rows={3}
+                            placeholder="np. Dodaj logo Plej w prawym górnym rogu, zmień kolor tła na granatowy"
+                            value={editInstruction}
+                            onChange={e => setEditInstruction(e.target.value)}
+                          />
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => setEditingImage(null)}
+                              className="h-9 px-4 rounded-full border border-teal-deep/15 dark:border-holo-mint/15 text-sm font-semibold opacity-50 hover:opacity-100 transition-opacity"
+                            >
+                              Anuluj
+                            </button>
+                            <button
+                              onClick={editImage}
+                              disabled={editing || !editInstruction}
+                              className="flex-1 h-9 rounded-full bg-holo-lavender text-teal-deep text-sm font-bold disabled:opacity-40 flex items-center justify-center gap-1.5 hover:opacity-90 transition-opacity"
+                            >
+                              {editing
+                                ? <><Loader2 className="h-4 w-4 animate-spin" /> Edytuję...</>
+                                : <><Wand2 className="h-4 w-4" /> Zastosuj</>
+                              }
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className={`${FORMAT_ASPECT[format] || 'aspect-square'} flex items-center justify-center`}>
+                      <div className="text-center space-y-3">
+                        <div className="w-16 h-16 mx-auto rounded-2xl border-2 border-dashed border-teal-deep/15 dark:border-holo-mint/15 flex items-center justify-center">
+                          <Image className="h-7 w-7 opacity-20" />
+                        </div>
+                        <p className="text-sm opacity-30">Wygeneruj grafikę lub kliknij w historię</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
-              {/* CTA */}
-              <button
-                onClick={generate}
-                disabled={generating || (!brief && !tekst)}
-                className="w-full h-12 rounded-full holo-gradient text-teal-deep font-black disabled:opacity-40 hover:opacity-90 transition-opacity flex items-center justify-center gap-2 text-sm"
-              >
-                {generating
-                  ? <><Loader2 className="h-4 w-4 animate-spin" /> Generuję...</>
-                  : <><Wand2 className="h-4 w-4" /> Generuj grafikę</>
-                }
-              </button>
+              {/* ── RIGHT: Form ──────────────────────────────────────────────────── */}
+              <div className="space-y-4">
+                <h2 className="font-black text-base">Nowa grafika</h2>
 
-              {/* Brand context indicator */}
-              <div className={`rounded-xl p-4 text-xs space-y-1 border transition-colors ${
-                project.brand_analysis
-                  ? 'border-holo-mint/20 bg-holo-mint/5'
-                  : 'border-teal-deep/10 dark:border-holo-mint/10 bg-white dark:bg-teal-mid'
-              }`}>
-                <p className={`font-bold mb-1.5 ${project.brand_analysis ? 'text-holo-mint' : 'opacity-50'}`}>
-                  {project.brand_analysis ? '✅ Kontekst marki — auto-analiza aktywna' : '⚙️ Kontekst marki — pola ręczne'}
-                </p>
-                {project.brand_analysis
-                  ? <p className="opacity-50">Gemini zna styl marki z analizy referencji. <span className="text-holo-mint opacity-100">Jakość generacji lepsza.</span></p>
-                  : <>
-                      {project.style_description && <p className="opacity-50">🎨 {project.style_description}</p>}
-                      {project.color_palette && <p className="opacity-50">🎨 {project.color_palette}</p>}
-                      {project.typography_notes && <p className="opacity-50">🔤 {project.typography_notes}</p>}
-                    </>
-                }
-                <p className="opacity-30">📎 {references.length} grafik referencyjnych</p>
+                {/* 1. Headline — required */}
+                <div>
+                  <label className="text-xs font-semibold opacity-50 mb-1.5 block uppercase tracking-wide">
+                    Tekst główny <span className="normal-case opacity-70 font-normal">— nagłówek grafiki *</span>
+                  </label>
+                  <textarea
+                    className={`${inputCls} resize-none font-mono`}
+                    rows={2}
+                    placeholder="np. 23 marca, Warszawa"
+                    value={headline}
+                    onChange={e => setHeadline(e.target.value)}
+                  />
+                </div>
+
+                {/* 2. Subtext — optional */}
+                <div>
+                  <label className="text-xs font-semibold opacity-50 mb-1.5 block uppercase tracking-wide">
+                    Tekst dodatkowy <span className="normal-case opacity-70 font-normal">— podtytuł, CTA (opcjonalnie)</span>
+                  </label>
+                  <textarea
+                    className={`${inputCls} resize-none font-mono`}
+                    rows={2}
+                    placeholder="np. Zapisz się teraz →"
+                    value={subtext}
+                    onChange={e => setSubtext(e.target.value)}
+                  />
+                </div>
+
+                {/* 3. Brief — optional, AI context only */}
+                <div>
+                  <label className="text-xs font-semibold opacity-50 mb-1.5 block uppercase tracking-wide">
+                    Brief kreatywny <span className="normal-case opacity-70 font-normal">— kontekst dla AI, nie pojawi się na grafice</span>
+                  </label>
+                  <textarea
+                    className={`${inputCls} resize-none`}
+                    rows={2}
+                    placeholder="np. Post zapowiadający event Nike — buty Air Max na tle miejskiej ulicy, dynamiczna atmosfera"
+                    value={brief}
+                    onChange={e => setBrief(e.target.value)}
+                  />
+                </div>
+
+                {/* Format picker */}
+                <div>
+                  <label className="text-xs font-semibold opacity-50 mb-1.5 block uppercase tracking-wide">Format</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {FORMATS.map(f => (
+                      <button
+                        key={f.value}
+                        onClick={() => setFormat(f.value)}
+                        className={`p-3 rounded-xl text-left border text-sm transition-all ${
+                          format === f.value
+                            ? 'border-holo-mint bg-holo-mint/10 text-holo-mint'
+                            : 'border-teal-deep/10 dark:border-holo-mint/10 bg-white dark:bg-teal-mid opacity-60 hover:opacity-100'
+                        }`}
+                      >
+                        <div className="font-bold text-xs">{f.label}</div>
+                        <div className="text-xs opacity-50 mt-0.5">{f.size}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Mode toggle — PR 3c */}
+                <div>
+                  <label className="text-xs font-semibold opacity-50 mb-1.5 block uppercase tracking-wide">Tryb generowania</label>
+                  <div className="flex gap-1 bg-teal-deep/10 dark:bg-teal-mid rounded-full p-1 w-fit">
+                    <button
+                      onClick={() => setMode('precise')}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all ${mode === 'precise' ? 'holo-gradient text-teal-deep shadow-sm' : 'opacity-50 hover:opacity-80'}`}
+                    >
+                      <Target className="h-3 w-3" /> Precyzyjny
+                    </button>
+                    <button
+                      onClick={() => setMode('fast')}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all ${mode === 'fast' ? 'holo-gradient text-teal-deep shadow-sm' : 'opacity-50 hover:opacity-80'}`}
+                    >
+                      <Zap className="h-3 w-3" /> Szybki
+                    </button>
+                  </div>
+                  <p className="text-xs opacity-30 mt-1">
+                    {mode === 'precise' ? 'Logo + referencje + analiza tekstowa' : 'Logo + tylko analiza tekstowa — szybszy, tańszy'}
+                  </p>
+                </div>
+
+                {/* Generate CTA */}
+                <button
+                  onClick={generate}
+                  disabled={generating || !headline}
+                  className="w-full h-12 rounded-full holo-gradient text-teal-deep font-black disabled:opacity-40 hover:opacity-90 transition-opacity flex items-center justify-center gap-2 text-sm"
+                >
+                  {generating
+                    ? <><Loader2 className="h-4 w-4 animate-spin" /> Generuję...</>
+                    : <><Wand2 className="h-4 w-4" /> Generuj grafikę</>
+                  }
+                </button>
+
+                {/* Brand context indicator */}
+                <div className={`rounded-xl p-4 text-xs space-y-1 border transition-colors ${
+                  project.brand_analysis
+                    ? 'border-holo-mint/20 bg-holo-mint/5'
+                    : 'border-teal-deep/10 dark:border-holo-mint/10 bg-white dark:bg-teal-mid'
+                }`}>
+                  <p className={`font-bold mb-1.5 ${project.brand_analysis ? 'text-holo-mint' : 'opacity-50'}`}>
+                    {project.brand_analysis ? '✅ Kontekst marki — auto-analiza aktywna' : '⚙️ Kontekst marki — pola ręczne'}
+                  </p>
+                  {project.brand_analysis
+                    ? <p className="opacity-50">Gemini zna styl marki z analizy referencji. <span className="text-holo-mint opacity-100">Jakość generacji lepsza.</span></p>
+                    : <>
+                        {project.style_description && <p className="opacity-50">🎨 {project.style_description}</p>}
+                        {project.color_palette && <p className="opacity-50">🎨 {project.color_palette}</p>}
+                        {project.typography_notes && <p className="opacity-50">🔤 {project.typography_notes}</p>}
+                      </>
+                  }
+                  <p className="opacity-30">📎 {references.length} grafik referencyjnych</p>
+                </div>
               </div>
             </div>
 
-            {/* Prawa: podgląd + historia */}
-            <div className="space-y-6">
+            {/* ── Historia: full-width rows ─────────────────────────────────────── */}
+            {generations.length > 0 && (
+              <div>
+                <p className="text-xs font-bold opacity-30 uppercase tracking-wide mb-3">Historia ({generations.length})</p>
+                <div className="space-y-1.5">
+                  {generations.map(g => {
+                    const urls: string[] = JSON.parse(g.image_urls || '[]');
+                    const isActive = selectedGeneration?.id === g.id;
+                    const gHeadline = g.brief.split(' | ')[0];
+                    const gSubtext = g.brief.includes(' | ') ? g.brief.split(' | ').slice(1).join(' | ') : null;
+                    const isFast = g.format.endsWith(':fast');
 
-              {/* Podgląd grafiki */}
-              <div className="bg-white dark:bg-teal-mid border border-teal-deep/10 dark:border-holo-mint/10 rounded-2xl overflow-hidden">
-                {generating ? (
-                  <div className="aspect-square flex items-center justify-center">
-                    <div className="text-center space-y-3">
-                      <div className="w-16 h-16 mx-auto rounded-full holo-gradient flex items-center justify-center">
-                        <Loader2 className="h-7 w-7 animate-spin text-teal-deep" />
-                      </div>
-                      <p className="text-sm opacity-50 font-medium">Generuję grafikę...</p>
-                    </div>
-                  </div>
-                ) : selectedGeneration ? (
-                  <div>
-                    {/* Obraz */}
-                    {(() => {
-                      const urls: string[] = JSON.parse(selectedGeneration.image_urls || '[]');
-                      return urls.map((u, i) => (
-                        <img key={i} src={u} alt="Grafika" className="w-full" />
-                      ));
-                    })()}
-
-                    {/* Akcje */}
-                    <div className="p-4 flex items-center gap-2 border-t border-teal-deep/10 dark:border-holo-mint/10">
-                      <button
-                        onClick={() => {
-                          const urls: string[] = JSON.parse(selectedGeneration.image_urls || '[]');
-                          if (urls[0]) window.open(urls[0], '_blank');
-                        }}
-                        className="flex-1 h-9 bg-teal-deep/5 dark:bg-teal-deep hover:bg-teal-deep/10 dark:hover:bg-teal-deep/80 border border-teal-deep/10 dark:border-holo-mint/10 rounded-full text-sm font-semibold flex items-center justify-center gap-1.5 transition-colors"
+                    return (
+                      <div
+                        key={g.id}
+                        onClick={() => { setSelectedGeneration(g); setEditingImage(null); }}
+                        className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer border transition-all ${
+                          isActive
+                            ? 'border-holo-mint bg-holo-mint/5'
+                            : 'border-teal-deep/10 dark:border-holo-mint/10 hover:border-holo-mint/30 bg-white dark:bg-teal-mid'
+                        }`}
                       >
-                        <Download className="h-4 w-4" /> Pobierz
-                      </button>
-                      <button
-                        onClick={() => {
-                          const urls: string[] = JSON.parse(selectedGeneration.image_urls || '[]');
-                          if (urls[0]) { setEditingImage({ url: urls[0], generationId: selectedGeneration.id }); setEditInstruction(''); }
-                        }}
-                        className="flex-1 h-9 rounded-full holo-gradient text-teal-deep text-sm font-bold flex items-center justify-center gap-1.5 hover:opacity-90 transition-opacity"
-                      >
-                        <Wand2 className="h-4 w-4" /> Edytuj
-                      </button>
-                    </div>
+                        {/* Thumbnail */}
+                        <div className={`w-14 h-14 rounded-lg overflow-hidden border-2 shrink-0 transition-colors ${isActive ? 'border-holo-mint' : 'border-teal-deep/10 dark:border-holo-mint/10'}`}>
+                          {urls[0] && <img src={urls[0]} alt="" className="w-full h-full object-cover" />}
+                        </div>
 
-                    {/* Szczegóły */}
-                    <div className="px-4 pb-4 space-y-2 border-t border-teal-deep/10 dark:border-holo-mint/10 pt-3">
-                      <p className="text-xs font-bold opacity-30 uppercase tracking-wide">Szczegóły</p>
-                      <div className="text-xs space-y-1 opacity-50">
-                        <p><span className="opacity-60">Brief:</span> {selectedGeneration.brief}</p>
-                        <p><span className="opacity-60">Data:</span> {new Date(selectedGeneration.created_at).toLocaleString('pl-PL')}</p>
-                        <p><span className="opacity-60">Format:</span> {FORMATS.find(f => f.value === selectedGeneration.format)?.label}</p>
-                      </div>
-                      <details className="mt-2">
-                        <summary className="text-xs opacity-30 cursor-pointer hover:opacity-60 transition-opacity">Pokaż prompt systemowy</summary>
-                        <p className="mt-2 text-xs opacity-40 leading-relaxed bg-offwhite dark:bg-teal-deep rounded-xl p-3 whitespace-pre-wrap">{selectedGeneration.prompt}</p>
-                      </details>
-                    </div>
+                        {/* Text */}
+                        <div className="flex-1 min-w-0">
+                          <p className="font-bold text-sm truncate">{gHeadline}</p>
+                          {gSubtext && <p className="text-xs opacity-40 truncate mt-0.5">{gSubtext}</p>}
+                        </div>
 
-                    {/* Panel edycji */}
-                    {editingImage && (
-                      <div className="px-4 pb-4 space-y-3 border-t border-holo-lavender/30 pt-3">
-                        <p className="text-xs font-bold text-holo-lavender">Instrukcja edycji</p>
-                        <textarea
-                          className="w-full bg-offwhite dark:bg-teal-deep border border-holo-lavender/20 rounded-xl px-3 py-2 text-sm resize-none focus:border-holo-lavender outline-none transition-colors"
-                          rows={3}
-                          placeholder="np. Dodaj logo Plej w prawym górnym rogu, zmień kolor tła na granatowy"
-                          value={editInstruction}
-                          onChange={e => setEditInstruction(e.target.value)}
-                        />
-                        <div className="flex gap-2">
+                        {/* Format + mode */}
+                        <div className="hidden sm:flex items-center gap-2 shrink-0">
+                          <span className="text-xs opacity-30">{getFormatLabel(g.format)}</span>
+                          {isFast && (
+                            <span className="flex items-center gap-0.5 text-xs text-holo-yellow">
+                              <Zap className="h-3 w-3" /> Szybki
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Date */}
+                        <span className="hidden md:block text-xs opacity-25 whitespace-nowrap shrink-0">
+                          {new Date(g.created_at).toLocaleDateString('pl-PL')}
+                        </span>
+
+                        {/* Action buttons */}
+                        <div className="flex gap-1 shrink-0" onClick={e => e.stopPropagation()}>
                           <button
-                            onClick={() => setEditingImage(null)}
-                            className="h-9 px-4 rounded-full border border-teal-deep/15 dark:border-holo-mint/15 text-sm font-semibold opacity-50 hover:opacity-100 transition-opacity"
+                            onClick={() => {
+                              setSelectedGeneration(g);
+                              const urls2: string[] = JSON.parse(g.image_urls || '[]');
+                              if (urls2[0]) { setEditingImage({ url: urls2[0], generationId: g.id }); setEditInstruction(''); }
+                            }}
+                            title="Edytuj"
+                            className="w-8 h-8 rounded-full border border-teal-deep/15 dark:border-holo-mint/15 flex items-center justify-center opacity-40 hover:opacity-100 hover:border-holo-mint/50 transition-all"
                           >
-                            Anuluj
+                            <Wand2 className="h-3.5 w-3.5" />
                           </button>
                           <button
-                            onClick={editImage}
-                            disabled={editing || !editInstruction}
-                            className="flex-1 h-9 rounded-full bg-holo-lavender text-teal-deep text-sm font-bold disabled:opacity-40 flex items-center justify-center gap-1.5 hover:opacity-90 transition-opacity"
+                            onClick={() => deleteGeneration(g.id)}
+                            disabled={deletingId === g.id}
+                            title="Usuń"
+                            className="w-8 h-8 rounded-full border border-red-500/20 flex items-center justify-center opacity-40 hover:opacity-100 hover:border-red-500/50 hover:text-red-400 disabled:opacity-20 transition-all"
                           >
-                            {editing ? <><Loader2 className="h-4 w-4 animate-spin" /> Edytuję...</> : <><Wand2 className="h-4 w-4" /> Zastosuj</>}
+                            {deletingId === g.id
+                              ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              : <Trash2 className="h-3.5 w-3.5" />
+                            }
                           </button>
                         </div>
                       </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="aspect-square flex items-center justify-center">
-                    <div className="text-center space-y-3">
-                      <div className="w-16 h-16 mx-auto rounded-2xl border-2 border-dashed border-teal-deep/15 dark:border-holo-mint/15 flex items-center justify-center">
-                        <Image className="h-7 w-7 opacity-20" />
-                      </div>
-                      <p className="text-sm opacity-30">Wygeneruj grafikę lub kliknij w historię</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Historia miniatur */}
-              {generations.length > 0 && (
-                <div>
-                  <p className="text-xs font-bold opacity-30 uppercase tracking-wide mb-3">Historia ({generations.length})</p>
-                  <div className="flex gap-2 overflow-x-auto pb-2">
-                    {generations.map(g => {
-                      const urls: string[] = JSON.parse(g.image_urls || '[]');
-                      const isActive = selectedGeneration?.id === g.id;
-                      return (
-                        <button
-                          key={g.id}
-                          onClick={() => { setSelectedGeneration(g); setEditingImage(null); }}
-                          className={`flex-none w-20 h-20 rounded-xl overflow-hidden border-2 transition-all ${
-                            isActive
-                              ? 'border-holo-mint shadow-[0_0_12px_rgba(179,245,220,0.3)]'
-                              : 'border-teal-deep/10 dark:border-holo-mint/10 hover:border-holo-mint/40'
-                          }`}
-                        >
-                          {urls[0] && <img src={urls[0]} alt="" className="w-full h-full object-cover" />}
-                        </button>
-                      );
-                    })}
-                  </div>
+                    );
+                  })}
                 </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         )}
 
-        {/* ───── TAB: BRAND SETTINGS ───── */}
+        {/* ── TAB: BRAND SETTINGS ──────────────────────────────────────────────── */}
         {tab === 'settings' && (
           <div className="max-w-xl space-y-5">
             <h2 className="font-black text-base">Ustawienia marki</h2>
 
-            {/* AUTO-ANALIZA */}
+            {/* AUTO-ANALIZA — PR 3a: editable textarea */}
             <div className={`rounded-2xl p-4 border transition-colors ${
               project.brand_analysis
                 ? 'border-holo-mint/25 bg-holo-mint/5'
                 : 'border-teal-deep/10 dark:border-holo-mint/10 bg-white dark:bg-teal-mid'
             }`}>
-              <div className="flex items-start justify-between gap-3 mb-2">
+              <div className="flex items-start justify-between gap-3 mb-3">
                 <div>
-                  <p className={`text-sm font-bold ${project.brand_analysis ? 'text-holo-mint' : ''}`}>
-                    {project.brand_analysis ? '✅ Analiza marki gotowa' : '🔍 Analiza marki'}
+                  <p className={`text-sm font-bold flex items-center gap-2 flex-wrap ${project.brand_analysis ? 'text-holo-mint' : ''}`}>
+                    {project.brand_analysis ? '✅ Analiza marki' : '🔍 Analiza marki'}
+                    {analysisStale && (
+                      <span className="text-holo-yellow text-xs font-semibold bg-holo-yellow/10 px-2 py-0.5 rounded-full">
+                        ⚠️ Referencje zmienione
+                      </span>
+                    )}
                   </p>
                   <p className="text-xs opacity-50 mt-0.5">
                     {project.brand_analysis
-                      ? 'Gemini przeanalizował Twoje referencje — ta analiza zastępuje ręczne pola poniżej'
-                      : 'Wgraj grafiki referencyjne i kliknij Analizuj — Gemini zbada styl marki automatycznie'}
+                      ? 'Edytuj poniżej i zapisz, lub ponów analizę AI'
+                      : 'Wgraj referencje i kliknij Analizuj — Gemini zbada styl marki'}
                   </p>
                 </div>
                 <button
@@ -516,24 +691,34 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
                   }
                 </button>
               </div>
-              {project.brand_analysis && (
-                <details className="mt-2">
-                  <summary className="text-xs text-holo-mint cursor-pointer hover:opacity-80 transition-opacity">Pokaż wynik analizy</summary>
-                  <p className="mt-2 text-xs opacity-50 leading-relaxed whitespace-pre-wrap bg-offwhite dark:bg-teal-deep rounded-xl p-3">{project.brand_analysis}</p>
-                </details>
-              )}
+
+              {/* Editable analysis */}
+              <textarea
+                className={`${inputCls} resize-none`}
+                rows={8}
+                placeholder="Analiza pojawi się tutaj po kliknięciu 'Analizuj markę'. Możesz ją edytować przed zapisem."
+                value={editAnalysis}
+                onChange={e => setEditAnalysis(e.target.value)}
+              />
+              <button
+                onClick={saveAnalysis}
+                disabled={savingAnalysis || editAnalysis === (project.brand_analysis || '')}
+                className="mt-2 h-9 px-4 rounded-full holo-gradient text-teal-deep text-xs font-bold disabled:opacity-40 hover:opacity-90 transition-opacity"
+              >
+                {savingAnalysis ? 'Zapisuję...' : 'Zapisz analizę'}
+              </button>
             </div>
 
-            {/* ZASADY OBOWIĄZKOWE — zachowuje czerwień per brief */}
+            {/* ZASADY OBOWIĄZKOWE */}
             <div className="rounded-2xl border-2 border-red-500/30 bg-red-500/5 p-4 space-y-2">
               <div>
                 <p className="text-sm font-bold text-red-400">⚠️ Zasady obowiązkowe (Do&apos;s &amp; Don&apos;ts)</p>
-                <p className="text-xs opacity-50 mt-0.5">Każda zasada w osobnej linii. Gemini traktuje je jako absolutne ograniczenia — naruszenie jest niedopuszczalne.</p>
+                <p className="text-xs opacity-50 mt-0.5">Każda zasada w osobnej linii. Gemini traktuje je jako absolutne ograniczenia.</p>
               </div>
               <textarea
-                className="w-full bg-offwhite dark:bg-teal-deep border border-red-500/20 rounded-xl px-4 py-3 text-sm resize-none focus:border-red-400 outline-none font-mono transition-colors"
+                className="w-full bg-offwhite dark:bg-teal-deep text-teal-deep dark:text-offwhite border border-red-500/20 rounded-xl px-4 py-3 text-sm resize-none focus:border-red-400 outline-none font-mono transition-colors"
                 rows={6}
-                placeholder={`np.:\nZawsze białe tło\nMaxymalnie jeden blob/dekoracja na layout\nBlob tylko przy krawędzi, nigdy w centrum\nNie używaj gradientów jako tła\nNie dodawaj przypadkowych ludzi`}
+                placeholder={'np.:\nZawsze białe tło\nMaxymalnie jeden blob/dekoracja na layout\nBlob tylko przy krawędzi, nigdy w centrum\nNie używaj gradientów jako tła\nNie dodawaj przypadkowych ludzi'}
                 value={editRules}
                 onChange={e => setEditRules(e.target.value)}
               />

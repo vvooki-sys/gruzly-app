@@ -52,3 +52,21 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
+/* Fix 1: inputs inherit text color from parent (prevents invisible text) */
+input,
+textarea,
+select {
+  color: inherit;
+}
+
+/* Placeholder colors per theme */
+[data-theme="dark"] input::placeholder,
+[data-theme="dark"] textarea::placeholder {
+  color: rgba(245, 245, 240, 0.35);
+}
+
+[data-theme="light"] input::placeholder,
+[data-theme="light"] textarea::placeholder {
+  color: rgba(27, 51, 75, 0.35);
+}

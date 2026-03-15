@@ -10,8 +10,8 @@ const sql = neon(process.env.DATABASE_URL!);
 const FORMAT_SIZES: Record<string, string> = {
   fb_post: 'square 1:1 aspect ratio, 1080x1080px',
   ln_post: 'landscape 1.91:1 aspect ratio, 1200x628px',
-  story: 'vertical 9:16 aspect ratio, 1080x1920px',
-  banner: 'wide banner 3:1 aspect ratio, 1200x400px',
+  story:   'vertical 9:16 aspect ratio, 1080x1920px',
+  banner:  'wide banner 3:1 aspect ratio, 1200x400px',
 };
 
 async function urlToBase64(url: string): Promise<{ data: string; mimeType: string } | null> {
@@ -29,8 +29,7 @@ async function urlToBase64(url: string): Promise<{ data: string; mimeType: strin
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { headline: rawHeadline, subtext, brief, format } = await req.json();
-  const headline = rawHeadline || brief; // fallback: stare pole "brief" działa jako headline
+  const { headline, subtext, brief, format, mode } = await req.json();
 
   if (!headline || !format) {
     return NextResponse.json({ error: 'headline and format required' }, { status: 400 });
@@ -41,10 +40,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const assets = await sql`SELECT * FROM brand_assets WHERE project_id = ${parseInt(id)}`;
 
-  // Kolumna parent_id
+  // Ensure parent_id column exists
   await sql`ALTER TABLE generations ADD COLUMN IF NOT EXISTS parent_id INTEGER REFERENCES generations(id)`.catch(() => {});
 
-  // Zbierz obrazy jako inlineData
+  // ── Build image parts ──────────────────────────────────────────────────────
   const imageParts: Array<{ inlineData: { data: string; mimeType: string } }> = [];
 
   const logoAsset = (assets as Array<{ type: string; url: string }>).find(a => a.type === 'logo');
@@ -53,52 +52,72 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     if (b64 && !b64.mimeType.includes('svg')) imageParts.push({ inlineData: b64 });
   }
 
-  const refs = (assets as Array<{ type: string; url: string }>)
-    .filter(a => a.type === 'reference')
-    .slice(0, 3);
-  for (const ref of refs) {
-    const b64 = await urlToBase64(ref.url);
-    if (b64) imageParts.push({ inlineData: b64 });
+  // In fast mode skip reference images (logo always included)
+  if (mode !== 'fast') {
+    const refs = (assets as Array<{ type: string; url: string }>)
+      .filter(a => a.type === 'reference')
+      .slice(0, 3);
+    for (const ref of refs) {
+      const b64 = await urlToBase64(ref.url);
+      if (b64) imageParts.push({ inlineData: b64 });
+    }
   }
 
-  // Mandatory rules — najwyższy priorytet
-  const mandatoryBlock = project.brand_rules
-    ? `⚠️ MANDATORY BRAND RULES — THESE ARE ABSOLUTE CONSTRAINTS, NOT SUGGESTIONS. VIOLATING ANY OF THESE IS NOT ACCEPTABLE:
-${project.brand_rules.split('\n').map((r: string, i: number) => r.trim() ? `${i + 1}. ${r.trim()}` : '').filter(Boolean).join('\n')}
+  const refs = (assets as Array<{ type: string; url: string }>).filter(a => a.type === 'reference').slice(0, 3);
 
+  // ── Build 3-layer prompt (PR 3b) ───────────────────────────────────────────
+  const sep = '════════════════════════════════════════';
+
+  // Layer 1 — omit entirely if no brand rules
+  const layer1 = project.brand_rules
+    ? `\n${sep}
+LAYER 1 — ABSOLUTE RULES (non-negotiable constraints)
+These are hard limits. Violating ANY of these is unacceptable, regardless of the brief.
+${sep}
+${project.brand_rules.split('\n').filter((r: string) => r.trim()).map((r: string, i: number) => `${i + 1}. ${r.trim()}`).join('\n')}
 `
     : '';
 
-  // Brand context — preferuj auto-analizę, fallback na ręczne pola
-  const brandContext = project.brand_analysis
-    ? `BRAND ANALYSIS (generated from your reference images — follow this precisely):\n${project.brand_analysis}`
-    : `BRAND GUIDELINES:
-- Visual style: ${project.style_description || 'modern, professional, event agency aesthetic'}
-- Color palette: ${project.color_palette || 'dark navy background #103958, coral accent #EF4853'}
-- Typography: ${project.typography_notes || 'bold geometric sans-serif, clean hierarchy'}`;
+  // Brand asset context note (inside Layer 2)
+  const assetNote = imageParts.length > 0
+    ? `Provided visual assets:${logoAsset ? '\n- First image: brand LOGO — reproduce it exactly, place it prominently' : ''}${mode !== 'fast' && refs.length > 0 ? `\n- Next ${refs.length} image(s): brand reference graphics — match this visual style closely` : ''}\n\n`
+    : '';
 
-  const textPrompt = `You are a professional graphic designer creating social media graphics.
+  // Brand DNA content — prefer auto-analysis, fallback to manual fields
+  const brandDna = project.brand_analysis
+    ? project.brand_analysis
+    : `Visual style: ${project.style_description || 'modern, professional, event agency aesthetic'}
+Color palette: ${project.color_palette || 'dark navy background #103958, coral accent #EF4853'}
+Typography: ${project.typography_notes || 'bold geometric sans-serif, clean hierarchy'}`;
 
-${mandatoryBlock}${imageParts.length > 0 ? `BRAND ASSETS PROVIDED:
-${logoAsset ? '- First image: the brand LOGO — reproduce it exactly, place it prominently' : ''}
-${refs.length > 0 ? `- Next ${refs.length} image(s): brand reference graphics — match this visual style closely` : ''}
+  const layer2 = `
+${sep}
+LAYER 2 — BRAND DNA (visual identity to replicate)
+Study and follow this brand style. The provided reference images and logo are visual references.
+${sep}
+${assetNote}${brandDna}
+`;
 
-` : ''}${brandContext}
-
-CREATE THIS GRAPHIC:
-- Brand: ${project.name}
-- Headline (large, prominent): "${headline}"
-${subtext ? `- Subtext (smaller): "${subtext}"` : ''}
-${brief ? `- Additional context: ${brief}` : ''}
-- Format: ${FORMAT_SIZES[format] || '1080x1080px square'}
+  const layer3 = `
+${sep}
+LAYER 3 — CREATIVE BRIEF (what to create)
+Interpret creatively within the constraints above.
+${sep}
+Brand: ${project.name}
+Headline (large, prominent on graphic): "${headline}"
+${subtext ? `Subtext (smaller, secondary): "${subtext}"\n` : ''}${brief ? `Creative context (for AI only, do not render verbatim): "${brief}"\n` : ''}Format: ${FORMAT_SIZES[format] || '1080x1080px square'}
 
 ADDITIONAL RULES:
-1. Use the EXACT logo from provided image — never invent a new one
-2. Follow color palette and visual style from reference images and brand analysis
-3. No random stock photos of people unless specifically requested
-4. Text must be accurate — no typos
-5. Professional graphic design quality`;
+1. Reproduce the provided logo exactly — never invent a new one
+2. No random stock people unless explicitly requested in the brief
+3. Typography must be accurate — no typos
+4. Professional graphic design quality`;
 
+  const textPrompt = `You are a professional graphic designer creating social media graphics.
+Follow the three-layer instruction hierarchy below. Higher layers override lower ones.
+${layer1}${layer2}${layer3}`;
+
+  // ── Generate via Gemini ────────────────────────────────────────────────────
   const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_KEY!);
   const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-image-preview' });
 
@@ -143,10 +162,13 @@ ADDITIONAL RULES:
     return NextResponse.json({ error: 'Image generation failed — no image in response' }, { status: 500 });
   }
 
-  const combinedBrief = [headline, subtext, brief].filter(Boolean).join(' | ');
+  // Store format with :fast suffix when in fast mode (for history display)
+  const dbFormat = mode === 'fast' ? `${format}:fast` : format;
+  const combinedBrief = [headline, subtext].filter(Boolean).join(' | ');
+
   const [generation] = await sql`
     INSERT INTO generations (project_id, brief, format, prompt, image_urls, status)
-    VALUES (${parseInt(id)}, ${combinedBrief}, ${format}, ${textPrompt}, ${JSON.stringify(imageUrls)}, 'done')
+    VALUES (${parseInt(id)}, ${combinedBrief}, ${dbFormat}, ${textPrompt}, ${JSON.stringify(imageUrls)}, 'done')
     RETURNING *
   `;
 
