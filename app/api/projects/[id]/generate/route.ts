@@ -14,6 +14,14 @@ const FORMAT_SIZES: Record<string, string> = {
   banner:  'wide banner 3:1 aspect ratio, 1200x400px',
 };
 
+const CREATIVITY_BLOCKS: Record<number, string> = {
+  1: '',
+  2: 'Add secondary geometric or decorative elements that complement the brand style. Enrich the composition with subtle texture or layering.',
+  3: 'Create a visually rich composition with multiple layered graphic elements. Use the full brand gradient palette across multiple decorative shapes and background treatments.',
+  4: 'Design a striking, editorial-level graphic. Push visual complexity — layered shapes, depth, bold typographic treatment, dynamic composition. Stay within brand palette and layout rules.',
+  5: 'Create a premium, award-worthy graphic. Maximum visual richness within brand rules. Cinematic composition, complex multi-layer design, immersive use of brand colors and graphic elements. Every pixel intentional.',
+};
+
 async function urlToBase64(url: string): Promise<{ data: string; mimeType: string } | null> {
   try {
     const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
@@ -29,7 +37,7 @@ async function urlToBase64(url: string): Promise<{ data: string; mimeType: strin
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { headline, subtext, brief, format, mode } = await req.json();
+  const { headline, subtext, brief, format, mode, creativity = 2 } = await req.json();
 
   if (!headline || !format) {
     return NextResponse.json({ error: 'headline and format required' }, { status: 400 });
@@ -119,6 +127,16 @@ OUTPUT REQUIREMENTS:
 - Fill the entire canvas — no white borders or padding outside the design
 - Professional print-quality output`;
 
+  // Creativity directive (optional)
+  const creativityBlock = CREATIVITY_BLOCKS[creativity] ? `
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+VISUAL RICHNESS DIRECTIVE (apply within brand constraints)
+${CREATIVITY_BLOCKS[creativity]}
+All Layer 1 rules still override this directive.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+` : '';
+
   // 2c: Closing priority reminder
   const closing = `
 
@@ -130,7 +148,7 @@ Generate ONE complete, publication-ready graphic.`;
 
   const textPrompt = `You are a professional graphic designer creating social media graphics.
 Follow the three-layer instruction hierarchy below. Higher layers override lower ones.
-${layer1}${layer2}${layer3}${closing}`;
+${layer1}${layer2}${layer3}${creativityBlock}${closing}`;
 
   // ── Generate via Gemini ────────────────────────────────────────────────────
   const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_KEY!);
@@ -177,8 +195,9 @@ ${layer1}${layer2}${layer3}${closing}`;
     return NextResponse.json({ error: 'Image generation failed — no image in response' }, { status: 500 });
   }
 
-  // Store format with :fast suffix when in fast mode (for history display)
-  const dbFormat = mode === 'fast' ? `${format}:fast` : format;
+  // Store format with :fast and :c{creativity} suffixes
+  const formatWithCreativity = `${format.replace(/:c\d$/, '')}:c${creativity}`;
+  const dbFormat = mode === 'fast' ? `${formatWithCreativity}:fast` : formatWithCreativity;
   const combinedBrief = [headline, subtext].filter(Boolean).join(' | ');
 
   const [generation] = await sql`

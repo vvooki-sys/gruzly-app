@@ -52,6 +52,14 @@ const FORMAT_ASPECT: Record<string, string> = {
   banner:  'aspect-[3/1]',
 };
 
+const CREATIVITY_LABELS: Record<number, { name: string; desc: string }> = {
+  1: { name: 'Basic', desc: 'Czysty, zgodny ze stylem marki' },
+  2: { name: 'Enhanced', desc: 'Dodatkowe elementy dekoracyjne' },
+  3: { name: 'Dynamic', desc: 'Bogata kompozycja, wiele warstw' },
+  4: { name: 'Bold', desc: 'Śmiały, editorial, złożony layout' },
+  5: { name: 'Expressive', desc: 'Maksymalna ekspresja wizualna' },
+};
+
 function getBaseFormat(fmt: string) {
   return fmt.split(':')[0];
 }
@@ -75,6 +83,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
   const [brief, setBrief] = useState('');
   const [format, setFormat] = useState('fb_post');
   const [mode, setMode] = useState<'precise' | 'fast'>('precise');
+  const [creativity, setCreativity] = useState(2);
   const [generating, setGenerating] = useState(false);
   const [selectedGeneration, setSelectedGeneration] = useState<Generation | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
@@ -133,7 +142,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
       const res = await fetch(`/api/projects/${id}/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ headline, subtext, brief, format, mode }),
+        body: JSON.stringify({ headline, subtext, brief, format, mode, creativity }),
       });
       const data = await res.json();
       if (data.imageUrls && data.imageUrls.length > 0) {
@@ -537,6 +546,21 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
                   </p>
                 </div>
 
+                {/* Creativity slider */}
+                <div>
+                  <div className="flex justify-between items-center mb-2">
+                    <label className="text-xs text-zinc-400">Poziom kreatywności</label>
+                    <span className="text-xs font-semibold text-holo-mint">{CREATIVITY_LABELS[creativity].name}</span>
+                  </div>
+                  <input
+                    type="range" min={1} max={5} step={1}
+                    value={creativity}
+                    onChange={e => setCreativity(parseInt(e.target.value))}
+                    className="w-full h-2 rounded-full appearance-none cursor-pointer bg-teal-mid accent-holo-mint"
+                  />
+                  <p className="text-xs text-zinc-500 mt-1">{CREATIVITY_LABELS[creativity].desc}</p>
+                </div>
+
                 {/* Generate CTA */}
                 <button
                   onClick={generate}
@@ -582,6 +606,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
                     const gHeadline = g.brief.split(' | ')[0];
                     const gSubtext = g.brief.includes(' | ') ? g.brief.split(' | ').slice(1).join(' | ') : null;
                     const isFast = g.format.endsWith(':fast');
+                    const gCreativity = parseInt(g.format.match(/:c(\d)/)?.[1] || '2');
 
                     return (
                       <div
@@ -604,13 +629,22 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
                           {gSubtext && <p className="text-xs opacity-40 truncate mt-0.5">{gSubtext}</p>}
                         </div>
 
-                        {/* Format + mode */}
+                        {/* Format + mode + creativity */}
                         <div className="hidden sm:flex items-center gap-2 shrink-0">
                           <span className="text-xs opacity-30">{getFormatLabel(g.format)}</span>
                           {isFast && (
                             <span className="flex items-center gap-0.5 text-xs text-holo-yellow">
                               <Zap className="h-3 w-3" /> Szybki
                             </span>
+                          )}
+                          {gCreativity === 3 && (
+                            <span className="text-xs text-holo-aqua">✦ Dynamic</span>
+                          )}
+                          {gCreativity === 4 && (
+                            <span className="text-xs text-holo-lavender">✦✦ Bold</span>
+                          )}
+                          {gCreativity === 5 && (
+                            <span className="text-xs text-holo-pink">✦✦✦ Expressive</span>
                           )}
                         </div>
 
