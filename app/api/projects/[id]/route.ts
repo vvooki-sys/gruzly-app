@@ -16,7 +16,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const { id } = await params;
   const projectId = parseInt(id);
   const body = await req.json();
-  const { name, clientName, styleDescription, typographyNotes, colorPalette, logoUrl, brandRules, brandAnalysis, brandSections, sectionId, sectionContent } = body;
+  const { name, clientName, styleDescription, typographyNotes, colorPalette, logoUrl, brandRules, brandAnalysis, brandSections, sectionId, sectionContent, generationMode } = body;
 
   // Full brand sections replace
   if (brandSections !== undefined) {
@@ -30,6 +30,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const sections = (proj?.brand_sections || []) as Array<{ id: string; [key: string]: unknown }>;
     const updated = sections.map(s => s.id === sectionId ? { ...s, content: sectionContent } : s);
     await sql`UPDATE projects SET brand_sections = ${JSON.stringify(updated)}::jsonb, updated_at = NOW() WHERE id = ${projectId}`;
+    return NextResponse.json({ ok: true });
+  }
+
+  // generation_mode fast-path
+  if (generationMode !== undefined) {
+    await sql`UPDATE projects SET generation_mode = ${generationMode}, updated_at = NOW() WHERE id = ${projectId}`;
     return NextResponse.json({ ok: true });
   }
 

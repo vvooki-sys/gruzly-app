@@ -37,7 +37,7 @@ async function urlToBase64(url: string): Promise<{ data: string; mimeType: strin
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { headline, subtext, brief, format, mode, creativity = 2 } = await req.json();
+  const { headline, subtext, brief, format, mode, creativity = 2, elementOnly = false } = await req.json();
 
   if (!headline || !format) {
     return NextResponse.json({ error: 'headline and format required' }, { status: 400 });
@@ -55,13 +55,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const imageParts: Array<{ inlineData: { data: string; mimeType: string } }> = [];
 
   const logoAsset = (assets as Array<{ type: string; url: string }>).find(a => a.type === 'logo');
-  if (logoAsset && !logoAsset.url.toLowerCase().endsWith('.svg')) {
+  // elementOnly mode: no logo or refs — just brand DNA for style context
+  if (!elementOnly && logoAsset && !logoAsset.url.toLowerCase().endsWith('.svg')) {
     const b64 = await urlToBase64(logoAsset.url);
     if (b64 && !b64.mimeType.includes('svg')) imageParts.push({ inlineData: b64 });
   }
 
-  // In fast mode skip reference images (logo always included)
-  if (mode !== 'fast') {
+  // In fast mode or elementOnly skip reference images
+  if (!elementOnly && mode !== 'fast') {
     const refs = (assets as Array<{ type: string; url: string }>)
       .filter(a => a.type === 'reference')
       .slice(0, 3);
@@ -120,8 +121,22 @@ ${sep}
 ${assetNote}${layer2Content}
 `;
 
-  // 2b: Layer 3 — directive Creative Brief
-  const layer3 = `
+  // 2b: Layer 3 — directive Creative Brief (or element-only mode)
+  const layer3 = elementOnly ? `
+${sep}
+LAYER 3 — ELEMENT GENERATION
+Generate ONLY a central visual element for a brand graphic.
+${sep}
+BRAND: ${project.name}
+ELEMENT DESCRIPTION: "${headline}"
+${brief ? `CONTEXT: "${brief}"` : ''}
+
+OUTPUT REQUIREMENTS:
+- Generate ONLY the visual element — NO text, NO logo, NO background fill, NO frame
+- The element should work as a central focal point composited into a brand template
+- Clean subject, suitable for compositing over a colored background
+- Square-ish composition, centered subject
+- Style must match brand DNA from Layer 2` : `
 ${sep}
 LAYER 3 — CREATIVE BRIEF
 Create a graphic that satisfies all layers above. Be creative within constraints.

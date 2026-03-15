@@ -10,6 +10,7 @@ import {
 interface Project {
   brand_analysis?: string | null;
   brand_rules?: string | null;
+  generation_mode?: string | null;
   id: number;
   name: string;
   client_name: string | null;
@@ -18,6 +19,16 @@ interface Project {
   typography_notes: string | null;
   color_palette: string | null;
   updated_at: string | null;
+}
+
+interface PrecisionTemplate {
+  id?: number;
+  name?: string;
+  format?: string;
+  width?: number;
+  height?: number;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  layout: Record<string, any>;
 }
 
 interface Generation {
@@ -111,6 +122,18 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
   const [editingSectionId, setEditingSectionId] = useState<string | null>(null);
   const [editingSectionContent, setEditingSectionContent] = useState('');
 
+  // Precision mode state
+  const [generationMode, setGenerationMode] = useState<'creative' | 'precision'>('creative');
+  const [precisionTemplate, setPrecisionTemplate] = useState<PrecisionTemplate | null>(null);
+  const [precisionTemplateId, setPrecisionTemplateId] = useState<number | null>(null);
+  const [generatingTemplate, setGeneratingTemplate] = useState(false);
+  const [rendering, setRendering] = useState(false);
+  const [ctaText, setCtaText] = useState('');
+  const [legalText, setLegalText] = useState('');
+  const [stickerText, setStickerText] = useState('');
+  const [centralImageUrl, setCentralImageUrl] = useState('');
+  const [generatingCentralElement, setGeneratingCentralElement] = useState(false);
+
   // Copywriter state
   const [copyFile, setCopyFile] = useState<File | null>(null);
   const [copyBrief, setCopyBrief] = useState('');
@@ -130,6 +153,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
           setEditRules(d.project.brand_rules || '');
           setBrandbookAsset(d.assets.find((a: Asset) => a.type === 'brandbook') || null);
           setBrandSections(d.project.brand_sections || []);
+          setGenerationMode((d.project.generation_mode || 'creative') as 'creative' | 'precision');
           setLoading(false);
         });
     });
@@ -269,6 +293,100 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
     setHeadline(r.headline);
     setSubtext(r.subtext || '');
     setTab('generate');
+  };
+
+  const saveGenerationMode = async (newMode: 'creative' | 'precision') => {
+    setGenerationMode(newMode);
+    await fetch(`/api/projects/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ generationMode: newMode }),
+    });
+  };
+
+  const generateTemplate = async () => {
+    if (!id) return;
+    setGeneratingTemplate(true);
+    try {
+      const res = await fetch(`/api/projects/${id}/template/generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ format }),
+      });
+      const data = await res.json();
+      if (data.error) { alert('Błąd: ' + data.error); return; }
+      const tmpl = data.template || { layout: data.layout };
+      setPrecisionTemplate(tmpl);
+      if (tmpl.id) setPrecisionTemplateId(tmpl.id);
+      showToast('Szablon wygenerowany ✓');
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setGeneratingTemplate(false);
+    }
+  };
+
+  const renderPrecision = async () => {
+    if (!precisionTemplate || !headline || !id) return;
+    setRendering(true);
+    try {
+      const logoAsset = assets.find(a => a.type === 'logo');
+      const res = await fetch(`/api/projects/${id}/render`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          templateId: precisionTemplateId || undefined,
+          layout: precisionTemplateId ? undefined : precisionTemplate.layout,
+          headline,
+          subtext,
+          ctaText,
+          legalText,
+          stickerText,
+          centralImageUrl: centralImageUrl || undefined,
+          logoUrl: logoAsset?.url || undefined,
+        }),
+      });
+      const data = await res.json();
+      if (data.error) { alert('Błąd renderowania: ' + data.error); return; }
+      setSelectedGeneration(data.generation);
+      setGenerations(prev => [data.generation, ...prev]);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setRendering(false);
+    }
+  };
+
+  const generateCentralElement = async () => {
+    if (!id || !headline) return;
+    setGeneratingCentralElement(true);
+    try {
+      const res = await fetch(`/api/projects/${id}/generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ headline: brief || headline, brief, format, mode, elementOnly: true }),
+      });
+      const data = await res.json();
+      if (data.imageUrls?.[0]) setCentralImageUrl(data.imageUrls[0]);
+      else alert('Błąd generowania elementu: ' + (data.error || 'Spróbuj ponownie'));
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setGeneratingCentralElement(false);
+    }
+  };
+
+  const handleCentralImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !id) return;
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('type', 'reference');
+    const res = await fetch(`/api/projects/${id}/assets`, { method: 'POST', body: fd });
+    if (res.ok) {
+      const asset = await res.json();
+      setCentralImageUrl(asset.url);
+    }
   };
 
   const saveRules = async () => {
@@ -443,8 +561,8 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
 
-        {/* ── TAB: GENERUJ ─────────────────────────────────────────────────────── */}
-        {tab === 'generate' && (
+        {/* ── TAB: GENERUJ — Creative mode ─────────────────────────────────────── */}
+        {tab === 'generate' && generationMode === 'creative' && (
           <div className="space-y-8">
 
             {/* Main grid: Preview LEFT (sticky) | Form RIGHT */}
@@ -790,10 +908,231 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
           </div>
         )}
 
+        {/* ── TAB: GENERUJ — Precision mode ────────────────────────────────────── */}
+        {tab === 'generate' && generationMode === 'precision' && (
+          <div className="space-y-8">
+            <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_420px] gap-6 lg:gap-8 items-start">
+
+              {/* LEFT: Template preview / rendered result */}
+              <div className="lg:sticky lg:top-[72px] space-y-3">
+                <h2 className="font-black text-base">Podgląd szablonu</h2>
+                <div className="bg-white dark:bg-teal-mid border border-teal-deep/10 dark:border-holo-mint/10 rounded-2xl overflow-hidden">
+                  {rendering ? (
+                    <div className="aspect-square flex items-center justify-center">
+                      <div className="text-center space-y-3">
+                        <div className="w-16 h-16 mx-auto rounded-full bg-holo-lavender/20 flex items-center justify-center">
+                          <Loader2 className="h-7 w-7 animate-spin text-holo-lavender" />
+                        </div>
+                        <p className="text-sm opacity-50">Renderuję grafikę...</p>
+                      </div>
+                    </div>
+                  ) : selectedGeneration && selectedGeneration.format === 'precision' ? (
+                    <div>
+                      {(() => {
+                        const urls: string[] = JSON.parse(selectedGeneration.image_urls || '[]');
+                        return urls.map((u, i) => <img key={i} src={u} alt="Grafika" className="w-full" />);
+                      })()}
+                      <div className="p-3 flex items-center gap-2 border-t border-teal-deep/10 dark:border-holo-mint/10">
+                        <button
+                          onClick={() => {
+                            const urls: string[] = JSON.parse(selectedGeneration.image_urls || '[]');
+                            if (urls[0]) window.open(urls[0], '_blank');
+                          }}
+                          className="flex-1 h-9 bg-teal-deep/5 dark:bg-teal-deep border border-teal-deep/10 dark:border-holo-mint/10 rounded-full text-xs font-semibold flex items-center justify-center gap-1.5 hover:bg-holo-lavender/10 transition-colors"
+                        >
+                          <Download className="h-3.5 w-3.5" /> Pobierz
+                        </button>
+                      </div>
+                    </div>
+                  ) : precisionTemplate ? (
+                    <div className="p-6 space-y-3">
+                      <p className="text-sm font-bold text-holo-lavender">🎯 Szablon gotowy</p>
+                      <div className="text-xs opacity-50 space-y-1">
+                        <p>Tło: {precisionTemplate.layout.background?.type === 'gradient'
+                          ? `gradient ${precisionTemplate.layout.background.gradientFrom} → ${precisionTemplate.layout.background.gradientTo}`
+                          : precisionTemplate.layout.background?.color || '—'}
+                        </p>
+                        <p>Font: {precisionTemplate.layout.copy?.fontFamily || '—'}, {precisionTemplate.layout.copy?.headlineFontSize}px</p>
+                        <p>Logo: {precisionTemplate.layout.logo?.position || '—'}, {precisionTemplate.layout.logo?.size}px</p>
+                        <p>Białe pole: {precisionTemplate.layout.whiteSpace?.enabled ? `${precisionTemplate.layout.whiteSpace.height}px` : 'nie'}</p>
+                      </div>
+                      <details>
+                        <summary className="text-xs opacity-30 cursor-pointer hover:opacity-60 transition-opacity">Pokaż JSON layoutu</summary>
+                        <pre className="text-xs opacity-30 mt-2 whitespace-pre-wrap overflow-x-auto max-h-64">{JSON.stringify(precisionTemplate.layout, null, 2)}</pre>
+                      </details>
+                    </div>
+                  ) : (
+                    <div className="aspect-square flex items-center justify-center">
+                      <div className="text-center space-y-3">
+                        <div className="text-5xl mb-3">🎯</div>
+                        <p className="text-sm opacity-30">Wygeneruj szablon z sekcji marki</p>
+                        <p className="text-xs opacity-20">lub przejdź do zakładki Brand i dodaj sekcje marki</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <button
+                  onClick={generateTemplate}
+                  disabled={generatingTemplate || brandSections.length === 0}
+                  className="w-full h-10 rounded-full border border-holo-lavender/30 text-holo-lavender text-sm font-bold disabled:opacity-40 hover:bg-holo-lavender/10 transition-all flex items-center justify-center gap-2"
+                >
+                  {generatingTemplate
+                    ? <><Loader2 className="h-4 w-4 animate-spin" /> Generuję szablon...</>
+                    : <><Wand2 className="h-4 w-4" /> Generuj template z brand sections</>
+                  }
+                </button>
+              </div>
+
+              {/* RIGHT: Precision form */}
+              <div className="space-y-4">
+                <h2 className="font-black text-base flex items-center gap-2">
+                  <span className="text-holo-lavender text-sm font-black px-2 py-0.5 border border-holo-lavender/30 rounded-full">🎯 Precision</span>
+                  Nowa grafika
+                </h2>
+
+                {/* Format */}
+                <div>
+                  <label className="text-xs font-semibold opacity-50 mb-1.5 block uppercase tracking-wide">Format</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {FORMATS.map(f => (
+                      <button key={f.value} onClick={() => setFormat(f.value)}
+                        className={`p-3 rounded-xl text-left border text-sm transition-all ${format === f.value ? 'border-holo-lavender bg-holo-lavender/10 text-holo-lavender' : 'border-teal-deep/10 dark:border-holo-mint/10 bg-white dark:bg-teal-mid opacity-60 hover:opacity-100'}`}
+                      >
+                        <div className="font-bold text-xs">{f.label}</div>
+                        <div className="text-xs opacity-50 mt-0.5">{f.size}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Headline */}
+                <div>
+                  <label className="text-xs font-semibold opacity-50 mb-1.5 block uppercase tracking-wide">Tekst główny *</label>
+                  <textarea className={`${inputCls} resize-none font-mono`} rows={2}
+                    placeholder="np. 23 marca, Warszawa" value={headline} onChange={e => setHeadline(e.target.value)} />
+                </div>
+
+                {/* Subtext */}
+                <div>
+                  <label className="text-xs font-semibold opacity-50 mb-1.5 block uppercase tracking-wide">Tekst dodatkowy</label>
+                  <textarea className={`${inputCls} resize-none font-mono`} rows={2}
+                    placeholder="np. Zapisz się teraz →" value={subtext} onChange={e => setSubtext(e.target.value)} />
+                </div>
+
+                {/* CTA / Legal / Sticker */}
+                <div className="grid grid-cols-1 gap-3">
+                  <div>
+                    <label className="text-xs font-semibold opacity-50 mb-1.5 block uppercase tracking-wide">CTA (opcjonalnie)</label>
+                    <input type="text" className={inputCls} placeholder="np. Kup na play.pl"
+                      value={ctaText} onChange={e => setCtaText(e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold opacity-50 mb-1.5 block uppercase tracking-wide">Tekst prawny (opcjonalnie)</label>
+                    <input type="text" className={inputCls} placeholder="np. *Oferta ważna do 31.03. Szczegóły na play.pl"
+                      value={legalText} onChange={e => setLegalText(e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold opacity-50 mb-1.5 block uppercase tracking-wide">Sticker/Patka (opcjonalnie)</label>
+                    <input type="text" className={inputCls} placeholder="np. NOWOŚĆ" value={stickerText} onChange={e => setStickerText(e.target.value)} />
+                  </div>
+                </div>
+
+                {/* Central element */}
+                <div>
+                  <label className="text-xs font-semibold opacity-50 mb-1.5 block uppercase tracking-wide">Element centralny (opcjonalnie)</label>
+                  <div className="flex gap-2">
+                    <label className="cursor-pointer h-9 px-3 rounded-full border border-teal-deep/15 dark:border-holo-mint/15 text-xs font-semibold flex items-center gap-1.5 hover:border-holo-mint/50 transition-colors opacity-70 hover:opacity-100">
+                      <Upload className="h-3 w-3" /> Wgraj obraz
+                      <input type="file" accept="image/*" className="hidden" onChange={handleCentralImageUpload} />
+                    </label>
+                    <button onClick={generateCentralElement} disabled={generatingCentralElement || !headline}
+                      className="h-9 px-3 rounded-full border border-holo-lavender/30 text-holo-lavender text-xs font-semibold disabled:opacity-40 hover:bg-holo-lavender/10 flex items-center gap-1.5 transition-all">
+                      {generatingCentralElement ? <><Loader2 className="h-3 w-3 animate-spin" /> Generuję...</> : <><Wand2 className="h-3 w-3" /> Generuj AI</>}
+                    </button>
+                  </div>
+                  {centralImageUrl && (
+                    <div className="mt-2 flex items-center gap-2">
+                      <img src={centralImageUrl} className="w-16 h-16 object-cover rounded-xl border border-teal-deep/10 dark:border-holo-mint/10" alt="central" />
+                      <button onClick={() => setCentralImageUrl('')} className="text-xs opacity-40 hover:opacity-100 hover:text-red-400 transition-all">× usuń</button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Render CTA */}
+                <button onClick={renderPrecision} disabled={rendering || !headline || !precisionTemplate}
+                  className="w-full h-12 rounded-full bg-holo-lavender text-teal-deep font-black disabled:opacity-40 hover:opacity-90 transition-opacity flex items-center justify-center gap-2 text-sm"
+                >
+                  {rendering
+                    ? <><Loader2 className="h-4 w-4 animate-spin" /> Renderuję...</>
+                    : <><Image className="h-4 w-4" /> Renderuj grafikę</>
+                  }
+                </button>
+                {!precisionTemplate && (
+                  <p className="text-xs opacity-30 text-center">Najpierw wygeneruj szablon klikając przycisk po lewej</p>
+                )}
+              </div>
+            </div>
+
+            {/* Historia (shared) */}
+            {generations.length > 0 && (
+              <div>
+                <p className="text-xs font-bold opacity-30 uppercase tracking-wide mb-3">Historia ({generations.length})</p>
+                <div className="space-y-1.5">
+                  {generations.map(g => {
+                    const urls: string[] = JSON.parse(g.image_urls || '[]');
+                    const isActive = selectedGeneration?.id === g.id;
+                    const isPrecision = g.format === 'precision';
+                    return (
+                      <div key={g.id} onClick={() => { setSelectedGeneration(g); }}
+                        className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer border transition-all ${isActive ? 'border-holo-lavender bg-holo-lavender/5' : 'border-teal-deep/10 dark:border-holo-mint/10 hover:border-holo-lavender/30 bg-white dark:bg-teal-mid'}`}
+                      >
+                        <div className={`w-14 h-14 rounded-lg overflow-hidden border-2 shrink-0 ${isActive ? 'border-holo-lavender' : 'border-teal-deep/10 dark:border-holo-mint/10'}`}>
+                          {urls[0] && <img src={urls[0]} alt="" className="w-full h-full object-cover" />}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-bold text-sm truncate">{g.brief || '—'}</p>
+                          {isPrecision && <span className="text-xs text-holo-lavender">🎯 Precision</span>}
+                        </div>
+                        <span className="hidden md:block text-xs opacity-25 whitespace-nowrap shrink-0">
+                          {new Date(g.created_at).toLocaleDateString('pl-PL')}
+                        </span>
+                        <div className="flex gap-1 shrink-0" onClick={e => e.stopPropagation()}>
+                          <button onClick={() => deleteGeneration(g.id)} disabled={deletingId === g.id}
+                            className="w-8 h-8 rounded-full border border-red-500/20 flex items-center justify-center opacity-40 hover:opacity-100 hover:border-red-500/50 hover:text-red-400 disabled:opacity-20 transition-all">
+                            {deletingId === g.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* ── TAB: BRAND SETTINGS ──────────────────────────────────────────────── */}
         {tab === 'settings' && (
           <div className="max-w-xl space-y-5">
             <h2 className="font-black text-base">Ustawienia marki</h2>
+
+            {/* TRYB GENEROWANIA */}
+            <div className="rounded-2xl border border-teal-deep/10 dark:border-holo-mint/10 bg-white dark:bg-teal-mid p-4 flex items-center gap-3 flex-wrap">
+              <p className="text-sm font-semibold mr-auto">Tryb generowania</p>
+              <button
+                onClick={() => saveGenerationMode('creative')}
+                className={`h-8 px-4 rounded-full text-xs font-bold transition-all border ${generationMode === 'creative' ? 'bg-holo-mint/20 text-holo-mint border-holo-mint/40' : 'border-teal-deep/15 dark:border-holo-mint/15 opacity-50 hover:opacity-80'}`}
+              >
+                🎨 Creative
+              </button>
+              <button
+                onClick={() => saveGenerationMode('precision')}
+                className={`h-8 px-4 rounded-full text-xs font-bold transition-all border ${generationMode === 'precision' ? 'bg-holo-lavender/20 text-holo-lavender border-holo-lavender/40' : 'border-teal-deep/15 dark:border-holo-mint/15 opacity-50 hover:opacity-80'}`}
+              >
+                🎯 Precision
+              </button>
+            </div>
 
             {/* ANALIZA MARKI — trigger */}
             <div className="rounded-2xl border border-teal-deep/10 dark:border-holo-mint/10 bg-white dark:bg-teal-mid p-4 space-y-3">
