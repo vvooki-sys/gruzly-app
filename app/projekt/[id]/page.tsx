@@ -131,8 +131,9 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
   const [ctaText, setCtaText] = useState('');
   const [legalText, setLegalText] = useState('');
   const [stickerText, setStickerText] = useState('');
-  const [centralImageUrl, setCentralImageUrl] = useState('');
-  const [generatingCentralElement, setGeneratingCentralElement] = useState(false);
+  const [centralImageUrl, setCentralImageUrl] = useState<string | null>(null);
+  const [centralPrompt, setCentralPrompt] = useState('');
+  const [generatingElement, setGeneratingElement] = useState(false);
 
   // Copywriter state
   const [copyFile, setCopyFile] = useState<File | null>(null);
@@ -358,21 +359,21 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
   };
 
   const generateCentralElement = async () => {
-    if (!id || !headline) return;
-    setGeneratingCentralElement(true);
+    if (!centralPrompt || !id) return;
+    setGeneratingElement(true);
     try {
       const res = await fetch(`/api/projects/${id}/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ headline: brief || headline, brief, format, mode, elementOnly: true }),
+        body: JSON.stringify({ headline: centralPrompt, format, elementOnly: true }),
       });
       const data = await res.json();
       if (data.imageUrls?.[0]) setCentralImageUrl(data.imageUrls[0]);
-      else alert('Błąd generowania elementu: ' + (data.error || 'Spróbuj ponownie'));
-    } catch (e) {
-      console.error(e);
+      else alert('Błąd generowania: ' + (data.error || 'Spróbuj ponownie'));
+    } catch {
+      alert('Błąd połączenia');
     } finally {
-      setGeneratingCentralElement(false);
+      setGeneratingElement(false);
     }
   };
 
@@ -926,7 +927,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
                         <p className="text-sm opacity-50">Renderuję grafikę...</p>
                       </div>
                     </div>
-                  ) : selectedGeneration && selectedGeneration.format === 'precision' ? (
+                  ) : selectedGeneration ? (
                     <div>
                       {(() => {
                         const urls: string[] = JSON.parse(selectedGeneration.image_urls || '[]');
@@ -943,23 +944,84 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
                           <Download className="h-3.5 w-3.5" /> Pobierz
                         </button>
                       </div>
+                      <div className="px-4 pb-4 pt-3 space-y-1 border-t border-teal-deep/10 dark:border-holo-mint/10">
+                        <p className="text-xs opacity-30"><span className="opacity-60">Tekst:</span> {selectedGeneration.brief}</p>
+                        <p className="text-xs opacity-30"><span className="opacity-60">Data:</span> {new Date(selectedGeneration.created_at).toLocaleString('pl-PL')}</p>
+                      </div>
                     </div>
                   ) : precisionTemplate ? (
-                    <div className="p-6 space-y-3">
-                      <p className="text-sm font-bold text-holo-lavender">🎯 Szablon gotowy</p>
-                      <div className="text-xs opacity-50 space-y-1">
-                        <p>Tło: {precisionTemplate.layout.background?.type === 'gradient'
-                          ? `gradient ${precisionTemplate.layout.background.gradientFrom} → ${precisionTemplate.layout.background.gradientTo}`
-                          : precisionTemplate.layout.background?.color || '—'}
-                        </p>
-                        <p>Font: {precisionTemplate.layout.copy?.fontFamily || '—'}, {precisionTemplate.layout.copy?.headlineFontSize}px</p>
-                        <p>Logo: {precisionTemplate.layout.logo?.position || '—'}, {precisionTemplate.layout.logo?.size}px</p>
-                        <p>Białe pole: {precisionTemplate.layout.whiteSpace?.enabled ? `${precisionTemplate.layout.whiteSpace.height}px` : 'nie'}</p>
+                    <div>
+                      {/* CSS template preview */}
+                      <div className="aspect-square relative overflow-hidden" style={{
+                        background: precisionTemplate.layout.background?.type === 'gradient'
+                          ? `linear-gradient(${precisionTemplate.layout.background.gradientDirection === 'left-right' ? 'to right' : precisionTemplate.layout.background.gradientDirection === 'diagonal' ? '135deg' : 'to bottom'}, ${precisionTemplate.layout.background.gradientFrom || '#1B334B'}, ${precisionTemplate.layout.background.gradientTo || '#223D55'})`
+                          : precisionTemplate.layout.background?.color || '#1B334B',
+                      }}>
+                        {/* Logo placeholder */}
+                        <div className="absolute" style={{
+                          ...(precisionTemplate.layout.logo?.position?.includes('top') ? { top: '5%' } : { bottom: '5%' }),
+                          ...(precisionTemplate.layout.logo?.position?.includes('right') ? { right: '5%' } : { left: '5%' }),
+                        }}>
+                          <div className="bg-white/20 rounded-lg px-3 py-1.5 text-xs text-white/60 font-bold">LOGO</div>
+                        </div>
+
+                        {/* Central element placeholder */}
+                        <div className="absolute inset-0 flex items-center justify-center" style={{
+                          justifyContent: precisionTemplate.layout.centralElement?.position === 'right' ? 'flex-end'
+                            : precisionTemplate.layout.centralElement?.position === 'left' ? 'flex-start' : 'center',
+                          paddingLeft: '5%', paddingRight: '5%',
+                        }}>
+                          <div className="bg-white/10 border-2 border-dashed border-white/20 flex items-center justify-center text-white/30 text-xs" style={{
+                            width: `${precisionTemplate.layout.centralElement?.size || 50}%`,
+                            height: `${precisionTemplate.layout.centralElement?.size || 50}%`,
+                            borderRadius: precisionTemplate.layout.centralElement?.mask || precisionTemplate.layout.centralElement?.type === 'circle' ? '50%' : '12px',
+                          }}>
+                            Element
+                          </div>
+                        </div>
+
+                        {/* Copy area placeholder */}
+                        <div className="absolute" style={{
+                          ...(precisionTemplate.layout.copy?.position?.includes('bottom') ? { bottom: `${((precisionTemplate.layout.whiteSpace?.height || 0) / 1080) * 100 + 10}%` } : { top: '15%' }),
+                          ...(precisionTemplate.layout.copy?.position?.includes('right') ? { right: '5%' } : { left: '5%' }),
+                          maxWidth: '60%',
+                        }}>
+                          <div className="bg-white/10 rounded-lg px-3 py-2 text-xs text-white/50">
+                            <p className="font-bold">Headline</p>
+                            <p className="opacity-60 mt-0.5">Subtext</p>
+                          </div>
+                        </div>
+
+                        {/* CTA placeholder */}
+                        {precisionTemplate.layout.cta?.enabled && (
+                          <div className="absolute" style={{
+                            bottom: `${((precisionTemplate.layout.whiteSpace?.height || 0) / 1080) * 100 + 5}%`,
+                            ...(precisionTemplate.layout.copy?.position?.includes('right') ? { right: '5%' } : { left: '5%' }),
+                          }}>
+                            <div className="rounded-full px-4 py-1.5 text-xs font-bold" style={{
+                              backgroundColor: precisionTemplate.layout.cta.backgroundColor || '#B3F5DC',
+                              color: precisionTemplate.layout.cta.textColor || '#1B334B',
+                            }}>CTA</div>
+                          </div>
+                        )}
+
+                        {/* White space */}
+                        {precisionTemplate.layout.whiteSpace?.enabled && (
+                          <div className="absolute bottom-0 left-0 right-0 bg-white flex items-center justify-center" style={{
+                            height: `${(precisionTemplate.layout.whiteSpace.height / 1080) * 100}%`,
+                            borderTopLeftRadius: `${precisionTemplate.layout.whiteSpace.borderRadius / 10}px`,
+                            borderTopRightRadius: `${precisionTemplate.layout.whiteSpace.borderRadius / 10}px`,
+                          }}>
+                            <span className="text-xs text-zinc-400">Legal</span>
+                          </div>
+                        )}
                       </div>
-                      <details>
-                        <summary className="text-xs opacity-30 cursor-pointer hover:opacity-60 transition-opacity">Pokaż JSON layoutu</summary>
-                        <pre className="text-xs opacity-30 mt-2 whitespace-pre-wrap overflow-x-auto max-h-64">{JSON.stringify(precisionTemplate.layout, null, 2)}</pre>
-                      </details>
+                      <div className="p-3 border-t border-teal-deep/10 dark:border-holo-mint/10">
+                        <details>
+                          <summary className="text-xs opacity-30 cursor-pointer hover:opacity-60 transition-opacity">Pokaż JSON layoutu</summary>
+                          <pre className="text-xs opacity-30 mt-2 whitespace-pre-wrap overflow-x-auto max-h-40">{JSON.stringify(precisionTemplate.layout, null, 2)}</pre>
+                        </details>
+                      </div>
                     </div>
                   ) : (
                     <div className="aspect-square flex items-center justify-center">
@@ -1039,22 +1101,41 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
                 </div>
 
                 {/* Central element */}
-                <div>
+                <div className="space-y-2">
                   <label className="text-xs font-semibold opacity-50 mb-1.5 block uppercase tracking-wide">Element centralny (opcjonalnie)</label>
-                  <div className="flex gap-2">
-                    <label className="cursor-pointer h-9 px-3 rounded-full border border-teal-deep/15 dark:border-holo-mint/15 text-xs font-semibold flex items-center gap-1.5 hover:border-holo-mint/50 transition-colors opacity-70 hover:opacity-100">
-                      <Upload className="h-3 w-3" /> Wgraj obraz
-                      <input type="file" accept="image/*" className="hidden" onChange={handleCentralImageUpload} />
-                    </label>
-                    <button onClick={generateCentralElement} disabled={generatingCentralElement || !headline}
-                      className="h-9 px-3 rounded-full border border-holo-lavender/30 text-holo-lavender text-xs font-semibold disabled:opacity-40 hover:bg-holo-lavender/10 flex items-center gap-1.5 transition-all">
-                      {generatingCentralElement ? <><Loader2 className="h-3 w-3 animate-spin" /> Generuję...</> : <><Wand2 className="h-3 w-3" /> Generuj AI</>}
-                    </button>
-                  </div>
-                  {centralImageUrl && (
-                    <div className="mt-2 flex items-center gap-2">
-                      <img src={centralImageUrl} className="w-16 h-16 object-cover rounded-xl border border-teal-deep/10 dark:border-holo-mint/10" alt="central" />
-                      <button onClick={() => setCentralImageUrl('')} className="text-xs opacity-40 hover:opacity-100 hover:text-red-400 transition-all">× usuń</button>
+                  {centralImageUrl ? (
+                    <div className="relative rounded-xl overflow-hidden border border-teal-deep/10 dark:border-holo-mint/10">
+                      <img src={centralImageUrl} alt="Element" className="w-full aspect-square object-contain bg-teal-deep/5 dark:bg-teal-deep/30" />
+                      <button
+                        onClick={() => setCentralImageUrl(null)}
+                        className="absolute top-2 right-2 w-7 h-7 bg-zinc-900/80 hover:bg-red-900/50 text-zinc-400 hover:text-red-400 rounded-full flex items-center justify-center text-xs"
+                      >×</button>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <textarea
+                        className={`${inputCls} resize-none`}
+                        rows={3}
+                        placeholder="Opisz element centralny, np.: Samsung Galaxy A56 5G, dynamic angle, professional product photo..."
+                        value={centralPrompt}
+                        onChange={e => setCentralPrompt(e.target.value)}
+                      />
+                      <div className="flex gap-2">
+                        <label className="flex-1 h-10 bg-teal-deep/5 dark:bg-teal-mid hover:bg-teal-deep/10 border border-teal-deep/10 dark:border-holo-mint/10 text-sm rounded-xl flex items-center justify-center gap-2 cursor-pointer transition-colors">
+                          <Upload className="h-4 w-4" /> Wgraj obraz
+                          <input type="file" accept="image/*" className="hidden" onChange={handleCentralImageUpload} />
+                        </label>
+                        <button
+                          onClick={generateCentralElement}
+                          disabled={generatingElement || !centralPrompt}
+                          className="flex-1 h-10 bg-holo-lavender/10 hover:bg-holo-lavender/20 text-holo-lavender border border-holo-lavender/30 rounded-xl text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-50 transition-colors"
+                        >
+                          {generatingElement
+                            ? <><Loader2 className="h-4 w-4 animate-spin" /> Generuję...</>
+                            : <><Wand2 className="h-4 w-4" /> Generuj AI</>
+                          }
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>
