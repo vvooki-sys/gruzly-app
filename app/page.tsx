@@ -56,9 +56,7 @@ export default function HomePage() {
       {/* Header */}
       <header className="glass-nav sticky top-0 z-40 border-b border-teal-deep/10 dark:border-holo-mint/10 bg-offwhite/85 dark:bg-teal-deep/85 px-4 sm:px-6 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center font-black text-sm holo-gradient text-teal-deep shrink-0">
-            G
-          </div>
+          <img src="/gruzly-bear.png" alt="Gruzly" className="w-8 h-8 rounded-lg object-cover" />
           <span className="text-lg font-black tracking-tight">Gruzly</span>
           <span className="hidden sm:block text-sm opacity-40 font-medium">Brand Graphics AI</span>
         </div>
@@ -82,7 +80,29 @@ export default function HomePage() {
       </header>
 
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
-        <h1 className="text-2xl font-black mb-6">Projekty</h1>
+        {/* Hero */}
+        <div className="flex flex-col items-center text-center mb-16 pt-8">
+          <img
+            src="/gruzly-bear.png"
+            alt="Gruzly"
+            className="w-32 h-32 rounded-full mb-6 shadow-[0_0_40px_rgba(179,245,220,0.15)]"
+          />
+          <h1 className="text-5xl font-black tracking-tight mb-3"
+            style={{
+              background: 'linear-gradient(135deg, #F5F5F0 0%, #B3F5DC 50%, #9BE5E0 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text',
+            }}
+          >
+            Gruzly
+          </h1>
+          <p className="text-lg text-white/50 font-medium tracking-wide">
+            Wieziemy Twój kreatywny gruz…
+          </p>
+        </div>
+
+        <p className="text-xs font-bold uppercase tracking-widest text-white/30 mb-4">Projekty</p>
 
         {loading ? (
           <div className="text-center py-16 opacity-40 text-sm">Ładowanie...</div>
