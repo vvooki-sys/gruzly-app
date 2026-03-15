@@ -141,7 +141,8 @@ Return this exact JSON:
   }
 
   const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_KEY!);
-  const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-image-preview' });
+  // Use multimodal text model — NOT the image-generation model (which returns empty text parts)
+  const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
 
   try {
     const result = await model.generateContent({
