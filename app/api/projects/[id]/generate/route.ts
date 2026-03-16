@@ -81,7 +81,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   }
 
   // Reference images (skip in fast/elementOnly)
-  const refs = assetList.filter(a => a.type === 'reference').slice(0, 3);
+  const refs = assetList.filter(a => a.type === 'reference').slice(0, 5);
   if (!elementOnly && mode !== 'fast') {
     for (const ref of refs) {
       const b64 = await urlToBase64(ref.url);

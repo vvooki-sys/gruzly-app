@@ -26,8 +26,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         SELECT COUNT(*)::int as count FROM brand_assets
         WHERE project_id = ${projectId} AND type = 'reference'
       `;
-      if (count >= 5) {
-        return NextResponse.json({ error: 'Max 5 reference images allowed' }, { status: 400 });
+      if (count >= 10) {
+        return NextResponse.json({ error: 'Max 10 reference images allowed' }, { status: 400 });
       }
     }
     const [asset] = await getDb()`
@@ -53,7 +53,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: `type must be one of: ${ALLOWED_TYPES.join(', ')}` }, { status: 400 });
   }
 
-  // Max 5 references
+  // Max 10 references
   if (type === 'reference') {
     const [{ count }] = await getDb()`
       SELECT COUNT(*)::int as count FROM brand_assets
