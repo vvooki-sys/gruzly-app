@@ -66,7 +66,7 @@ CRITICAL RULES:
 3. For standard sections (listed below), use the exact IDs provided
 4. For anything unique/special not in the standard list — create a custom section with id starting with "custom_"
 5. Content must be precise and actionable — include exact hex codes, exact measurements, exact rules
-6. Write content in Polish if the brand book is in Polish
+6. Return ALL content (section titles, descriptions, brandRules) in English — even if the brand book is in another language
 
 STANDARD SECTION IDs (use these exact ids when the content matches):
 - "modul" — Construction module, margins, safety fields, measurements
@@ -127,15 +127,16 @@ RULES:
 - Only describe recurring, non-optional patterns
 - Include exact hex codes, exact font names, exact measurements when visible
 - More detail is better — this drives AI image generation quality
+- Return ALL content (titles, descriptions) in English
 
 Return this exact JSON:
 {
   "sections": [
-    { "id": "tlo", "title": "Tło", "content": "...", "type": "standard", "order": 1, "icon": "🖼" },
-    { "id": "typografia", "title": "Typografia", "content": "...", "type": "standard", "order": 2, "icon": "📝" },
-    { "id": "modul", "title": "Kompozycja i layout", "content": "...", "type": "standard", "order": 3, "icon": "📐" },
-    { "id": "blob", "title": "Elementy graficzne", "content": "...", "type": "standard", "order": 4, "icon": "✨" },
-    { "id": "copy", "title": "Ton i nastrój", "content": "...", "type": "standard", "order": 5, "icon": "💬" }
+    { "id": "tlo", "title": "Background", "content": "...", "type": "standard", "order": 1, "icon": "🖼" },
+    { "id": "typografia", "title": "Typography", "content": "...", "type": "standard", "order": 2, "icon": "📝" },
+    { "id": "modul", "title": "Composition & Layout", "content": "...", "type": "standard", "order": 3, "icon": "📐" },
+    { "id": "blob", "title": "Graphic Elements", "content": "...", "type": "standard", "order": 4, "icon": "✨" },
+    { "id": "copy", "title": "Tone & Mood", "content": "...", "type": "standard", "order": 5, "icon": "💬" }
   ],
   "brandRules": []
 }`;

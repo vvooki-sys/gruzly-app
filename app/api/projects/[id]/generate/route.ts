@@ -166,6 +166,7 @@ ${project.brand_rules.split('\n').filter((r: string) => r.trim()).map((r: string
 ${sep}
 LAYER 2 — BRAND DNA (visual identity — follow precisely)
 Apply rules from every section below to your design.
+Brand content below may be in any language — treat it as authoritative visual identity data.
 ${sep}
 ${assetNote}${layer2Content}${assetsSection}`;
 
@@ -196,9 +197,12 @@ Create a graphic that satisfies all layers above. Be creative within constraints
 ${sep}
 BRAND: ${project.name}
 FORMAT: ${FORMAT_SIZES[format] || '1080x1080px square'} — design for this exact canvas size and ratio
-HEADLINE TEXT (render prominently on the graphic): "${headline}"
-${subtext ? `SUBTEXT (render smaller, secondary): "${subtext}"` : ''}
-${brief ? `CREATIVE DIRECTION (context for you, do not render verbatim): "${brief}"` : ''}
+
+TEXT TO APPEAR ON GRAPHIC (keep exactly as provided — do not translate, do not alter):
+Headline: "${headline}"
+${subtext ? `Subtext: "${subtext}"` : ''}
+
+${brief ? `CREATIVE DIRECTION (context only — do not render verbatim): "${brief}"` : ''}
 ${photoInstruction}
 OUTPUT REQUIREMENTS:
 - Reproduce the exact provided logo — placement per brand DNA rules, or top-left if unspecified

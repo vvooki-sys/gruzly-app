@@ -72,6 +72,8 @@ Each variant must have:
 - subtext: supporting copy (1-3 sentences)
 - cta: call to action (optional, max 5 words)
 
+IMPORTANT: Write the copy in the same language as the brief. Do not translate.
+
 Return ONLY valid JSON array, no markdown, no explanation:
 [
   { "headline": "...", "subtext": "...", "cta": "..." },
