@@ -162,7 +162,7 @@ function renderZoneChild(
           fontSize: child.fontSize || layout.legal.fontSize || 11,
           color: child.color || layout.legal.color || '#48227c',
           display: 'flex',
-          textAlign: (child.textAlign || 'center') as const,
+          textAlign: (child.textAlign || 'center') as 'left' | 'center' | 'right' | 'justify',
         },
       }, data.legalText);
     }
@@ -187,7 +187,7 @@ function renderZoneChild(
           fontSize: child.fontSize || 18,
           fontWeight: child.fontWeight || 400,
           color: child.color || '#ffffffcc',
-          textAlign: (child.textAlign || 'left') as const,
+          textAlign: (child.textAlign || 'left') as 'left' | 'center' | 'right' | 'justify',
           lineHeight: 1.3,
           display: 'flex',
         },
@@ -242,7 +242,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   // Load Manrope fonts
   const origin = new URL(req.url).origin;
-  const fontOptions: { name: string; data: ArrayBuffer; weight: number; style: 'normal' }[] = [];
+  const fontOptions: { name: string; data: ArrayBuffer; weight: 100 | 200 | 300 | 400 | 500 | 600 | 700 | 800 | 900; style: 'normal' | 'italic' }[] = [];
   try {
     const [regRes, boldRes] = await Promise.all([
       fetch(`${origin}/fonts/Manrope-Regular.ttf`),
@@ -272,7 +272,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           const el = renderZoneChild(child, layout, data);
           return el ? React.createElement('div', { key: `${key}-${ci}`, style: { display: 'flex' } }, el) : null;
         })
-        .filter((el): el is React.ReactElement => el !== null);
+        .filter((el: React.ReactElement | null): el is React.ReactElement => el !== null);
 
       return React.createElement('div', {
         key,
@@ -300,7 +300,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const mainRowChildren: (React.ReactElement | null)[] = [
       buildZoneEl(mainLeftZone, 'ml', { flex: 1 }),
       mainRightZone ? buildZoneEl(mainRightZone, 'mr', { flex: 1 }) : null,
-    ].filter((el): el is React.ReactElement => el !== null);
+    ].filter((el: React.ReactElement | null): el is React.ReactElement => el !== null);
 
     const mainRow = React.createElement('div', {
       key: 'main',
@@ -316,7 +316,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           const el = renderZoneChild(child, layout, data);
           return el ? React.createElement('div', { key: `fc${ci}`, style: { display: 'flex' } }, el) : null;
         })
-        .filter((el): el is React.ReactElement => el !== null);
+        .filter((el: React.ReactElement | null): el is React.ReactElement => el !== null);
 
       bottomEl = React.createElement('div', {
         key: 'ws',
@@ -343,7 +343,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       headerZone ? buildZoneEl(headerZone, 'hdr', { width: '100%' }) : null,
       mainRow,
       bottomEl,
-    ].filter((el): el is React.ReactElement => el !== null);
+    ].filter((el: React.ReactElement | null): el is React.ReactElement => el !== null);
 
     const element = React.createElement('div', {
       style: {
