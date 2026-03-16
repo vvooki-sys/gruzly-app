@@ -570,7 +570,8 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
       alert('Najpierw wygeneruj lub załaduj szablon.');
       return;
     }
-    if (!headline || !id) return;
+    if (!headline) { alert('Uzupełnij pole "Tekst główny".'); return; }
+    if (!id) return;
     setRendering(true);
     try {
       const logoAsset = assets.find(a => a.type === 'logo');
