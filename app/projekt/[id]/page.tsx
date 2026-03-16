@@ -592,12 +592,18 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
           logoUrl: logoAsset?.url || undefined,
         }),
       });
-      const data = await res.json();
-      if (data.error) { alert('Błąd renderowania: ' + data.error); return; }
+      if (!res.ok) {
+        const errText = await res.text().catch(() => `HTTP ${res.status}`);
+        alert('Błąd renderowania (' + res.status + '): ' + errText.substring(0, 300));
+        return;
+      }
+      const data = await res.json().catch(() => null);
+      if (!data || data.error) { alert('Błąd renderowania: ' + (data?.error || 'Brak odpowiedzi')); return; }
       setSelectedGeneration(data.generation);
       setGenerations(prev => [data.generation, ...prev]);
     } catch (e) {
       console.error(e);
+      alert('Błąd połączenia: ' + (e instanceof Error ? e.message : String(e)));
     } finally {
       setRendering(false);
     }
