@@ -82,12 +82,20 @@ YOUR TASK:
 1. CONCEPT — Define a single creative idea that drives this communication.
    What's the hook? What emotion does it trigger? (1-2 sentences)
 
-2. CREATIVE BRIEF FOR DESIGNER — Describe what the graphic should show:
-   - Main visual element (what, how it looks, mood)
-   - Composition and hierarchy
-   - Atmosphere / color mood (if different from standard brand)
-   - What to avoid
-   (3-5 sentences, actionable for an AI image generator)
+2. CREATIVE BRIEF — Describe the emotional/conceptual direction for this graphic.
+   Focus ONLY on:
+   - The mood, atmosphere, feeling the image should evoke
+   - The visual story or metaphor (what scene, what moment, what emotion)
+   - What to avoid in terms of tone or associations
+   (2-4 sentences max)
+
+   STRICT RULES — these will BREAK the output if violated:
+   - NO logo placement, NO "logo in corner", NO brand mark instructions
+   - NO hex color codes, NO specific brand colors, NO background color specs
+   - NO layout instructions (no "place X in Y corner", no composition rules)
+   - NO branding or technical design guidance of any kind
+   Brand identity, colors, logo placement are handled separately by the design system.
+   The brief is ONLY about mood, concept, and emotional direction.
 
 3. COPY VARIANTS — Write 3 variants. Each variant must:
    - Match the concept
