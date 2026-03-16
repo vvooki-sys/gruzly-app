@@ -340,7 +340,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           flex: colSpan,
           display: 'flex',
         });
-      }).filter((el): el is React.ReactElement => el !== null);
+      }).filter(Boolean) as React.ReactElement[];
 
       if (isWhiteSpaceRow) {
         return React.createElement('div', {
@@ -369,7 +369,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         key: `row${ri}`,
         style: { display: 'flex', flexDirection: 'row', flex: rowSpan, width: '100%' },
       }, ...zoneEls);
-    }).filter((el): el is React.ReactElement => el !== null);
+    }).filter(Boolean) as React.ReactElement[];
 
     const element = React.createElement('div', {
       style: {
