@@ -107,11 +107,11 @@ const FORMAT_ASPECT: Record<string, string> = {
 };
 
 const CREATIVITY_LABELS: Record<number, { name: string; desc: string }> = {
-  1: { name: 'Basic', desc: 'Czysty, zgodny ze stylem marki' },
-  2: { name: 'Enhanced', desc: 'Dodatkowe elementy dekoracyjne' },
-  3: { name: 'Dynamic', desc: 'Bogata kompozycja, wiele warstw' },
-  4: { name: 'Bold', desc: 'Śmiały, editorial, złożony layout' },
-  5: { name: 'Expressive', desc: 'Maksymalna ekspresja wizualna' },
+  1: { name: 'Minimal', desc: 'Czysta kompozycja, ściśle wg brand booka. Minimum dekoracji — logo, tekst, tło.' },
+  2: { name: 'Standard', desc: 'Delikatne elementy graficzne uzupełniające styl marki. Subtelne tekstury lub dodatkowe kształty.' },
+  3: { name: 'Rozbudowany', desc: 'Bogata, wielowarstwowa kompozycja. Pełna paleta kolorów marki, gradient, elementy dekoracyjne.' },
+  4: { name: 'Editorial', desc: 'Odważny, magazynowy layout. Złożona typografia, dynamiczne kształty, głębia warstw.' },
+  5: { name: 'Maksymalny', desc: 'Pełna ekspresja wizualna w ramach brand booka. Kinowy rozmach, wiele warstw, każdy piksel dopracowany.' },
 };
 
 function getBaseFormat(fmt: string) {
