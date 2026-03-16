@@ -154,12 +154,19 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
   const [centralPrompt, setCentralPrompt] = useState('');
   const [generatingElement, setGeneratingElement] = useState(false);
 
+  // Tone of voice state
+  const [toneOfVoice, setToneOfVoice] = useState('');
+  const [savingTov, setSavingTov] = useState(false);
+  const [generatingTov, setGeneratingTov] = useState(false);
+
   // Copywriter state
   const [copyFile, setCopyFile] = useState<File | null>(null);
   const [copyBrief, setCopyBrief] = useState('');
   const [copyFormat, setCopyFormat] = useState('ogólny');
   const [generatingCopy, setGeneratingCopy] = useState(false);
-  const [copyResults, setCopyResults] = useState<Array<{ headline: string; subtext: string; cta?: string }>>([]);
+  const [copyResults, setCopyResults] = useState<Array<{ headline: string; subtext: string; cta?: string; rationale?: string }>>([]);
+  const [copyConcept, setCopyConcept] = useState('');
+  const [copyCreativeBrief, setCopyCreativeBrief] = useState('');
 
   useEffect(() => {
     params.then(p => {
@@ -174,6 +181,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
           setBrandbookAsset(d.assets.find((a: Asset) => a.type === 'brandbook') || null);
           setBrandSections(d.project.brand_sections || []);
           setGenerationMode((d.project.generation_mode || 'creative') as 'creative' | 'precision');
+          setToneOfVoice(d.project.tone_of_voice || '');
           setLoading(false);
         });
     });
@@ -286,9 +294,42 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
     if (file) setCopyFile(file);
   };
 
+  const saveTov = async (value: string) => {
+    if (!id) return;
+    setSavingTov(true);
+    await fetch(`/api/projects/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ toneOfVoice: value }),
+    });
+    setSavingTov(false);
+  };
+
+  const generateTov = async () => {
+    if (!id) return;
+    setGeneratingTov(true);
+    try {
+      const res = await fetch(`/api/projects/${id}/tov`, { method: 'POST' });
+      const data = await res.json();
+      if (data.tov) {
+        setToneOfVoice(data.tov);
+        await saveTov(data.tov);
+        showToast('Ton & głos wygenerowany ✓');
+      } else {
+        alert('Błąd: ' + (data.error || 'Spróbuj ponownie'));
+      }
+    } catch {
+      alert('Błąd połączenia');
+    } finally {
+      setGeneratingTov(false);
+    }
+  };
+
   const generateCopy = async () => {
     if (!id || (!copyFile && !copyBrief)) return;
     setGeneratingCopy(true);
+    setCopyConcept('');
+    setCopyCreativeBrief('');
     try {
       const fd = new FormData();
       if (copyFile) fd.append('file', copyFile);
@@ -299,6 +340,8 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
       const data = await res.json();
       if (data.results) {
         setCopyResults(data.results);
+        setCopyConcept(data.concept || '');
+        setCopyCreativeBrief(data.creative_brief || '');
       } else {
         alert('Błąd generowania: ' + (data.error || 'Spróbuj ponownie'));
       }
@@ -310,9 +353,10 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
     }
   };
 
-  const useCopyInGenerator = (r: { headline: string; subtext: string; cta?: string }) => {
+  const useCopyInGenerator = (r: { headline: string; subtext: string; cta?: string }, creativeBrief?: string) => {
     setHeadline(r.headline);
     setSubtext(r.subtext || '');
+    if (creativeBrief) setBrief(creativeBrief);
     setTab('generate');
   };
 
@@ -1720,6 +1764,32 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
               </div>
             )}
 
+            {/* TON & GŁOS MARKI */}
+            <div className="rounded-2xl border border-teal-deep/15 dark:border-holo-mint/15 bg-white dark:bg-teal-mid p-4 space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <p className="text-sm font-bold">Ton & głos marki</p>
+                  <p className="text-xs opacity-40 mt-0.5">Jak marka mówi — styl, emocje, słownictwo</p>
+                </div>
+                <button
+                  onClick={generateTov}
+                  disabled={generatingTov || brandSections.length === 0}
+                  className="shrink-0 h-8 px-3 rounded-full border border-holo-mint/30 text-holo-mint text-xs font-semibold flex items-center gap-1.5 hover:bg-holo-mint/10 disabled:opacity-40 transition-colors"
+                >
+                  {generatingTov ? <><Loader2 className="h-3 w-3 animate-spin" /> Generuję...</> : <><Wand2 className="h-3 w-3" /> Wygeneruj z analizy →</>}
+                </button>
+              </div>
+              <textarea
+                className="w-full bg-offwhite dark:bg-teal-deep text-teal-deep dark:text-offwhite border border-teal-deep/15 dark:border-holo-mint/10 focus:border-holo-mint rounded-xl px-4 py-3 text-sm resize-none outline-none transition-colors"
+                rows={4}
+                placeholder="Opisz ton komunikacji marki — np. 'Profesjonalny, ale ciepły. Unikamy technicznego żargonu...'"
+                value={toneOfVoice}
+                onChange={e => setToneOfVoice(e.target.value)}
+                onBlur={e => saveTov(e.target.value)}
+              />
+              {savingTov && <p className="text-xs opacity-30">Zapisuję...</p>}
+            </div>
+
             {/* ZASADY OBOWIĄZKOWE */}
             <div className="rounded-2xl border-2 border-red-500/30 bg-red-500/5 p-4 space-y-2">
               <div>
@@ -1901,22 +1971,51 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
                   <p className="text-sm opacity-30">Wygenerowane warianty pojawią się tutaj</p>
                 </div>
               ) : (
-                copyResults.map((r, i) => (
-                  <div
-                    key={i}
-                    className="bg-white dark:bg-teal-mid border border-teal-deep/10 dark:border-holo-mint/10 rounded-xl p-4 space-y-2"
-                  >
-                    <p className="font-mono text-sm font-semibold">{r.headline}</p>
-                    {r.subtext && <p className="text-sm opacity-60">{r.subtext}</p>}
-                    {r.cta && <p className="text-xs text-holo-mint font-medium">{r.cta}</p>}
-                    <button
-                      onClick={() => useCopyInGenerator(r)}
-                      className="w-full h-8 bg-teal-deep/5 dark:bg-teal-deep hover:bg-holo-mint/20 hover:border-holo-mint border border-teal-deep/10 dark:border-holo-mint/10 rounded-full text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors"
+                <>
+                  {/* Concept */}
+                  {copyConcept && (
+                    <div className="bg-holo-mint/5 border border-holo-mint/20 rounded-xl p-4 space-y-1">
+                      <p className="text-xs font-bold uppercase tracking-wide text-holo-mint opacity-70">Koncept</p>
+                      <p className="text-sm opacity-80">{copyConcept}</p>
+                    </div>
+                  )}
+
+                  {/* Creative brief */}
+                  {copyCreativeBrief && (
+                    <div className="bg-white dark:bg-teal-mid border border-teal-deep/10 dark:border-holo-mint/10 rounded-xl p-4 space-y-2">
+                      <p className="text-xs font-bold uppercase tracking-wide opacity-40">Brief dla grafika</p>
+                      <p className="text-sm opacity-70">{copyCreativeBrief}</p>
+                      <button
+                        onClick={() => setBrief(copyCreativeBrief)}
+                        className="h-7 px-3 rounded-full bg-teal-deep/5 dark:bg-teal-deep hover:bg-holo-mint/20 hover:border-holo-mint border border-teal-deep/10 dark:border-holo-mint/10 text-xs font-semibold flex items-center gap-1.5 transition-colors"
+                      >
+                        <Layers className="h-3 w-3" /> Użyj jako creative brief
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Variants */}
+                  {copyResults.map((r, i) => (
+                    <div
+                      key={i}
+                      className="bg-white dark:bg-teal-mid border border-teal-deep/10 dark:border-holo-mint/10 rounded-xl p-4 space-y-2"
                     >
-                      <Wand2 className="h-3 w-3" /> Użyj w generatorze
-                    </button>
-                  </div>
-                ))
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-xs font-bold bg-teal-deep/10 dark:bg-teal-deep px-2 py-0.5 rounded-full">Wariant {i + 1}</span>
+                      </div>
+                      <p className="font-mono text-sm font-semibold">{r.headline}</p>
+                      {r.subtext && <p className="text-sm opacity-60">{r.subtext}</p>}
+                      {r.cta && <p className="text-xs text-holo-mint font-medium">CTA: {r.cta}</p>}
+                      {r.rationale && <p className="text-xs opacity-40 italic border-t border-teal-deep/10 dark:border-holo-mint/10 pt-2 mt-1">{r.rationale}</p>}
+                      <button
+                        onClick={() => useCopyInGenerator(r, copyCreativeBrief)}
+                        className="w-full h-8 bg-teal-deep/5 dark:bg-teal-deep hover:bg-holo-mint/20 hover:border-holo-mint border border-teal-deep/10 dark:border-holo-mint/10 rounded-full text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors"
+                      >
+                        <Wand2 className="h-3 w-3" /> Użyj w generatorze
+                      </button>
+                    </div>
+                  ))}
+                </>
               )}
             </div>
           </div>

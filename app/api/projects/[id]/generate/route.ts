@@ -162,13 +162,17 @@ ${project.brand_rules.split('\n').filter((r: string) => r.trim()).map((r: string
     ].filter(Boolean).join('\n') || 'modern, professional, event agency aesthetic';
   }
 
+  const tovSection = project.tone_of_voice
+    ? `\nTONE OF VOICE:\n${project.tone_of_voice}\n`
+    : '';
+
   const layer2 = `
 ${sep}
 LAYER 2 — BRAND DNA (visual identity — follow precisely)
 Apply rules from every section below to your design.
 Brand content below may be in any language — treat it as authoritative visual identity data.
 ${sep}
-${assetNote}${layer2Content}${assetsSection}`;
+${assetNote}${layer2Content}${assetsSection}${tovSection}`;
 
   // Photo instruction for Layer 3
   const photoInstruction = photoUrl && photoMode !== 'none' && !elementOnly

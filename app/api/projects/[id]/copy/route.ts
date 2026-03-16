@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { neon } from '@neondatabase/serverless';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-export const maxDuration = 30;
+export const maxDuration = 60;
 const sql = neon(process.env.DATABASE_URL!);
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -11,7 +11,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const file = formData.get('file') as File | null;
   const text = formData.get('text') as string | null;
-  const format = formData.get('format') as string || 'ogólny';
+  const format = formData.get('format') as string || 'general';
 
   if (!file && !text) {
     return NextResponse.json({ error: 'file or text required' }, { status: 400 });
@@ -30,62 +30,84 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const mimeType = file.type;
 
     if (mimeType === 'application/pdf' || mimeType.includes('pdf')) {
-      // PDF: send as inlineData
       filePart = { inlineData: { data: base64, mimeType: 'application/pdf' } };
+    } else if (mimeType === 'text/plain') {
+      briefText = Buffer.from(buffer).toString('utf-8');
     } else {
-      // DOCX: convert to text using mammoth
-      // TXT: decode directly
-      if (mimeType === 'text/plain') {
-        briefText = Buffer.from(buffer).toString('utf-8');
-      } else {
-        // DOCX — convert via mammoth
-        try {
-          const mammoth = await import('mammoth');
-          const result = await mammoth.extractRawText({ buffer: Buffer.from(buffer) });
-          briefText = result.value;
-        } catch {
-          briefText = '[DOCX content could not be parsed]';
-        }
+      try {
+        const mammoth = await import('mammoth');
+        const result = await mammoth.extractRawText({ buffer: Buffer.from(buffer) });
+        briefText = result.value;
+      } catch {
+        briefText = '[DOCX content could not be parsed]';
       }
     }
   }
 
-  const brandContext = project.brand_analysis
-    ? `Brand context for ${project.name}:\n${project.brand_analysis}`
-    : `Brand: ${project.name}`;
+  // Brand DNA
+  type BrandSec = { title: string; content: string; order: number };
+  const brandSections: BrandSec[] = project.brand_sections || [];
+  const brandDna = brandSections.length > 0
+    ? [...brandSections].sort((a, b) => a.order - b.order).map(s => `[${s.title.toUpperCase()}]\n${s.content}`).join('\n\n')
+    : (project.brand_analysis || `Brand: ${project.name}`);
 
-  const formatInstructions: Record<string, string> = {
-    facebook: 'Facebook post (engaging, 1-3 short paragraphs, emoji OK, CTA at end)',
+  const tov = project.tone_of_voice || 'Professional, creative, impactful. Stay true to the brand identity.';
+
+  const formatMap: Record<string, string> = {
+    facebook: 'Facebook post (engaging, 1-3 short paragraphs, emoji OK, clear CTA)',
     linkedin: 'LinkedIn post (professional tone, insight-driven, no excessive emoji)',
     instagram: 'Instagram caption (punchy headline, short body, hashtag space at end)',
+    general: 'general social media post (versatile, works across platforms)',
     ogólny: 'general social media post (versatile, works across platforms)',
   };
+  const formatDesc = formatMap[format] || formatMap['general'];
 
-  const copyPrompt = `You are a senior copywriter for a brand communications agency.
+  const copyPrompt = `You are a senior creative director at a top-tier marketing agency.
+Your job is not just to write copy — you CONCEIVE the idea and direct the visual.
 
-${brandContext}
+BRAND IDENTITY:
+${brandDna}
 
-Based on the brief below, write 3 DIFFERENT copy variants for a ${formatInstructions[format] || formatInstructions['ogólny']}.
+TONE OF VOICE:
+${tov}
 
-Each variant must have:
-- headline: punchy, attention-grabbing (max 10 words)
-- subtext: supporting copy (1-3 sentences)
-- cta: call to action (optional, max 5 words)
+CLIENT BRIEF:
+${briefText || '[No brief provided — generate based on brand identity]'}
 
-IMPORTANT: Write the copy in the same language as the brief. Do not translate.
+FORMAT: ${formatDesc}
 
-Return ONLY valid JSON array, no markdown, no explanation:
-[
-  { "headline": "...", "subtext": "...", "cta": "..." },
-  { "headline": "...", "subtext": "...", "cta": "..." },
-  { "headline": "...", "subtext": "...", "cta": "..." }
-]
+YOUR TASK:
 
-BRIEF:
-${briefText}`;
+1. CONCEPT — Define a single creative idea that drives this communication.
+   What's the hook? What emotion does it trigger? (1-2 sentences)
+
+2. CREATIVE BRIEF FOR DESIGNER — Describe what the graphic should show:
+   - Main visual element (what, how it looks, mood)
+   - Composition and hierarchy
+   - Atmosphere / color mood (if different from standard brand)
+   - What to avoid
+   (3-5 sentences, actionable for an AI image generator)
+
+3. COPY VARIANTS — Write 3 variants. Each variant must:
+   - Match the concept
+   - Respect the tone of voice
+   - Be in the same language as the client brief
+   - Feel like it was written by a human who understands the brand
+
+Return ONLY valid JSON, no markdown, no explanation:
+{
+  "concept": "...",
+  "creative_brief": "...",
+  "variants": [
+    { "headline": "...", "subtext": "...", "cta": "...", "rationale": "..." },
+    { "headline": "...", "subtext": "...", "cta": "...", "rationale": "..." },
+    { "headline": "...", "subtext": "...", "cta": "...", "rationale": "..." }
+  ]
+}
+
+Write copy in the same language as the client brief. These instructions are in English — that is fine, keep them as internal guidance only.`;
 
   const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_KEY!);
-  // Use text-only model for copy (cheaper, faster)
   const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
   try {
@@ -100,11 +122,20 @@ ${briefText}`;
       ?.map((p: { text?: string }) => p.text)
       ?.join('') || '';
 
-    // Parse JSON (handle markdown code blocks)
     const cleaned = responseText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-    const copyResults = JSON.parse(cleaned);
+    const parsed = JSON.parse(cleaned);
 
-    return NextResponse.json({ results: copyResults });
+    // Return new format if present, fallback for backward compat
+    if (parsed.variants) {
+      return NextResponse.json({
+        results: parsed.variants,
+        concept: parsed.concept || '',
+        creative_brief: parsed.creative_brief || '',
+      });
+    }
+    // Old format fallback (plain array)
+    return NextResponse.json({ results: Array.isArray(parsed) ? parsed : [] });
+
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);
     console.error('Copy generation error:', msg);
