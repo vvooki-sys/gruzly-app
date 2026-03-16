@@ -297,12 +297,15 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
   const saveTov = async (value: string) => {
     if (!id) return;
     setSavingTov(true);
-    await fetch(`/api/projects/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ toneOfVoice: value }),
-    });
-    setSavingTov(false);
+    try {
+      await fetch(`/api/projects/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ toneOfVoice: value }),
+      });
+    } finally {
+      setSavingTov(false);
+    }
   };
 
   const generateTov = async () => {
@@ -313,7 +316,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
       const data = await res.json();
       if (data.tov) {
         setToneOfVoice(data.tov);
-        await saveTov(data.tov);
+        try { await saveTov(data.tov); } catch {}
         showToast('Ton & głos wygenerowany ✓');
       } else {
         alert('Błąd: ' + (data.error || 'Spróbuj ponownie'));
