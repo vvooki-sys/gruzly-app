@@ -1235,8 +1235,8 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
                       <Camera className="h-3 w-3" /> Ze zdjęciem
                     </button>
                     <button
-                      onClick={() => { setPrecisionExpanded(!precisionExpanded); if (!precisionExpanded) setGenerationMode('precision'); }}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all border ${generationMode === 'precision' ? 'border-holo-lavender bg-holo-lavender/10 text-holo-lavender' : 'border-teal-deep/10 dark:border-holo-mint/10 opacity-50 hover:opacity-80'}`}
+                      onClick={() => setGenerationMode('precision')}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all border border-teal-deep/10 dark:border-holo-mint/10 opacity-50 hover:opacity-80"
                     >
                       <Target className="h-3 w-3" /> Precyzyjny <span className="px-1.5 py-0.5 bg-holo-lavender/20 text-holo-lavender rounded text-[9px] font-black uppercase">Beta</span>
                     </button>
@@ -1386,6 +1386,15 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
         {/* ── TAB: GENERUJ — Precision mode ────────────────────────────────────── */}
         {tab === 'generate' && generationMode === 'precision' && (
           <div className="space-y-8">
+            {/* Back + info */}
+            <div className="flex items-center gap-3">
+              <button onClick={() => setGenerationMode('creative')} className="text-xs opacity-50 hover:opacity-100 transition-opacity flex items-center gap-1">
+                <ArrowLeft className="h-3 w-3" /> Wróć do trybu kreatywnego
+              </button>
+              <span className="px-2 py-0.5 bg-holo-lavender/20 text-holo-lavender rounded text-[9px] font-black uppercase">Beta</span>
+            </div>
+            <p className="text-xs opacity-40 -mt-4">Tryb precyzyjny wymaga wcześniejszego skonfigurowania szablonu w zakładce Kontekst marki. Najlepiej sprawdza się z własnym zdjęciem.</p>
+
             <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_420px] gap-6 lg:gap-8 items-start">
 
               {/* LEFT: Template preview / rendered result */}
