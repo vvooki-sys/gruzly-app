@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Plus, Layers, Image, Sun, Moon } from 'lucide-react';
+import { Plus, Layers, Image, Sun, Moon, Wand2 } from 'lucide-react';
 
 interface Project {
   id: number;
@@ -149,9 +149,12 @@ export default function HomePage() {
                 <h3 className="font-bold group-hover:text-holo-mint transition-colors">{p.name}</h3>
                 {p.client_name && <p className="text-sm opacity-40 mt-0.5">{p.client_name}</p>}
                 {p.description && <p className="text-xs opacity-30 mt-1 line-clamp-2">{p.description}</p>}
-                <div className="flex items-center gap-3 mt-4 text-xs opacity-30">
-                  <span className="flex items-center gap-1">
+                <div className="flex items-center gap-3 mt-4">
+                  <span className="flex items-center gap-1 text-xs opacity-30">
                     <Image className="h-3 w-3" /> {p.generation_count ?? 0} grafik
+                  </span>
+                  <span className="ml-auto flex items-center gap-1 text-xs font-bold text-holo-mint opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Wand2 className="h-3 w-3" /> Generuj
                   </span>
                 </div>
               </Link>

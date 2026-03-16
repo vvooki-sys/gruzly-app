@@ -173,7 +173,8 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
   const [editingSectionContent, setEditingSectionContent] = useState('');
 
   // Precision mode state
-  const [generationMode, setGenerationMode] = useState<'creative' | 'precision'>('creative');
+  const [generationMode, setGenerationMode] = useState<'creative' | 'photo' | 'precision'>('creative');
+  const [precisionExpanded, setPrecisionExpanded] = useState(false);
   const [precisionTemplate, setPrecisionTemplate] = useState<PrecisionTemplate | null>(null);
   const [precisionTemplateId, setPrecisionTemplateId] = useState<number | null>(null);
   const [generatingTemplate, setGeneratingTemplate] = useState(false);
@@ -228,7 +229,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
           setEditRules(d.project.brand_rules || '');
           setBrandbookAsset(d.assets.find((a: Asset) => a.type === 'brandbook') || null);
           setBrandSections(d.project.brand_sections || []);
-          setGenerationMode((d.project.generation_mode || 'creative') as 'creative' | 'precision');
+          setGenerationMode((d.project.generation_mode || 'creative') as 'creative' | 'photo' | 'precision');
           setToneOfVoice(d.project.tone_of_voice || '');
           setLoading(false);
         });
@@ -456,6 +457,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
   const useCopyInGenerator = (r: { headline: string; subtext: string; cta?: string }, creativeBrief?: string) => {
     setHeadline(r.headline);
     setSubtext(r.subtext || '');
+    if (r.cta) setCtaText(r.cta);
     if (creativeBrief) setBrief(creativeBrief);
     setTab('generate');
   };
@@ -535,7 +537,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
     }
   };
 
-  const saveGenerationMode = async (newMode: 'creative' | 'precision') => {
+  const saveGenerationMode = async (newMode: 'creative' | 'photo' | 'precision') => {
     setGenerationMode(newMode);
     await fetch(`/api/projects/${id}`, {
       method: 'PATCH',
@@ -942,21 +944,14 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
           {project.client_name && <p className="text-xs opacity-40 truncate">{project.client_name}</p>}
         </div>
 
-        {/* Tabs */}
+        {/* Tabs — Generator / Copywriter / Assety / Kontekst marki */}
         <div className="flex gap-1 bg-teal-deep/10 dark:bg-teal-mid rounded-full p-1 shrink-0">
           <button
             onClick={() => setTab('generate')}
             className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 ${tab === 'generate' ? 'holo-gradient text-teal-deep shadow-sm' : 'opacity-50 hover:opacity-80'}`}
           >
             <Wand2 className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Generuj</span>
-          </button>
-          <button
-            onClick={() => setTab('settings')}
-            className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 ${tab === 'settings' ? 'holo-gradient text-teal-deep shadow-sm' : 'opacity-50 hover:opacity-80'}`}
-          >
-            <Settings className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Brand</span>
+            <span className="hidden sm:inline">Generator</span>
           </button>
           <button
             onClick={() => setTab('copy')}
@@ -971,6 +966,13 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
           >
             <Layers className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Assety</span>
+          </button>
+          <button
+            onClick={() => setTab('settings')}
+            className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 ${tab === 'settings' ? 'holo-gradient text-teal-deep shadow-sm' : 'opacity-50 hover:opacity-80'}`}
+          >
+            <Settings className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Kontekst marki</span>
           </button>
         </div>
 
@@ -992,8 +994,8 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
 
-        {/* ── TAB: GENERUJ — Creative mode ─────────────────────────────────────── */}
-        {tab === 'generate' && generationMode === 'creative' && (
+        {/* ── TAB: GENERUJ — Creative / Photo mode ─────────────────────────────── */}
+        {tab === 'generate' && (generationMode === 'creative' || generationMode === 'photo') && (
           <div className="space-y-8">
 
             {/* Main grid: Preview LEFT (sticky) | Form RIGHT */}
@@ -1145,40 +1147,35 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
                 {/* 3. Brief — optional, AI context only */}
                 <div>
                   <label className="text-xs font-semibold opacity-50 mb-1.5 block uppercase tracking-wide">
-                    Brief kreatywny <span className="normal-case opacity-70 font-normal">— kontekst dla AI, nie pojawi się na grafice</span>
+                    Brief dla AI <span className="normal-case opacity-70 font-normal">(opcjonalnie)</span>
                   </label>
                   <textarea
                     className={`${inputCls} resize-none`}
                     rows={2}
-                    placeholder="np. Post zapowiadający event Nike — buty Air Max na tle miejskiej ulicy, dynamiczna atmosfera"
+                    placeholder="Opisz nastrój, styl, co ma pokazywać grafika. Copywriter może wygenerować to automatycznie."
                     value={brief}
                     onChange={e => setBrief(e.target.value)}
                   />
                 </div>
 
-                {/* Photo / Central element selector */}
+                {/* Photo — in photo mode always show upload, in creative mode show toggle */}
+                {(generationMode === 'creative' || generationMode === 'photo') && (
                 <div>
                   <label className="text-xs font-semibold opacity-50 mb-1.5 block uppercase tracking-wide flex items-center gap-1.5">
-                    <Camera className="h-3 w-3" /> Zdjęcie / Element centralny
+                    <Camera className="h-3 w-3" /> Zdjęcie (opcjonalnie)
                   </label>
                   <div className="rounded-xl border border-teal-deep/10 dark:border-holo-mint/10 bg-white dark:bg-teal-mid p-3 space-y-3">
-                    {/* Radio options */}
-                    <div className="grid grid-cols-2 gap-1.5">
-                      {([
-                        { value: 'none', label: 'Brak (AI decyduje)' },
-                        { value: 'upload', label: 'Własne zdjęcie' },
-                        { value: 'generate', label: 'Generuj AI' },
-                        { value: 'library', label: 'Z biblioteki' },
-                      ] as const).map(opt => (
-                        <button key={opt.value} onClick={() => { setPhotoMode(opt.value); setPhotoUrl(''); }}
-                          className={`h-8 px-3 rounded-lg text-xs font-semibold border transition-all text-left ${photoMode === opt.value ? 'border-holo-aqua bg-holo-aqua/10 text-holo-aqua' : 'border-teal-deep/10 dark:border-holo-mint/10 opacity-50 hover:opacity-80'}`}>
-                          {opt.label}
-                        </button>
-                      ))}
+                    <div className="flex gap-1.5">
+                      <button onClick={() => { setPhotoMode('none'); setPhotoUrl(''); }}
+                        className={`h-8 px-3 rounded-lg text-xs font-semibold border transition-all ${photoMode === 'none' ? 'border-holo-aqua bg-holo-aqua/10 text-holo-aqua' : 'border-teal-deep/10 dark:border-holo-mint/10 opacity-50 hover:opacity-80'}`}>
+                        Brak
+                      </button>
+                      <button onClick={() => setPhotoMode('upload')}
+                        className={`h-8 px-3 rounded-lg text-xs font-semibold border transition-all ${photoMode !== 'none' ? 'border-holo-aqua bg-holo-aqua/10 text-holo-aqua' : 'border-teal-deep/10 dark:border-holo-mint/10 opacity-50 hover:opacity-80'}`}>
+                        Dodaj zdjęcie
+                      </button>
                     </div>
-
-                    {/* Upload */}
-                    {photoMode === 'upload' && (
+                    {photoMode !== 'none' && (
                       photoUrl ? (
                         <div className="flex items-center gap-2">
                           <img src={photoUrl} className="w-14 h-14 object-cover rounded-lg border border-teal-deep/10 dark:border-holo-mint/10" alt="photo" />
@@ -1196,59 +1193,9 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
                         </label>
                       )
                     )}
-
-                    {/* Generate AI */}
-                    {photoMode === 'generate' && (
-                      <div className="space-y-2">
-                        {photoUrl ? (
-                          <div className="flex items-center gap-2">
-                            <img src={photoUrl} className="w-14 h-14 object-cover rounded-lg border border-teal-deep/10 dark:border-holo-mint/10" alt="generated" />
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs text-holo-aqua font-semibold">✓ Wygenerowano</p>
-                            </div>
-                            <button onClick={() => setPhotoUrl('')} className="w-7 h-7 rounded-full border border-red-500/20 flex items-center justify-center text-red-400 hover:bg-red-500/10 transition-colors">
-                              <X className="h-3.5 w-3.5" />
-                            </button>
-                          </div>
-                        ) : (
-                          <>
-                            <textarea className={`${inputCls} resize-none text-sm`} rows={2}
-                              placeholder="np. Samsung Galaxy A56 5G, dynamic angle, transparent bg, studio lighting..."
-                              value={photoPrompt} onChange={e => setPhotoPrompt(e.target.value)} />
-                            <button onClick={generatePhoto} disabled={generatingPhoto || !photoPrompt}
-                              className="w-full h-9 rounded-xl border border-holo-aqua/30 text-holo-aqua bg-holo-aqua/10 text-sm font-semibold disabled:opacity-40 hover:bg-holo-aqua/20 transition-colors flex items-center justify-center gap-2">
-                              {generatingPhoto ? <><Loader2 className="h-4 w-4 animate-spin" /> Generuję...</> : <><Wand2 className="h-4 w-4" /> Generuj zdjęcie</>}
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    )}
-
-                    {/* From library */}
-                    {photoMode === 'library' && (
-                      (() => {
-                        const photos = assets.filter(a => a.type === 'photo');
-                        return photos.length === 0 ? (
-                          <p className="text-xs opacity-40 text-center py-2">Brak zdjęć w bibliotece — wgraj w zakładce Assety</p>
-                        ) : (
-                          <div className="grid grid-cols-4 gap-1.5">
-                            {photos.map(p => (
-                              <button key={p.id} onClick={() => setPhotoUrl(p.url)}
-                                className={`relative aspect-square rounded-lg overflow-hidden border-2 transition-all ${photoUrl === p.url ? 'border-holo-aqua' : 'border-teal-deep/10 dark:border-holo-mint/10 hover:border-holo-aqua/50'}`}>
-                                <img src={p.url} className="w-full h-full object-cover" alt={p.filename} />
-                                {photoUrl === p.url && (
-                                  <div className="absolute inset-0 bg-holo-aqua/20 flex items-center justify-center">
-                                    <Check className="h-4 w-4 text-holo-aqua" />
-                                  </div>
-                                )}
-                              </button>
-                            ))}
-                          </div>
-                        );
-                      })()
-                    )}
                   </div>
                 </div>
+                )}
 
                 {/* Format picker */}
                 <div>
@@ -1271,26 +1218,29 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
                   </div>
                 </div>
 
-                {/* Mode toggle — PR 3c */}
+                {/* Mode toggle — Kreatywny / Ze zdjęciem / Precyzyjny(beta) */}
                 <div>
-                  <label className="text-xs font-semibold opacity-50 mb-1.5 block uppercase tracking-wide">Tryb generowania</label>
-                  <div className="flex gap-1 bg-teal-deep/10 dark:bg-teal-mid rounded-full p-1 w-fit">
+                  <label className="text-xs font-semibold opacity-50 mb-1.5 block uppercase tracking-wide">Tryb</label>
+                  <div className="flex gap-1.5 flex-wrap">
                     <button
-                      onClick={() => setMode('precise')}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all ${mode === 'precise' ? 'holo-gradient text-teal-deep shadow-sm' : 'opacity-50 hover:opacity-80'}`}
+                      onClick={() => { setGenerationMode('creative'); setPhotoMode('none'); setPhotoUrl(''); }}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all border ${generationMode === 'creative' ? 'border-holo-mint bg-holo-mint/10 text-holo-mint' : 'border-teal-deep/10 dark:border-holo-mint/10 opacity-50 hover:opacity-80'}`}
                     >
-                      <Target className="h-3 w-3" /> Precyzyjny
+                      <Wand2 className="h-3 w-3" /> Kreatywny
                     </button>
                     <button
-                      onClick={() => setMode('fast')}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all ${mode === 'fast' ? 'holo-gradient text-teal-deep shadow-sm' : 'opacity-50 hover:opacity-80'}`}
+                      onClick={() => { setGenerationMode('photo'); setPhotoMode('upload'); }}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all border ${generationMode === 'photo' ? 'border-holo-aqua bg-holo-aqua/10 text-holo-aqua' : 'border-teal-deep/10 dark:border-holo-mint/10 opacity-50 hover:opacity-80'}`}
                     >
-                      <Zap className="h-3 w-3" /> Szybki
+                      <Camera className="h-3 w-3" /> Ze zdjęciem
+                    </button>
+                    <button
+                      onClick={() => { setPrecisionExpanded(!precisionExpanded); if (!precisionExpanded) setGenerationMode('precision'); }}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all border ${generationMode === 'precision' ? 'border-holo-lavender bg-holo-lavender/10 text-holo-lavender' : 'border-teal-deep/10 dark:border-holo-mint/10 opacity-50 hover:opacity-80'}`}
+                    >
+                      <Target className="h-3 w-3" /> Precyzyjny <span className="px-1.5 py-0.5 bg-holo-lavender/20 text-holo-lavender rounded text-[9px] font-black uppercase">Beta</span>
                     </button>
                   </div>
-                  <p className="text-xs opacity-30 mt-1">
-                    {mode === 'precise' ? 'Logo + referencje + analiza tekstowa' : 'Logo + tylko analiza tekstowa — szybszy, tańszy'}
-                  </p>
                 </div>
 
                 {/* Creativity slider */}
@@ -1331,7 +1281,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
                       ? `✅ ${brandSections.length} sekcji brandowych`
                       : project.brand_analysis
                         ? '✅ Analiza tekstowa aktywna'
-                        : '⚙️ Brak analizy — przejdź do zakładki Brand'}
+                        : '⚙️ Brak analizy — przejdź do Kontekst marki'}
                   </p>
                   {brandSections.length > 0 && (
                     <p className="opacity-50">{brandSections.slice(0, 3).map(s => s.title).join(', ')}{brandSections.length > 3 ? ` +${brandSections.length - 3} więcej` : ''}</p>
@@ -1945,7 +1895,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
                       </button>
                     </div>
                   ) : (
-                    <p className="text-xs opacity-30">Brak brandbookaużyj zakładki Brand do analizy grafik referencyjnych</p>
+                    <p className="text-xs opacity-30">Brak brandbooka — użyj Kontekst marki do analizy grafik referencyjnych</p>
                   )}
                   {refs.length > 0 && (
                     <div>
@@ -1972,24 +1922,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
         {/* ── TAB: BRAND SETTINGS ──────────────────────────────────────────────── */}
         {tab === 'settings' && (
           <div className="max-w-xl space-y-5">
-            <h2 className="font-black text-base">Ustawienia marki</h2>
-
-            {/* TRYB GENEROWANIA */}
-            <div className="rounded-2xl border border-teal-deep/10 dark:border-holo-mint/10 bg-white dark:bg-teal-mid p-4 flex items-center gap-3 flex-wrap">
-              <p className="text-sm font-semibold mr-auto">Tryb generowania</p>
-              <button
-                onClick={() => saveGenerationMode('creative')}
-                className={`h-8 px-4 rounded-full text-xs font-bold transition-all border ${generationMode === 'creative' ? 'bg-holo-mint/20 text-holo-mint border-holo-mint/40' : 'border-teal-deep/15 dark:border-holo-mint/15 opacity-50 hover:opacity-80'}`}
-              >
-                🎨 Creative
-              </button>
-              <button
-                onClick={() => saveGenerationMode('precision')}
-                className={`h-8 px-4 rounded-full text-xs font-bold transition-all border ${generationMode === 'precision' ? 'bg-holo-lavender/20 text-holo-lavender border-holo-lavender/40' : 'border-teal-deep/15 dark:border-holo-mint/15 opacity-50 hover:opacity-80'}`}
-              >
-                🎯 Precision
-              </button>
-            </div>
+            <h2 className="font-black text-base">Kontekst marki</h2>
 
             {/* ANALIZA MARKI — trigger */}
             <div className="rounded-2xl border border-teal-deep/10 dark:border-holo-mint/10 bg-white dark:bg-teal-mid p-4 space-y-3">
