@@ -701,7 +701,6 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
   };
 
   const editorBlocksToLayout = (): Record<string, unknown> => {
-    if (!precisionTemplate) return {};
     const zones = editorBlocks.map(b => ({
       id: b.id,
       gridArea: toGridArea(b),
@@ -711,7 +710,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
       gap: b.gap,
       children: b.children,
     }));
-    return { ...precisionTemplate.layout, zones };
+    return { ...(precisionTemplate?.layout || {}), zones };
   };
 
   // Drag handlers
@@ -1715,7 +1714,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
                 </div>
 
                 {/* Render CTA */}
-                <button onClick={renderPrecision} disabled={rendering || !headline || !precisionTemplate}
+                <button onClick={renderPrecision} disabled={rendering || !headline || (!precisionTemplate && editorBlocks.length === 0)}
                   className="w-full h-12 rounded-full bg-holo-lavender text-teal-deep font-black disabled:opacity-40 hover:opacity-90 transition-opacity flex items-center justify-center gap-2 text-sm"
                 >
                   {rendering
