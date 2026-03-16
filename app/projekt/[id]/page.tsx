@@ -995,7 +995,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
 
         {/* ── TAB: GENERUJ — Creative / Photo mode ─────────────────────────────── */}
-        {tab === 'generate' && (generationMode === 'creative' || generationMode === 'photo') && (
+        {tab === 'generate' && generationMode !== 'precision' && (
           <div className="space-y-8">
 
             {/* Main grid: Preview LEFT (sticky) | Form RIGHT */}
