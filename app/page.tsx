@@ -8,6 +8,8 @@ interface Project {
   id: number;
   name: string;
   client_name: string | null;
+  description?: string | null;
+  archived?: boolean;
   logo_url: string | null;
   created_at: string;
   generation_count?: number;
@@ -16,6 +18,7 @@ interface Project {
 export default function HomePage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showArchived, setShowArchived] = useState(false);
   const [showNew, setShowNew] = useState(false);
   const [newName, setNewName] = useState('');
   const [newClient, setNewClient] = useState('');
@@ -102,11 +105,21 @@ export default function HomePage() {
           </p>
         </div>
 
-        <p className="text-xs font-bold uppercase tracking-widest text-teal-deep/30 dark:text-white/30 mb-4">Projekty</p>
+        <div className="flex items-center justify-between mb-4">
+          <p className="text-xs font-bold uppercase tracking-widest text-teal-deep/30 dark:text-white/30">Projekty</p>
+          {projects.some(p => p.archived) && (
+            <button
+              onClick={() => setShowArchived(v => !v)}
+              className="text-xs opacity-40 hover:opacity-80 transition-opacity"
+            >
+              {showArchived ? 'Ukryj zarchiwizowane' : `Pokaż zarchiwizowane (${projects.filter(p => p.archived).length})`}
+            </button>
+          )}
+        </div>
 
         {loading ? (
           <div className="text-center py-16 opacity-40 text-sm">Ładowanie...</div>
-        ) : projects.length === 0 ? (
+        ) : projects.filter(p => !p.archived).length === 0 && !showArchived ? (
           <div className="text-center py-20">
             <div className="text-5xl mb-4">🧱</div>
             <p className="font-bold mb-1">Brak projektów</p>
@@ -114,11 +127,11 @@ export default function HomePage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {projects.map(p => (
+            {projects.filter(p => showArchived || !p.archived).map(p => (
               <Link
                 key={p.id}
                 href={`/projekt/${p.id}`}
-                className="bg-white dark:bg-teal-mid border border-teal-deep/10 dark:border-holo-mint/10 rounded-2xl p-5 hover:border-holo-mint/60 dark:hover:border-holo-mint/40 transition-all group"
+                className={`bg-white dark:bg-teal-mid border rounded-2xl p-5 hover:border-holo-mint/60 dark:hover:border-holo-mint/40 transition-all group ${p.archived ? 'border-teal-deep/5 dark:border-holo-mint/5 opacity-50' : 'border-teal-deep/10 dark:border-holo-mint/10'}`}
               >
                 <div className="flex items-start justify-between mb-4">
                   <div className="w-10 h-10 bg-offwhite dark:bg-teal-deep rounded-xl flex items-center justify-center overflow-hidden border border-teal-deep/10 dark:border-holo-mint/10">
@@ -128,12 +141,14 @@ export default function HomePage() {
                       <span className="font-black text-sm holo-text">{p.name[0]}</span>
                     )}
                   </div>
-                  <span className="text-xs opacity-30">
-                    {new Date(p.created_at).toLocaleDateString('pl-PL')}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    {p.archived && <span className="text-xs opacity-40 bg-teal-deep/10 dark:bg-teal-mid px-2 py-0.5 rounded-full">archiwum</span>}
+                    <span className="text-xs opacity-30">{new Date(p.created_at).toLocaleDateString('pl-PL')}</span>
+                  </div>
                 </div>
                 <h3 className="font-bold group-hover:text-holo-mint transition-colors">{p.name}</h3>
                 {p.client_name && <p className="text-sm opacity-40 mt-0.5">{p.client_name}</p>}
+                {p.description && <p className="text-xs opacity-30 mt-1 line-clamp-2">{p.description}</p>}
                 <div className="flex items-center gap-3 mt-4 text-xs opacity-30">
                   <span className="flex items-center gap-1">
                     <Image className="h-3 w-3" /> {p.generation_count ?? 0} grafik

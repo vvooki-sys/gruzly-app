@@ -2,10 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   ArrowLeft, Upload, Wand2, Image, Loader2, Download,
   Settings, Sun, Moon, BookmarkPlus, Trash2, Zap, Target, PenLine,
-  Layers, Camera, X, Check,
+  Layers, Camera, X, Check, MoreVertical, Archive,
 } from 'lucide-react';
 
 interface Project {
@@ -15,6 +16,8 @@ interface Project {
   id: number;
   name: string;
   client_name: string | null;
+  description?: string | null;
+  archived?: boolean;
   logo_url: string | null;
   style_description: string | null;
   typography_notes: string | null;
@@ -92,6 +95,7 @@ function getFormatLabel(fmt: string) {
 }
 
 export default function ProjectPage({ params }: { params: Promise<{ id: string }> }) {
+  const router = useRouter();
   const [id, setId] = useState('');
   const [project, setProject] = useState<Project | null>(null);
   const [assets, setAssets] = useState<Asset[]>([]);
@@ -154,6 +158,14 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
   const [centralPrompt, setCentralPrompt] = useState('');
   const [generatingElement, setGeneratingElement] = useState(false);
 
+  // Project edit modal state
+  const [editProjectOpen, setEditProjectOpen] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editClientName, setEditClientName] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [savingProject, setSavingProject] = useState(false);
+  const [deletingProject, setDeletingProject] = useState(false);
+
   // Tone of voice state
   const [toneOfVoice, setToneOfVoice] = useState('');
   const [savingTov, setSavingTov] = useState(false);
@@ -198,6 +210,51 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
     document.documentElement.setAttribute('data-theme', next);
     localStorage.setItem('gruzly-theme', next);
     setIsDark(!isDark);
+  };
+
+  const openEditProject = () => {
+    if (!project) return;
+    setEditName(project.name);
+    setEditClientName(project.client_name || '');
+    setEditDescription(project.description || '');
+    setEditProjectOpen(true);
+  };
+
+  const saveProjectMeta = async () => {
+    if (!id || !editName.trim()) return;
+    setSavingProject(true);
+    try {
+      await fetch(`/api/projects/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: editName.trim(), clientName: editClientName || null, description: editDescription || null }),
+      });
+      setProject(p => p ? { ...p, name: editName.trim(), client_name: editClientName || null, description: editDescription || null } : p);
+      setEditProjectOpen(false);
+      showToast('Projekt zapisany ✓');
+    } finally {
+      setSavingProject(false);
+    }
+  };
+
+  const toggleArchive = async () => {
+    if (!project) return;
+    const newArchived = !project.archived;
+    await fetch(`/api/projects/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ archived: newArchived }),
+    });
+    setProject(p => p ? { ...p, archived: newArchived } : p);
+    setEditProjectOpen(false);
+    showToast(newArchived ? 'Projekt zarchiwizowany' : 'Projekt przywrócony ✓');
+  };
+
+  const deleteProject = async () => {
+    if (!confirm('Czy na pewno chcesz usunąć ten projekt? Operacja jest nieodwracalna.')) return;
+    setDeletingProject(true);
+    await fetch(`/api/projects/${id}`, { method: 'DELETE' });
+    router.push('/');
   };
 
   const generate = async () => {
@@ -698,6 +755,13 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
           </button>
         </div>
 
+        <button
+          onClick={openEditProject}
+          className="w-9 h-9 rounded-full flex items-center justify-center border border-teal-deep/15 dark:border-holo-mint/15 hover:border-holo-mint/50 transition-colors opacity-50 hover:opacity-100 shrink-0"
+          aria-label="Edytuj projekt"
+        >
+          <MoreVertical className="h-4 w-4" />
+        </button>
         <button
           onClick={toggleTheme}
           className="w-9 h-9 rounded-full flex items-center justify-center border border-teal-deep/15 dark:border-holo-mint/15 hover:border-holo-mint/50 transition-colors opacity-50 hover:opacity-100 shrink-0"
@@ -2024,6 +2088,94 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
           </div>
         )}
       </div>
+
+      {/* ── Modal: Edytuj projekt ───────────────────────────────────────────── */}
+      {editProjectOpen && (
+        <div className="fixed inset-0 bg-teal-deep/60 dark:bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-teal-mid border border-teal-deep/15 dark:border-holo-mint/15 rounded-2xl w-full max-w-md shadow-2xl">
+
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-teal-deep/10 dark:border-holo-mint/10">
+              <h2 className="text-base font-black">Ustawienia projektu</h2>
+              <button onClick={() => setEditProjectOpen(false)} className="w-8 h-8 rounded-full flex items-center justify-center opacity-40 hover:opacity-100 hover:bg-teal-deep/10 transition-all">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Fields */}
+            <div className="px-6 py-4 space-y-4">
+              <div>
+                <label className="text-xs font-semibold opacity-50 uppercase tracking-wide block mb-1.5">Nazwa projektu *</label>
+                <input
+                  type="text"
+                  className="w-full bg-offwhite dark:bg-teal-deep rounded-xl px-3 py-2.5 text-sm border border-teal-deep/15 dark:border-holo-mint/10 focus:border-holo-mint outline-none transition-colors"
+                  value={editName}
+                  onChange={e => setEditName(e.target.value)}
+                  autoFocus
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold opacity-50 uppercase tracking-wide block mb-1.5">Klient</label>
+                <input
+                  type="text"
+                  className="w-full bg-offwhite dark:bg-teal-deep rounded-xl px-3 py-2.5 text-sm border border-teal-deep/15 dark:border-holo-mint/10 focus:border-holo-mint outline-none transition-colors"
+                  placeholder="Opcjonalnie"
+                  value={editClientName}
+                  onChange={e => setEditClientName(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold opacity-50 uppercase tracking-wide block mb-1.5">Opis projektu</label>
+                <textarea
+                  className="w-full bg-offwhite dark:bg-teal-deep rounded-xl px-3 py-2.5 text-sm border border-teal-deep/15 dark:border-holo-mint/10 focus:border-holo-mint outline-none transition-colors resize-none"
+                  rows={3}
+                  placeholder="Krótki opis, cel projektu, notatki..."
+                  value={editDescription}
+                  onChange={e => setEditDescription(e.target.value)}
+                />
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="px-6 pb-5 space-y-3">
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setEditProjectOpen(false)}
+                  className="flex-1 h-10 rounded-full border border-teal-deep/15 dark:border-holo-mint/15 text-sm font-semibold opacity-50 hover:opacity-100 transition-opacity"
+                >
+                  Anuluj
+                </button>
+                <button
+                  onClick={saveProjectMeta}
+                  disabled={savingProject || !editName.trim()}
+                  className="flex-1 h-10 rounded-full holo-gradient text-teal-deep text-sm font-bold disabled:opacity-40 hover:opacity-90 transition-opacity"
+                >
+                  {savingProject ? 'Zapisuję...' : 'Zapisz'}
+                </button>
+              </div>
+
+              {/* Divider */}
+              <div className="border-t border-teal-deep/10 dark:border-holo-mint/10 pt-3 space-y-2">
+                <button
+                  onClick={toggleArchive}
+                  className="w-full h-9 rounded-full border border-teal-deep/15 dark:border-holo-mint/15 text-sm font-semibold flex items-center justify-center gap-2 opacity-60 hover:opacity-100 hover:border-holo-mint/50 transition-all"
+                >
+                  <Archive className="h-4 w-4" />
+                  {project?.archived ? 'Przywróć projekt' : 'Archiwizuj projekt'}
+                </button>
+                <button
+                  onClick={deleteProject}
+                  disabled={deletingProject}
+                  className="w-full h-9 rounded-full border border-red-500/30 text-red-400 text-sm font-semibold flex items-center justify-center gap-2 opacity-60 hover:opacity-100 hover:border-red-500/60 hover:bg-red-500/5 disabled:opacity-30 transition-all"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  {deletingProject ? 'Usuwam...' : 'Usuń projekt'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

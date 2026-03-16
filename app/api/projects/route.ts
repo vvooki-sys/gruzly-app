@@ -9,6 +9,8 @@ export async function GET() {
   await getDb()`ALTER TABLE projects ADD COLUMN IF NOT EXISTS brand_sections JSONB DEFAULT '[]'::jsonb`.catch(() => {});
   await getDb()`ALTER TABLE projects ADD COLUMN IF NOT EXISTS generation_mode VARCHAR(20) DEFAULT 'creative'`.catch(() => {});
   await getDb()`ALTER TABLE projects ADD COLUMN IF NOT EXISTS tone_of_voice TEXT`.catch(() => {});
+  await getDb()`ALTER TABLE projects ADD COLUMN IF NOT EXISTS description TEXT`.catch(() => {});
+  await getDb()`ALTER TABLE projects ADD COLUMN IF NOT EXISTS archived BOOLEAN DEFAULT FALSE`.catch(() => {});
   await getDb()`ALTER TABLE brand_assets ADD COLUMN IF NOT EXISTS variant TEXT DEFAULT 'default'`.catch(() => {});
   await getDb()`ALTER TABLE brand_assets ADD COLUMN IF NOT EXISTS description TEXT`.catch(() => {});
   await getDb()`ALTER TABLE brand_assets ADD COLUMN IF NOT EXISTS mime_type TEXT`.catch(() => {});

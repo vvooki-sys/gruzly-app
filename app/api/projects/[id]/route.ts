@@ -17,7 +17,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const { id } = await params;
   const projectId = parseInt(id);
   const body = await req.json();
-  const { name, clientName, styleDescription, typographyNotes, colorPalette, logoUrl, brandRules, brandAnalysis, brandSections, sectionId, sectionContent, generationMode, toneOfVoice } = body;
+  const { name, clientName, description, archived, styleDescription, typographyNotes, colorPalette, logoUrl, brandRules, brandAnalysis, brandSections, sectionId, sectionContent, generationMode, toneOfVoice } = body;
 
   // Full brand sections replace
   if (brandSections !== undefined) {
@@ -31,6 +31,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const sections = (proj?.brand_sections || []) as Array<{ id: string; [key: string]: unknown }>;
     const updated = sections.map(s => s.id === sectionId ? { ...s, content: sectionContent } : s);
     await getDb()`UPDATE projects SET brand_sections = ${JSON.stringify(updated)}::jsonb, updated_at = NOW() WHERE id = ${projectId}`;
+    return NextResponse.json({ ok: true });
+  }
+
+  // archived fast-path
+  if (archived !== undefined) {
+    await getDb()`UPDATE projects SET archived = ${archived}, updated_at = NOW() WHERE id = ${projectId}`;
     return NextResponse.json({ ok: true });
   }
 
@@ -52,6 +58,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       brand_analysis = COALESCE(${brandAnalysis ?? null}, brand_analysis),
       logo_url = COALESCE(${logoUrl ?? null}, logo_url),
       tone_of_voice = COALESCE(${toneOfVoice ?? null}, tone_of_voice),
+      description = COALESCE(${description ?? null}, description),
       updated_at = NOW()
     WHERE id = ${projectId} RETURNING *
   `;
