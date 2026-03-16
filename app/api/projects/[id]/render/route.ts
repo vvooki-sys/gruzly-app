@@ -598,11 +598,7 @@ async function renderHandler(req: NextRequest, params: Promise<{ id: string }>) 
     ) : null,
   );
 
-  const imageResponse = new ImageResponse(element, {
-    width,
-    height,
-    ...(fontOptions.length ? { fonts: fontOptions } : {}),
-  });
+  const imageResponse = makeImageResponse(element, width, height);
 
   const arrayBuffer = await imageResponse.arrayBuffer();
 
