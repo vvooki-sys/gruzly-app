@@ -7,7 +7,7 @@ import React from 'react';
 
 export const runtime = 'edge';
 
-const sql = neon(process.env.DATABASE_URL!);
+const getDb = () => neon(process.env.DATABASE_URL!);
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Layout = Record<string, any>;
@@ -230,7 +230,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   let height = 1080;
 
   if (templateId) {
-    const [template] = await sql`SELECT * FROM templates WHERE id = ${templateId} AND project_id = ${projectId}`;
+    const [template] = await getDb()`SELECT * FROM templates WHERE id = ${templateId} AND project_id = ${projectId}`;
     if (!template) return NextResponse.json({ error: 'Template not found' }, { status: 404 });
     layout = template.layout as Layout;
     width = template.width;
@@ -369,7 +369,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const blobResult = await put(filename, arrayBuffer, { access: 'public', contentType: 'image/png' });
 
     const combinedBrief = [headline, subtext].filter(Boolean).join(' | ');
-    const [generation] = await sql`
+    const [generation] = await getDb()`
       INSERT INTO generations (project_id, brief, format, prompt, image_urls, status)
       VALUES (${projectId}, ${combinedBrief}, ${'precision'}, ${JSON.stringify(layout)}, ${JSON.stringify([blobResult.url])}, 'done')
       RETURNING *
@@ -587,7 +587,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   });
 
   const combinedBrief = [headline, subtext].filter(Boolean).join(' | ');
-  const [generation] = await sql`
+  const [generation] = await getDb()`
     INSERT INTO generations (project_id, brief, format, prompt, image_urls, status)
     VALUES (
       ${projectId},

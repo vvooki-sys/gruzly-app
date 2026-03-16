@@ -4,7 +4,7 @@ import { neon } from '@neondatabase/serverless';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
 export const maxDuration = 60;
-const sql = neon(process.env.DATABASE_URL!);
+const getDb = () => neon(process.env.DATABASE_URL!);
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -18,7 +18,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: 'file or text required' }, { status: 400 });
   }
 
-  const [project] = await sql`SELECT * FROM projects WHERE id = ${parseInt(id)}`;
+  const [project] = await getDb()`SELECT * FROM projects WHERE id = ${parseInt(id)}`;
   if (!project) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
   // Prepare brief text

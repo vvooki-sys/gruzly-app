@@ -5,7 +5,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 
 export const maxDuration = 300;
 
-const sql = neon(process.env.DATABASE_URL!);
+const getDb = () => neon(process.env.DATABASE_URL!);
 
 interface BrandSection {
   id: string;
@@ -36,10 +36,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const { source } = await req.json().catch(() => ({}));
 
-  const [project] = await sql`SELECT * FROM projects WHERE id = ${projectId}`;
+  const [project] = await getDb()`SELECT * FROM projects WHERE id = ${projectId}`;
   if (!project) return NextResponse.json({ error: 'Project not found' }, { status: 404 });
 
-  const assets = await sql`SELECT * FROM brand_assets WHERE project_id = ${projectId}`;
+  const assets = await getDb()`SELECT * FROM brand_assets WHERE project_id = ${projectId}`;
 
   let analysisPrompt: string;
   let imageParts: Array<{ inlineData: { data: string; mimeType: string } }> = [];
@@ -185,7 +185,7 @@ Return this exact JSON:
       .join('\n\n');
 
     // Save brand_sections and brand_analysis
-    await sql`
+    await getDb()`
       UPDATE projects
       SET brand_sections = ${JSON.stringify(parsed.sections)}::jsonb,
           brand_analysis = ${brandAnalysis},
@@ -202,7 +202,7 @@ Return this exact JSON:
         suggestedRules = rulesText;
       } else {
         brandRules = rulesText;
-        await sql`UPDATE projects SET brand_rules = ${rulesText} WHERE id = ${projectId}`;
+        await getDb()`UPDATE projects SET brand_rules = ${rulesText} WHERE id = ${projectId}`;
       }
     }
 

@@ -5,13 +5,13 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 
 export const maxDuration = 60;
 
-const sql = neon(process.env.DATABASE_URL!);
+const getDb = () => neon(process.env.DATABASE_URL!);
 
 export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const projectId = parseInt(id);
 
-  const [project] = await sql`SELECT * FROM projects WHERE id = ${projectId}`;
+  const [project] = await getDb()`SELECT * FROM projects WHERE id = ${projectId}`;
   if (!project) return NextResponse.json({ error: 'Project not found' }, { status: 404 });
 
   type BrandSec = { title: string; content: string; order: number };

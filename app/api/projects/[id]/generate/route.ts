@@ -6,7 +6,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 
 export const maxDuration = 30;
 
-const sql = neon(process.env.DATABASE_URL!);
+const getDb = () => neon(process.env.DATABASE_URL!);
 
 const FORMAT_SIZES: Record<string, string> = {
   fb_post: 'square 1:1 aspect ratio, 1080x1080px',
@@ -54,13 +54,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: 'headline and format required' }, { status: 400 });
   }
 
-  const [project] = await sql`SELECT * FROM projects WHERE id = ${parseInt(id)}`;
+  const [project] = await getDb()`SELECT * FROM projects WHERE id = ${parseInt(id)}`;
   if (!project) return NextResponse.json({ error: 'Project not found' }, { status: 404 });
 
-  const assets = await sql`SELECT * FROM brand_assets WHERE project_id = ${parseInt(id)}`;
+  const assets = await getDb()`SELECT * FROM brand_assets WHERE project_id = ${parseInt(id)}`;
 
   // Ensure parent_id column exists
-  await sql`ALTER TABLE generations ADD COLUMN IF NOT EXISTS parent_id INTEGER REFERENCES generations(id)`.catch(() => {});
+  await getDb()`ALTER TABLE generations ADD COLUMN IF NOT EXISTS parent_id INTEGER REFERENCES generations(id)`.catch(() => {});
 
   type AssetRow = { type: string; url: string; filename: string; variant?: string; description?: string; mime_type?: string };
   const assetList = assets as AssetRow[];
@@ -287,7 +287,7 @@ ${layer1}${layer2}${layer3}${creativityBlock}${closing}`;
   const dbFormat = mode === 'fast' ? `${formatWithCreativity}:fast` : formatWithCreativity;
   const combinedBrief = [headline, subtext].filter(Boolean).join(' | ');
 
-  const [generation] = await sql`
+  const [generation] = await getDb()`
     INSERT INTO generations (project_id, brief, format, prompt, image_urls, status)
     VALUES (${parseInt(id)}, ${combinedBrief}, ${dbFormat}, ${textPrompt}, ${JSON.stringify(imageUrls)}, 'done')
     RETURNING *

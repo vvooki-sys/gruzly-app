@@ -5,7 +5,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 
 export const maxDuration = 60;
 
-const sql = neon(process.env.DATABASE_URL!);
+const getDb = () => neon(process.env.DATABASE_URL!);
 
 const FORMAT_DIMENSIONS: Record<string, { width: number; height: number }> = {
   fb_post: { width: 1080, height: 1080 },
@@ -19,7 +19,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const { format = 'fb_post' } = await req.json();
   const projectId = parseInt(id);
 
-  const [project] = await sql`SELECT * FROM projects WHERE id = ${projectId}`;
+  const [project] = await getDb()`SELECT * FROM projects WHERE id = ${projectId}`;
   if (!project) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
   const sections = (project.brand_sections || []) as Array<{ title: string; content: string }>;
@@ -81,7 +81,7 @@ RULES:
     const cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
     const layout = JSON.parse(cleaned);
 
-    const [template] = await sql`
+    const [template] = await getDb()`
       INSERT INTO templates (project_id, name, format, width, height, layout)
       VALUES (${projectId}, ${format + ' – ' + project.name}, ${format}, ${dims.width}, ${dims.height}, ${JSON.stringify(layout)}::jsonb)
       RETURNING *

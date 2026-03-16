@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { neon } from '@neondatabase/serverless';
 import { put } from '@vercel/blob';
 
-const sql = neon(process.env.DATABASE_URL!);
+const getDb = () => neon(process.env.DATABASE_URL!);
 
 const ALLOWED_TYPES = ['logo', 'reference', 'brandbook', 'brand-element', 'photo'];
 
@@ -21,7 +21,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       return NextResponse.json({ error: 'url, type and filename required' }, { status: 400 });
     }
     if (type === 'reference') {
-      const [{ count }] = await sql`
+      const [{ count }] = await getDb()`
         SELECT COUNT(*)::int as count FROM brand_assets
         WHERE project_id = ${projectId} AND type = 'reference'
       `;
@@ -29,7 +29,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         return NextResponse.json({ error: 'Max 5 reference images allowed' }, { status: 400 });
       }
     }
-    const [asset] = await sql`
+    const [asset] = await getDb()`
       INSERT INTO brand_assets (project_id, type, url, filename, variant, description)
       VALUES (${projectId}, ${type}, ${url}, ${filename}, ${variant}, ${description})
       RETURNING *
@@ -54,7 +54,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   // Max 5 references
   if (type === 'reference') {
-    const [{ count }] = await sql`
+    const [{ count }] = await getDb()`
       SELECT COUNT(*)::int as count FROM brand_assets
       WHERE project_id = ${projectId} AND type = 'reference'
     `;
@@ -65,12 +65,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   // For logo: delete same variant only (multiple variants can coexist)
   if (type === 'logo') {
-    await sql`DELETE FROM brand_assets WHERE project_id = ${projectId} AND type = 'logo' AND variant = ${variant}`;
+    await getDb()`DELETE FROM brand_assets WHERE project_id = ${projectId} AND type = 'logo' AND variant = ${variant}`;
   }
 
   // For brandbook: replace previous (only one allowed)
   if (type === 'brandbook') {
-    await sql`DELETE FROM brand_assets WHERE project_id = ${projectId} AND type = 'brandbook'`;
+    await getDb()`DELETE FROM brand_assets WHERE project_id = ${projectId} AND type = 'brandbook'`;
   }
 
   const bytes = await file.arrayBuffer();
@@ -83,7 +83,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     contentType: file.type,
   });
 
-  const [asset] = await sql`
+  const [asset] = await getDb()`
     INSERT INTO brand_assets (project_id, type, url, filename, variant, description, mime_type)
     VALUES (${projectId}, ${type}, ${blob.url}, ${safeName}, ${variant}, ${description}, ${file.type})
     RETURNING *
@@ -91,9 +91,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   // Sync logo_url on projects with the oldest/default logo
   if (type === 'logo') {
-    const logos = await sql`SELECT url FROM brand_assets WHERE project_id = ${projectId} AND type = 'logo' ORDER BY created_at ASC LIMIT 1`;
+    const logos = await getDb()`SELECT url FROM brand_assets WHERE project_id = ${projectId} AND type = 'logo' ORDER BY created_at ASC LIMIT 1`;
     if (logos[0]) {
-      await sql`UPDATE projects SET logo_url = ${logos[0].url} WHERE id = ${projectId}`;
+      await getDb()`UPDATE projects SET logo_url = ${logos[0].url} WHERE id = ${projectId}`;
     }
   }
 
@@ -108,17 +108,17 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 
   if (!assetId) return NextResponse.json({ error: 'assetId required' }, { status: 400 });
 
-  const [asset] = await sql`
+  const [asset] = await getDb()`
     DELETE FROM brand_assets WHERE id = ${parseInt(assetId)} AND project_id = ${parseInt(id)} RETURNING *
   `;
 
   // Re-sync logo_url after logo deletion
   if (asset?.type === 'logo') {
-    const logos = await sql`SELECT url FROM brand_assets WHERE project_id = ${parseInt(id)} AND type = 'logo' ORDER BY created_at ASC LIMIT 1`;
+    const logos = await getDb()`SELECT url FROM brand_assets WHERE project_id = ${parseInt(id)} AND type = 'logo' ORDER BY created_at ASC LIMIT 1`;
     if (logos[0]) {
-      await sql`UPDATE projects SET logo_url = ${logos[0].url} WHERE id = ${parseInt(id)}`;
+      await getDb()`UPDATE projects SET logo_url = ${logos[0].url} WHERE id = ${parseInt(id)}`;
     } else {
-      await sql`UPDATE projects SET logo_url = NULL WHERE id = ${parseInt(id)}`;
+      await getDb()`UPDATE projects SET logo_url = NULL WHERE id = ${parseInt(id)}`;
     }
   }
 

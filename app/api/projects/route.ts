@@ -2,17 +2,17 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { neon } from '@neondatabase/serverless';
 
-const sql = neon(process.env.DATABASE_URL!);
+const getDb = () => neon(process.env.DATABASE_URL!);
 
 export async function GET() {
   // Migrations
-  await sql`ALTER TABLE projects ADD COLUMN IF NOT EXISTS brand_sections JSONB DEFAULT '[]'::jsonb`.catch(() => {});
-  await sql`ALTER TABLE projects ADD COLUMN IF NOT EXISTS generation_mode VARCHAR(20) DEFAULT 'creative'`.catch(() => {});
-  await sql`ALTER TABLE projects ADD COLUMN IF NOT EXISTS tone_of_voice TEXT`.catch(() => {});
-  await sql`ALTER TABLE brand_assets ADD COLUMN IF NOT EXISTS variant TEXT DEFAULT 'default'`.catch(() => {});
-  await sql`ALTER TABLE brand_assets ADD COLUMN IF NOT EXISTS description TEXT`.catch(() => {});
-  await sql`ALTER TABLE brand_assets ADD COLUMN IF NOT EXISTS mime_type TEXT`.catch(() => {});
-  await sql`
+  await getDb()`ALTER TABLE projects ADD COLUMN IF NOT EXISTS brand_sections JSONB DEFAULT '[]'::jsonb`.catch(() => {});
+  await getDb()`ALTER TABLE projects ADD COLUMN IF NOT EXISTS generation_mode VARCHAR(20) DEFAULT 'creative'`.catch(() => {});
+  await getDb()`ALTER TABLE projects ADD COLUMN IF NOT EXISTS tone_of_voice TEXT`.catch(() => {});
+  await getDb()`ALTER TABLE brand_assets ADD COLUMN IF NOT EXISTS variant TEXT DEFAULT 'default'`.catch(() => {});
+  await getDb()`ALTER TABLE brand_assets ADD COLUMN IF NOT EXISTS description TEXT`.catch(() => {});
+  await getDb()`ALTER TABLE brand_assets ADD COLUMN IF NOT EXISTS mime_type TEXT`.catch(() => {});
+  await getDb()`
     CREATE TABLE IF NOT EXISTS templates (
       id SERIAL PRIMARY KEY,
       project_id INTEGER NOT NULL REFERENCES projects(id),
@@ -26,7 +26,7 @@ export async function GET() {
     )
   `.catch(() => {});
 
-  const rows = await sql`
+  const rows = await getDb()`
     SELECT p.*, COUNT(g.id)::int as generation_count
     FROM projects p
     LEFT JOIN generations g ON g.project_id = p.id
@@ -39,7 +39,7 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   const { name, clientName } = await req.json();
   if (!name) return NextResponse.json({ error: 'name required' }, { status: 400 });
-  const rows = await sql`
+  const rows = await getDb()`
     INSERT INTO projects (name, client_name) VALUES (${name}, ${clientName ?? null}) RETURNING *
   `;
   return NextResponse.json(rows[0], { status: 201 });

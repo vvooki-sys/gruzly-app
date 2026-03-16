@@ -2,14 +2,14 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { neon } from '@neondatabase/serverless';
 
-const sql = neon(process.env.DATABASE_URL!);
+const getDb = () => neon(process.env.DATABASE_URL!);
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [project] = await sql`SELECT * FROM projects WHERE id = ${parseInt(id)}`;
+  const [project] = await getDb()`SELECT * FROM projects WHERE id = ${parseInt(id)}`;
   if (!project) return NextResponse.json({ error: 'Not found' }, { status: 404 });
-  const assets = await sql`SELECT * FROM brand_assets WHERE project_id = ${parseInt(id)} ORDER BY created_at ASC`;
-  const generations = await sql`SELECT * FROM generations WHERE project_id = ${parseInt(id)} ORDER BY created_at DESC`;
+  const assets = await getDb()`SELECT * FROM brand_assets WHERE project_id = ${parseInt(id)} ORDER BY created_at ASC`;
+  const generations = await getDb()`SELECT * FROM generations WHERE project_id = ${parseInt(id)} ORDER BY created_at DESC`;
   return NextResponse.json({ project, assets, generations });
 }
 
@@ -21,27 +21,27 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   // Full brand sections replace
   if (brandSections !== undefined) {
-    await sql`UPDATE projects SET brand_sections = ${JSON.stringify(brandSections)}::jsonb, updated_at = NOW() WHERE id = ${projectId}`;
+    await getDb()`UPDATE projects SET brand_sections = ${JSON.stringify(brandSections)}::jsonb, updated_at = NOW() WHERE id = ${projectId}`;
     return NextResponse.json({ ok: true });
   }
 
   // Single section content update
   if (sectionId !== undefined && sectionContent !== undefined) {
-    const [proj] = await sql`SELECT brand_sections FROM projects WHERE id = ${projectId}`;
+    const [proj] = await getDb()`SELECT brand_sections FROM projects WHERE id = ${projectId}`;
     const sections = (proj?.brand_sections || []) as Array<{ id: string; [key: string]: unknown }>;
     const updated = sections.map(s => s.id === sectionId ? { ...s, content: sectionContent } : s);
-    await sql`UPDATE projects SET brand_sections = ${JSON.stringify(updated)}::jsonb, updated_at = NOW() WHERE id = ${projectId}`;
+    await getDb()`UPDATE projects SET brand_sections = ${JSON.stringify(updated)}::jsonb, updated_at = NOW() WHERE id = ${projectId}`;
     return NextResponse.json({ ok: true });
   }
 
   // generation_mode fast-path
   if (generationMode !== undefined) {
-    await sql`UPDATE projects SET generation_mode = ${generationMode}, updated_at = NOW() WHERE id = ${projectId}`;
+    await getDb()`UPDATE projects SET generation_mode = ${generationMode}, updated_at = NOW() WHERE id = ${projectId}`;
     return NextResponse.json({ ok: true });
   }
 
   // Regular fields update
-  const rows = await sql`
+  const rows = await getDb()`
     UPDATE projects SET
       name = COALESCE(${name ?? null}, name),
       client_name = COALESCE(${clientName ?? null}, client_name),
@@ -60,6 +60,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  await sql`DELETE FROM projects WHERE id = ${parseInt(id)}`;
+  await getDb()`DELETE FROM projects WHERE id = ${parseInt(id)}`;
   return NextResponse.json({ ok: true });
 }

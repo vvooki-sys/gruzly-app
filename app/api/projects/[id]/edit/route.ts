@@ -6,7 +6,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 
 export const maxDuration = 30;
 
-const sql = neon(process.env.DATABASE_URL!);
+const getDb = () => neon(process.env.DATABASE_URL!);
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -16,7 +16,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: 'imageUrl and instruction required' }, { status: 400 });
   }
 
-  const [project] = await sql`SELECT * FROM projects WHERE id = ${parseInt(id)}`;
+  const [project] = await getDb()`SELECT * FROM projects WHERE id = ${parseInt(id)}`;
   if (!project) return NextResponse.json({ error: 'Project not found' }, { status: 404 });
 
   // Pobierz obraz do edycji jako base64
@@ -83,7 +83,7 @@ Maintain the overall layout, style and branding. Only change what is specified i
 
     if (!newImageUrl) throw new Error('No image in response');
 
-    const [generation] = await sql`
+    const [generation] = await getDb()`
       INSERT INTO generations (project_id, brief, format, prompt, image_urls, status, parent_id)
       VALUES (
         ${parseInt(id)},
