@@ -268,10 +268,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const data: RenderData = { headline, subtext, ctaText, legalText, stickerText, centralImageUrl, logoUrl };
     const bg = layout.background || {};
     const copyConf = layout.copy || {};
-    const whiteSpaceHeight = layout.whiteSpace?.enabled ? (layout.whiteSpace.height || 0) : 0;
 
     const bgValue = bg.type === 'gradient'
-      ? `linear-gradient(${bg.gradientDirection === 'left-right' ? '90deg' : bg.gradientDirection === 'diagonal' ? '135deg' : '180deg'}, ${bg.gradientFrom || '#6e46a0'}, ${bg.gradientTo || '#2d1464'})`
+      ? `linear-gradient(${bg.gradientAngle !== undefined ? `${bg.gradientAngle}deg` : bg.gradientDirection === 'left-right' ? '90deg' : bg.gradientDirection === 'diagonal' ? '135deg' : '180deg'}, ${bg.gradientFrom || '#6e46a0'}, ${bg.gradientTo || '#2d1464'})`
       : (bg.color || '#1B334B');
 
     // Helper: build a zone as a flex container with its children
@@ -302,59 +301,75 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       }, ...children);
     }
 
-    const headerZone = layout.zones.find((z: Zone) => z.id === 'header');
-    const mainLeftZone = layout.zones.find((z: Zone) => z.id === 'main-left');
-    const mainRightZone = layout.zones.find((z: Zone) => z.id === 'main-right');
-    const footerZone = layout.zones.find((z: Zone) => z.id === 'footer');
-
-    // Main row: left column + optional right column side by side
-    const mainRowChildren: (React.ReactElement | null)[] = [
-      buildZoneEl(mainLeftZone, 'ml', { flex: 1 }),
-      mainRightZone ? buildZoneEl(mainRightZone, 'mr', { flex: 1 }) : null,
-    ].filter((el: React.ReactElement | null): el is React.ReactElement => el !== null);
-
-    const mainRow = React.createElement('div', {
-      key: 'main',
-      style: { display: 'flex', flexDirection: 'row', flex: 1, width: '100%' },
-    }, ...mainRowChildren);
-
-    // Footer/white-space row
-    let bottomEl: React.ReactElement | null = null;
-    if (layout.whiteSpace?.enabled && whiteSpaceHeight > 0) {
-      // Render footer zone children inside white background
-      const footerChildren = (footerZone?.children || [])
-        .map((child: ZoneChild, ci: number) => {
-          const el = renderZoneChild(child, layout, data);
-          return el ? React.createElement('div', { key: `fc${ci}`, style: { display: 'flex' } }, el) : null;
-        })
-        .filter((el: React.ReactElement | null): el is React.ReactElement => el !== null);
-
-      bottomEl = React.createElement('div', {
-        key: 'ws',
-        style: {
-          width: '100%',
-          height: whiteSpaceHeight,
-          backgroundColor: '#ffffff',
-          borderTopLeftRadius: layout.whiteSpace.borderRadius || 0,
-          borderTopRightRadius: layout.whiteSpace.borderRadius || 0,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          paddingLeft: 32,
-          paddingRight: 32,
-          gap: 16,
-        },
-      }, ...footerChildren);
-    } else if (footerZone) {
-      // No white space — render footer as a normal row
-      bottomEl = buildZoneEl(footerZone, 'ftr', { width: '100%' });
+    // Generic zone layout: sort by rowStart, group into rows, render with proportional flex
+    function parseGridArea(gridArea: string) {
+      const parts = gridArea.split('/').map((s: string) => parseInt(s.trim()));
+      return { rowStart: parts[0] || 1, colStart: parts[1] || 1, rowEnd: parts[2] || 2, colEnd: parts[3] || 13 };
     }
 
-    const rootChildren: (React.ReactElement | null)[] = [
-      headerZone ? buildZoneEl(headerZone, 'hdr', { width: '100%' }) : null,
-      mainRow,
-      bottomEl,
-    ].filter((el: React.ReactElement | null): el is React.ReactElement => el !== null);
+    const sortedZones = [...layout.zones].sort((a: Zone, b: Zone) => {
+      return parseGridArea(a.gridArea).rowStart - parseGridArea(b.gridArea).rowStart;
+    });
+
+    // Group zones into rows (zones with same rowStart are side by side)
+    const zoneRows: Zone[][] = [];
+    let lastRowStart = -1;
+    for (const zone of sortedZones) {
+      const { rowStart } = parseGridArea(zone.gridArea);
+      if (rowStart !== lastRowStart) {
+        zoneRows.push([zone]);
+        lastRowStart = rowStart;
+      } else {
+        zoneRows[zoneRows.length - 1].push(zone);
+      }
+    }
+
+    // Build row elements with proportional flex sizing
+    const rowElements = zoneRows.map((rowZones: Zone[], ri: number) => {
+      const rowStart = parseGridArea(rowZones[0].gridArea).rowStart;
+      const rowEnd = Math.max(...rowZones.map((z: Zone) => parseGridArea(z.gridArea).rowEnd));
+      const rowSpan = Math.max(rowEnd - rowStart, 1);
+
+      // Check for whiteSpace zone
+      const isWhiteSpaceRow = layout.whiteSpace?.enabled && ri === zoneRows.length - 1 && layout.whiteSpace.height > 0;
+
+      const zoneEls = rowZones.map((zone: Zone, zi: number) => {
+        const { colStart, colEnd } = parseGridArea(zone.gridArea);
+        const colSpan = Math.max(colEnd - colStart, 1);
+        return buildZoneEl(zone, `z${ri}-${zi}`, {
+          flex: colSpan,
+          display: 'flex',
+        });
+      }).filter((el): el is React.ReactElement => el !== null);
+
+      if (isWhiteSpaceRow) {
+        return React.createElement('div', {
+          key: `row${ri}`,
+          style: {
+            width: '100%',
+            height: layout.whiteSpace!.height,
+            backgroundColor: layout.whiteSpace!.color || '#ffffff',
+            borderTopLeftRadius: layout.whiteSpace!.borderRadius || 0,
+            borderTopRightRadius: layout.whiteSpace!.borderRadius || 0,
+            display: 'flex',
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 16,
+          },
+        }, ...zoneEls);
+      }
+
+      if (zoneEls.length === 1) {
+        return React.createElement('div', {
+          key: `row${ri}`,
+          style: { display: 'flex', flex: rowSpan, width: '100%' },
+        }, zoneEls[0]);
+      }
+      return React.createElement('div', {
+        key: `row${ri}`,
+        style: { display: 'flex', flexDirection: 'row', flex: rowSpan, width: '100%' },
+      }, ...zoneEls);
+    }).filter((el): el is React.ReactElement => el !== null);
 
     const element = React.createElement('div', {
       style: {
@@ -365,8 +380,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         fontFamily: copyConf.fontFamily || 'Manrope',
         overflow: 'hidden',
         background: bgValue,
+        paddingTop: layout.padding?.top || 36,
+        paddingRight: layout.padding?.right || 36,
+        paddingBottom: layout.padding?.bottom || 36,
+        paddingLeft: layout.padding?.left || 36,
       },
-    }, ...rootChildren);
+    }, ...rowElements);
 
     const imageResponse = new ImageResponse(element, {
       width,

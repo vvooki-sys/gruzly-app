@@ -65,6 +65,26 @@ interface BrandSection {
   icon?: string;
 }
 
+interface SavedTemplate {
+  id: number;
+  name: string;
+  format: string;
+  is_user_template: boolean;
+  created_at: string;
+}
+
+interface EditorZone {
+  id: string;
+  gridArea: string; // "rowStart / colStart / rowEnd / colEnd"
+  label: string;
+  color: string;
+  children: Array<{ type: string }>;
+  flexDirection: string;
+  justifyContent: string;
+  alignItems: string;
+  gap?: number;
+}
+
 const FORMATS = [
   { value: 'fb_post', label: 'Facebook Post', size: '1080×1080' },
   { value: 'ln_post', label: 'LinkedIn Post',  size: '1200×627' },
@@ -158,6 +178,18 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
   const [centralPrompt, setCentralPrompt] = useState('');
   const [generatingElement, setGeneratingElement] = useState(false);
 
+  // Template editor state
+  const [editorZones, setEditorZones] = useState<EditorZone[]>([]);
+  const [savedTemplates, setSavedTemplates] = useState<SavedTemplate[]>([]);
+  const [editorTemplateName, setEditorTemplateName] = useState('');
+  const [savingEditorTemplate, setSavingEditorTemplate] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [draggingZone, setDraggingZone] = useState<string | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [resizingZone, setResizingZone] = useState<string | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [dragStart, setDragStart] = useState<{ mouseX: number; mouseY: number; origArea: string } | null>(null);
+
   // Project edit modal state
   const [editProjectOpen, setEditProjectOpen] = useState(false);
   const [editName, setEditName] = useState('');
@@ -196,6 +228,10 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
           setToneOfVoice(d.project.tone_of_voice || '');
           setLoading(false);
         });
+      fetch(`/api/projects/${p.id}/templates`)
+        .then(r => r.json())
+        .then(d => { if (Array.isArray(d)) setSavedTemplates(d); })
+        .catch(() => {});
     });
     setIsDark(document.documentElement.getAttribute('data-theme') !== 'light');
   }, []);
@@ -516,6 +552,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
       const tmpl = data.template || { layout: data.layout };
       setPrecisionTemplate(tmpl);
       if (tmpl.id) setPrecisionTemplateId(tmpl.id);
+      setEditorZones(zonesFromLayout(tmpl.layout || {}));
       showToast('Szablon wygenerowany ✓');
     } catch (e) {
       console.error(e);
@@ -533,8 +570,8 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          templateId: precisionTemplateId || undefined,
-          layout: precisionTemplateId ? undefined : precisionTemplate.layout,
+          templateId: editorZones.length > 0 ? undefined : (precisionTemplateId || undefined),
+          layout: editorZones.length > 0 ? editorZonesToLayout() : (precisionTemplateId ? undefined : precisionTemplate.layout),
           headline,
           subtext,
           ctaText,
@@ -585,6 +622,86 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
       const asset = await res.json();
       setCentralImageUrl(asset.url);
     }
+  };
+
+  const ZONE_COLORS: Record<string, string> = {
+    logo: '#B3F5DC', headline: '#9BE5E0', subtext: '#9BE5E0',
+    'central-image': '#B3A0F5', cta: '#F5D9A0', sticker: '#F5A0B3',
+    legal: '#A0B3F5', spacer: '#555', text: '#888',
+  };
+
+  const ZONE_LABELS: Record<string, string> = {
+    logo: 'Logo', headline: 'Nagłówek', subtext: 'Podtytuł',
+    'central-image': 'Element', cta: 'CTA', sticker: 'Sticker',
+    legal: 'Tekst prawny', spacer: 'Spacer', text: 'Tekst',
+  };
+
+  const BLOCK_TYPES = ['logo', 'headline', 'subtext', 'central-image', 'cta', 'sticker', 'legal', 'spacer'] as const;
+
+  const zonesFromLayout = (layout: Record<string, unknown>): EditorZone[] => {
+    const zones = (layout.zones as Array<{id: string; gridArea: string; children: Array<{type: string}>; flexDirection?: string; justifyContent?: string; alignItems?: string; gap?: number}>) || [];
+    return zones.map(z => {
+      const primaryType = z.children[0]?.type || 'spacer';
+      return {
+        id: z.id,
+        gridArea: z.gridArea,
+        label: z.children.map((c: {type: string}) => ZONE_LABELS[c.type] || c.type).join(' + '),
+        color: ZONE_COLORS[primaryType] || '#888',
+        children: z.children,
+        flexDirection: z.flexDirection || 'column',
+        justifyContent: z.justifyContent || 'flex-start',
+        alignItems: z.alignItems || 'flex-start',
+        gap: z.gap,
+      };
+    });
+  };
+
+  const editorZonesToLayout = (): Record<string, unknown> => {
+    if (!precisionTemplate) return {};
+    const zones = editorZones.map(z => ({
+      id: z.id,
+      gridArea: z.gridArea,
+      flexDirection: z.flexDirection,
+      justifyContent: z.justifyContent,
+      alignItems: z.alignItems,
+      gap: z.gap,
+      children: z.children,
+    }));
+    return { ...precisionTemplate.layout, zones };
+  };
+
+  const parseGridArea = (gridArea: string) => {
+    const parts = gridArea.split('/').map(s => parseInt(s.trim()));
+    return { rowStart: parts[0] || 1, colStart: parts[1] || 1, rowEnd: parts[2] || 2, colEnd: parts[3] || 13 };
+  };
+
+  const saveEditorTemplate = async () => {
+    if (!id || !editorTemplateName.trim()) return;
+    setSavingEditorTemplate(true);
+    try {
+      const layout = editorZonesToLayout();
+      const res = await fetch(`/api/projects/${id}/templates`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: editorTemplateName.trim(), format, layout, is_user_template: true }),
+      });
+      if (res.ok) {
+        const tmpl = await res.json();
+        setSavedTemplates(prev => [tmpl, ...prev]);
+        showToast('Szablon zapisany ✓');
+        setEditorTemplateName('');
+      }
+    } finally {
+      setSavingEditorTemplate(false);
+    }
+  };
+
+  const loadSavedTemplate = async (tmplId: number) => {
+    const found = savedTemplates.find(t => t.id === tmplId);
+    if (!found) return;
+    // Just load the template metadata to set precisionTemplateId
+    setPrecisionTemplateId(tmplId);
+    showToast('Szablon załadowany ✓');
   };
 
   const saveRules = async () => {
@@ -1254,86 +1371,123 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
                         <p className="text-xs opacity-30"><span className="opacity-60">Data:</span> {new Date(selectedGeneration.created_at).toLocaleString('pl-PL')}</p>
                       </div>
                     </div>
-                  ) : precisionTemplate ? (
-                    <div>
-                      {/* CSS template preview */}
-                      <div className="aspect-square relative overflow-hidden" style={{
-                        background: precisionTemplate.layout.background?.type === 'gradient'
-                          ? `linear-gradient(${precisionTemplate.layout.background.gradientDirection === 'left-right' ? 'to right' : precisionTemplate.layout.background.gradientDirection === 'diagonal' ? '135deg' : 'to bottom'}, ${precisionTemplate.layout.background.gradientFrom || '#1B334B'}, ${precisionTemplate.layout.background.gradientTo || '#223D55'})`
-                          : precisionTemplate.layout.background?.color || '#1B334B',
-                      }}>
-                        {/* Logo placeholder */}
-                        <div className="absolute" style={{
-                          ...(precisionTemplate.layout.logo?.position?.includes('top') ? { top: '5%' } : { bottom: '5%' }),
-                          ...(precisionTemplate.layout.logo?.position?.includes('right') ? { right: '5%' } : { left: '5%' }),
-                        }}>
-                          <div className="bg-white/20 rounded-lg px-3 py-1.5 text-xs text-white/60 font-bold">LOGO</div>
-                        </div>
-
-                        {/* Central element placeholder */}
-                        <div className="absolute inset-0 flex items-center justify-center" style={{
-                          justifyContent: precisionTemplate.layout.centralElement?.position === 'right' ? 'flex-end'
-                            : precisionTemplate.layout.centralElement?.position === 'left' ? 'flex-start' : 'center',
-                          paddingLeft: '5%', paddingRight: '5%',
-                        }}>
-                          <div className="bg-white/10 border-2 border-dashed border-white/20 flex items-center justify-center text-white/30 text-xs" style={{
-                            width: `${precisionTemplate.layout.centralElement?.size || 50}%`,
-                            height: `${precisionTemplate.layout.centralElement?.size || 50}%`,
-                            borderRadius: precisionTemplate.layout.centralElement?.mask || precisionTemplate.layout.centralElement?.type === 'circle' ? '50%' : '12px',
-                          }}>
-                            Element
-                          </div>
-                        </div>
-
-                        {/* Copy area placeholder */}
-                        <div className="absolute" style={{
-                          ...(precisionTemplate.layout.copy?.position?.includes('bottom') ? { bottom: `${((precisionTemplate.layout.whiteSpace?.height || 0) / 1080) * 100 + 10}%` } : { top: '15%' }),
-                          ...(precisionTemplate.layout.copy?.position?.includes('right') ? { right: '5%' } : { left: '5%' }),
-                          maxWidth: '60%',
-                        }}>
-                          <div className="bg-white/10 rounded-lg px-3 py-2 text-xs text-white/50">
-                            <p className="font-bold">Headline</p>
-                            <p className="opacity-60 mt-0.5">Subtext</p>
-                          </div>
-                        </div>
-
-                        {/* CTA placeholder */}
-                        {precisionTemplate.layout.cta?.enabled && (
-                          <div className="absolute" style={{
-                            bottom: `${((precisionTemplate.layout.whiteSpace?.height || 0) / 1080) * 100 + 5}%`,
-                            ...(precisionTemplate.layout.copy?.position?.includes('right') ? { right: '5%' } : { left: '5%' }),
-                          }}>
-                            <div className="rounded-full px-4 py-1.5 text-xs font-bold" style={{
-                              backgroundColor: precisionTemplate.layout.cta.backgroundColor || '#B3F5DC',
-                              color: precisionTemplate.layout.cta.textColor || '#1B334B',
-                            }}>CTA</div>
-                          </div>
-                        )}
-
-                        {/* White space */}
-                        {precisionTemplate.layout.whiteSpace?.enabled && (
-                          <div className="absolute bottom-0 left-0 right-0 bg-white flex items-center justify-center" style={{
-                            height: `${(precisionTemplate.layout.whiteSpace.height / 1080) * 100}%`,
-                            borderTopLeftRadius: `${precisionTemplate.layout.whiteSpace.borderRadius / 10}px`,
-                            borderTopRightRadius: `${precisionTemplate.layout.whiteSpace.borderRadius / 10}px`,
-                          }}>
-                            <span className="text-xs text-zinc-400">Legal</span>
-                          </div>
-                        )}
-                      </div>
-                      <div className="p-3 border-t border-teal-deep/10 dark:border-holo-mint/10">
-                        <details>
-                          <summary className="text-xs opacity-30 cursor-pointer hover:opacity-60 transition-opacity">Pokaż JSON layoutu</summary>
-                          <pre className="text-xs opacity-30 mt-2 whitespace-pre-wrap overflow-x-auto max-h-40">{JSON.stringify(precisionTemplate.layout, null, 2)}</pre>
-                        </details>
-                      </div>
-                    </div>
                   ) : (
-                    <div className="aspect-square flex items-center justify-center">
-                      <div className="text-center space-y-3">
-                        <div className="text-5xl mb-3">🎯</div>
-                        <p className="text-sm opacity-30">Wygeneruj szablon z sekcji marki</p>
-                        <p className="text-xs opacity-20">lub przejdź do zakładki Brand i dodaj sekcje marki</p>
+                    <div className="p-4">
+                      {/* Template Editor */}
+                      <div className="space-y-3">
+                        {/* Saved templates selector */}
+                        {savedTemplates.length > 0 && (
+                          <div className="flex items-center gap-2">
+                            <select
+                              onChange={e => { const tid = parseInt(e.target.value); if (tid) loadSavedTemplate(tid); }}
+                              className="flex-1 bg-offwhite dark:bg-teal-deep border border-teal-deep/15 dark:border-holo-mint/10 rounded-xl px-3 py-2 text-sm outline-none"
+                              defaultValue=""
+                            >
+                              <option value="">Wybierz szablon...</option>
+                              {savedTemplates.map(t => (
+                                <option key={t.id} value={t.id}>{t.name} {t.is_user_template ? '★' : ''}</option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
+
+                        {/* Grid editor canvas */}
+                        {editorZones.length > 0 ? (
+                          <div className="space-y-2">
+                            <p className="text-xs opacity-40">Podgląd układu (12×12 grid)</p>
+                            <div
+                              className="relative bg-teal-deep/20 dark:bg-teal-mid/50 rounded-xl overflow-hidden border border-teal-deep/15 dark:border-holo-mint/10"
+                              style={{
+                                width: '100%',
+                                aspectRatio: format === 'story' ? '9/16' : format === 'banner' ? '3/1' : format === 'ln_post' ? '1.91/1' : '1/1',
+                                display: 'grid',
+                                gridTemplateColumns: 'repeat(12, 1fr)',
+                                gridTemplateRows: 'repeat(12, 1fr)',
+                                gap: '1px',
+                              }}
+                            >
+                              {editorZones.map(zone => {
+                                const { rowStart, colStart, rowEnd, colEnd } = parseGridArea(zone.gridArea);
+                                return (
+                                  <div
+                                    key={zone.id}
+                                    className="rounded flex items-center justify-center text-teal-deep text-xs font-bold select-none cursor-grab active:cursor-grabbing relative group"
+                                    style={{
+                                      gridArea: `${rowStart} / ${colStart} / ${rowEnd} / ${colEnd}`,
+                                      backgroundColor: zone.color + '33',
+                                      border: `2px solid ${zone.color}66`,
+                                      fontSize: '10px',
+                                      padding: '2px',
+                                      overflow: 'hidden',
+                                    }}
+                                    title={zone.label}
+                                  >
+                                    <span className="truncate">{zone.label}</span>
+                                    {/* Delete button */}
+                                    <button
+                                      onClick={() => setEditorZones(prev => prev.filter(z => z.id !== zone.id))}
+                                      className="absolute top-0 right-0 w-4 h-4 bg-red-500/80 text-white rounded-bl text-xs items-center justify-center hidden group-hover:flex"
+                                      style={{ fontSize: '10px', lineHeight: 1 }}
+                                    >×</button>
+                                  </div>
+                                );
+                              })}
+                            </div>
+
+                            {/* Add block dropdown */}
+                            <div className="flex gap-2">
+                              <select
+                                onChange={e => {
+                                  const type = e.target.value;
+                                  if (!type) return;
+                                  e.target.value = '';
+                                  const newId = `${type}-${Date.now()}`;
+                                  setEditorZones(prev => [...prev, {
+                                    id: newId,
+                                    gridArea: '11 / 1 / 13 / 13',
+                                    label: ZONE_LABELS[type] || type,
+                                    color: ZONE_COLORS[type] || '#888',
+                                    children: [{ type }],
+                                    flexDirection: 'column',
+                                    justifyContent: 'center',
+                                    alignItems: 'flex-start',
+                                  }]);
+                                }}
+                                className="flex-1 bg-offwhite dark:bg-teal-deep border border-teal-deep/15 dark:border-holo-mint/10 rounded-xl px-3 py-2 text-xs outline-none"
+                                defaultValue=""
+                              >
+                                <option value="">+ Dodaj blok...</option>
+                                {BLOCK_TYPES.filter(t => !editorZones.some(z => z.children[0]?.type === t && t !== 'spacer')).map(t => (
+                                  <option key={t} value={t}>{ZONE_LABELS[t]}</option>
+                                ))}
+                              </select>
+                            </div>
+
+                            {/* Save template */}
+                            <div className="flex gap-2">
+                              <input
+                                type="text"
+                                className="flex-1 bg-offwhite dark:bg-teal-deep border border-teal-deep/15 dark:border-holo-mint/10 rounded-xl px-3 py-2 text-xs outline-none focus:border-holo-mint"
+                                placeholder="Nazwa szablonu..."
+                                value={editorTemplateName}
+                                onChange={e => setEditorTemplateName(e.target.value)}
+                              />
+                              <button
+                                onClick={saveEditorTemplate}
+                                disabled={savingEditorTemplate || !editorTemplateName.trim()}
+                                className="h-9 px-3 rounded-xl bg-holo-mint/20 border border-holo-mint/30 text-holo-mint text-xs font-semibold disabled:opacity-40 hover:bg-holo-mint/30 transition-colors whitespace-nowrap"
+                              >
+                                {savingEditorTemplate ? '...' : 'Zapisz'}
+                              </button>
+                            </div>
+                          </div>
+                        ) : precisionTemplate ? (
+                          <div className="text-xs opacity-40 text-center py-4">Brak stref do edycji w tym szablonie</div>
+                        ) : (
+                          <div className="rounded-xl border border-dashed border-teal-deep/20 dark:border-holo-mint/15 p-8 text-center">
+                            <p className="text-xs opacity-30">Wygeneruj szablon żeby zobaczyć edytor układu</p>
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}

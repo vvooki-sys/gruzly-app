@@ -27,6 +27,8 @@ export async function GET() {
       updated_at TIMESTAMP DEFAULT NOW()
     )
   `.catch(() => {});
+  await getDb()`ALTER TABLE templates ADD COLUMN IF NOT EXISTS is_user_template BOOLEAN DEFAULT false`.catch(() => {});
+  await getDb()`ALTER TABLE templates ADD COLUMN IF NOT EXISTS thumbnail_url TEXT`.catch(() => {});
 
   const rows = await getDb()`
     SELECT p.*, COUNT(g.id)::int as generation_count
