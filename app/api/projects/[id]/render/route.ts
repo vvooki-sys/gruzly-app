@@ -220,6 +220,15 @@ function buildPositionStyle(position: string, margin: number, extra = 0): Record
 }
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  try {
+  return await renderHandler(req, params);
+  } catch (e) {
+    console.error('Render route error:', e);
+    return NextResponse.json({ error: String(e) }, { status: 500 });
+  }
+}
+
+async function renderHandler(req: NextRequest, params: Promise<{ id: string }>) {
   const { id } = await params;
   const projectId = parseInt(id);
 
