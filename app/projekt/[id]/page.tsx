@@ -525,9 +525,11 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
           setProject(p => p ? { ...p, logo_url: asset.url } : p);
         }
       } else {
-        const err = await res.json();
+        const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
         alert('Błąd: ' + err.error);
       }
+    } catch {
+      alert('Błąd połączenia podczas wgrywania');
     } finally {
       setUploadingAsset(false);
     }
@@ -623,13 +625,25 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
   const handleCentralImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !id) return;
-    const fd = new FormData();
-    fd.append('file', file);
-    fd.append('type', 'reference');
-    const res = await fetch(`/api/projects/${id}/assets`, { method: 'POST', body: fd });
-    if (res.ok) {
-      const asset = await res.json();
-      setCentralImageUrl(asset.url);
+    setGeneratingElement(true);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('type', 'photo');
+      fd.append('name', file.name);
+      const res = await fetch(`/api/projects/${id}/assets`, { method: 'POST', body: fd });
+      if (res.ok) {
+        const asset = await res.json();
+        setCentralImageUrl(asset.url);
+        setAssets(prev => [...prev, asset]);
+      } else {
+        const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+        alert('Błąd wgrywania: ' + err.error);
+      }
+    } catch {
+      alert('Błąd połączenia podczas wgrywania');
+    } finally {
+      setGeneratingElement(false);
     }
   };
 
