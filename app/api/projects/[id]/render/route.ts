@@ -260,9 +260,10 @@ async function renderHandler(req: NextRequest, params: Promise<{ id: string }>) 
     return NextResponse.json({ error: 'templateId or layout required' }, { status: 400 });
   }
 
-  // Load Manrope fonts
+  // Load Manrope fonts (skip if variable font / unsupported by Satori)
   const origin = new URL(req.url).origin;
-  const fontOptions: { name: string; data: ArrayBuffer; weight: 100 | 200 | 300 | 400 | 500 | 600 | 700 | 800 | 900; style: 'normal' | 'italic' }[] = [];
+  type FontOption = { name: string; data: ArrayBuffer; weight: 100 | 200 | 300 | 400 | 500 | 600 | 700 | 800 | 900; style: 'normal' | 'italic' };
+  const fontOptions: FontOption[] = [];
   try {
     const [regRes, boldRes] = await Promise.all([
       fetch(`${origin}/fonts/Manrope-Regular.ttf`),
@@ -271,6 +272,15 @@ async function renderHandler(req: NextRequest, params: Promise<{ id: string }>) 
     if (regRes.ok) fontOptions.push({ name: 'Manrope', data: await regRes.arrayBuffer(), weight: 400, style: 'normal' });
     if (boldRes.ok) fontOptions.push({ name: 'Manrope', data: await boldRes.arrayBuffer(), weight: 800, style: 'normal' });
   } catch { /* fallback to Satori default */ }
+
+  const makeImageResponse = (el: React.ReactElement, w: number, h: number) => {
+    try {
+      return new ImageResponse(el, { width: w, height: h, ...(fontOptions.length ? { fonts: fontOptions } : {}) });
+    } catch {
+      // Font parse failed (e.g. variable font) — retry without custom fonts
+      return new ImageResponse(el, { width: w, height: h });
+    }
+  };
 
   // ── ZONE-BASED RENDER (new) ────────────────────────────────────────────────
   if (layout.zones && Array.isArray(layout.zones) && layout.zones.length > 0) {
@@ -396,11 +406,7 @@ async function renderHandler(req: NextRequest, params: Promise<{ id: string }>) 
       },
     }, ...rowElements);
 
-    const imageResponse = new ImageResponse(element, {
-      width,
-      height,
-      ...(fontOptions.length ? { fonts: fontOptions } : {}),
-    });
+    const imageResponse = makeImageResponse(element, width, height);
 
     const arrayBuffer = await imageResponse.arrayBuffer();
     const filename = `gruzly/${id}/precision-${Date.now()}.png`;
