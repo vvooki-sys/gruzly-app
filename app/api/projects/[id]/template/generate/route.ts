@@ -47,26 +47,100 @@ ${rules}
 
 FORMAT: ${dims.width}x${dims.height}px
 
-Generate a JSON object matching this TypeScript interface exactly (all pixel values as numbers):
+CRITICAL: Return JSON using ONLY the zones-based schema below. Do NOT use fields like centralElement, decoration, copy.position, copy.alignment — they are not supported.
 
-interface TemplateLayout {
-  background: { type: 'solid' | 'gradient'; color?: string; gradientFrom?: string; gradientTo?: string; gradientDirection?: 'top-bottom' | 'left-right' | 'diagonal' };
-  whiteSpace: { enabled: boolean; position: 'bottom' | 'top'; height: number; borderRadius: number };
-  logo: { position: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'; size: number; margin: number; variant: 'light' | 'dark' };
-  cta: { enabled: boolean; position: 'below-copy' | 'bottom-center' | 'bottom-right'; backgroundColor: string; textColor: string; borderRadius: number; fontSize: number; defaultText: string };
-  copy: { position: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | 'center'; alignment: 'left' | 'right' | 'center'; fontFamily: string; headlineFontWeight: number; headlineFontSize: number; headlineColor: string; subtextFontWeight: number; subtextFontSize: number; subtextColor: string; textTransform: 'none' | 'lowercase' | 'uppercase'; letterSpacing: number; lineHeight: number; margin: number };
-  centralElement: { type: 'circle' | 'rectangle' | 'full'; position: 'center' | 'left' | 'right'; size: number; borderRadius?: number; mask?: boolean };
-  decoration: { enabled: boolean; type: 'blob' | 'circle' | 'ring' | 'none'; position: 'bottom-right' | 'top-left' | 'edge'; color?: string; size: number };
-  padding: { top: number; right: number; bottom: number; left: number };
-  legal: { enabled: boolean; position: 'bottom-white' | 'bottom-overlay'; fontSize: number; color: string };
-  sticker: { enabled: boolean; shape: 'circle' | 'rounded-rect'; position: 'top-right' | 'top-left' | 'custom'; backgroundColor: string; textColor: string; fontSize: number; borderRadius?: number };
+Generate this exact structure:
+
+{
+  "background": {
+    "type": "solid",
+    "color": "#hex"
+  },
+  "whiteSpace": {
+    "enabled": false,
+    "position": "bottom",
+    "height": 0,
+    "borderRadius": 0,
+    "color": "#ffffff"
+  },
+  "logo": {
+    "size": 70,
+    "margin": 36,
+    "variant": "default"
+  },
+  "copy": {
+    "fontFamily": "sans-serif",
+    "headlineFontSize": 56,
+    "headlineFontWeight": 800,
+    "headlineColor": "#ffffff",
+    "subtextFontSize": 24,
+    "subtextFontWeight": 400,
+    "subtextColor": "#ffffffcc",
+    "lineHeight": 1.15,
+    "letterSpacing": 0,
+    "textTransform": "none"
+  },
+  "cta": {
+    "enabled": false,
+    "backgroundColor": "#hex",
+    "textColor": "#hex",
+    "fontSize": 18,
+    "borderRadius": 24,
+    "paddingH": 24,
+    "paddingV": 12
+  },
+  "sticker": {
+    "enabled": false,
+    "shape": "circle",
+    "backgroundColor": "#hex",
+    "textColor": "#hex",
+    "fontSize": 14,
+    "size": 100
+  },
+  "legal": { "enabled": false, "fontSize": 11, "color": "#ffffff80" },
+  "padding": { "top": 36, "right": 36, "bottom": 36, "left": 36 },
+  "zones": [
+    {
+      "id": "header",
+      "gridArea": "1 / 1 / 2 / 13",
+      "flexDirection": "row",
+      "justifyContent": "flex-start",
+      "alignItems": "center",
+      "children": [{ "type": "logo" }]
+    },
+    {
+      "id": "central",
+      "gridArea": "2 / 1 / 10 / 13",
+      "flexDirection": "column",
+      "justifyContent": "center",
+      "alignItems": "center",
+      "children": [{ "type": "central-image" }]
+    },
+    {
+      "id": "copy",
+      "gridArea": "10 / 1 / 13 / 13",
+      "flexDirection": "column",
+      "justifyContent": "flex-end",
+      "alignItems": "flex-start",
+      "gap": 12,
+      "children": [
+        { "type": "headline" },
+        { "type": "subtext" }
+      ]
+    }
+  ]
 }
 
 RULES:
-- Return ONLY valid JSON — no markdown, no explanation, no text outside JSON
+- Return ONLY valid JSON — no markdown, no code blocks, no explanation
 - Use exact hex colors from brand identity
-- All pixel values scaled to ${dims.width}x${dims.height} format
-- Follow brand rules strictly`;
+- All pixel values as plain numbers (no units, no strings)
+- gridArea format: "rowStart / colStart / rowEnd / colEnd" on a 12-row x 12-column grid
+- Full width = columns 1 to 13, full height = rows 1 to 13
+- logo zone: always "justifyContent": "flex-start" if brand has top-left logo placement
+- Adapt zones to brand — if brand uses white space at bottom, enable whiteSpace and add a footer zone
+- DO NOT include centralElement or decoration as top-level fields
+- background.type can be "gradient" — if so add gradientFrom, gradientTo, gradientAngle (degrees)`;
 
   try {
     const result = await model.generateContent({

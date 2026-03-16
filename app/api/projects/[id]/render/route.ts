@@ -142,7 +142,17 @@ function renderZoneChild(
     }
 
     case 'central-image': {
-      if (!data.centralImageUrl) return null;
+      if (!data.centralImageUrl) {
+        return React.createElement('div', {
+          style: {
+            width: 500,
+            height: 500,
+            borderRadius: '50%',
+            background: 'radial-gradient(circle, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.05) 100%)',
+            display: 'flex',
+          },
+        });
+      }
       return React.createElement('img', {
         src: data.centralImageUrl,
         style: {
