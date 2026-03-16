@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -71,17 +71,24 @@ interface SavedTemplate {
   format: string;
   is_user_template: boolean;
   created_at: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  layout?: Record<string, any>;
 }
 
-interface EditorZone {
+interface EditorBlock {
   id: string;
-  gridArea: string; // "rowStart / colStart / rowEnd / colEnd"
+  type: string;
   label: string;
-  color: string;
+  required: boolean;
+  x: number;      // left % of canvas (0-100)
+  y: number;      // top % of canvas (0-100)
+  w: number;      // width % of canvas (0-100)
+  h: number;      // height % of canvas (0-100)
+  zIndex: number;
   children: Array<{ type: string }>;
-  flexDirection: string;
-  justifyContent: string;
-  alignItems: string;
+  flexDirection?: string;
+  justifyContent?: string;
+  alignItems?: string;
   gap?: number;
 }
 
@@ -179,16 +186,13 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
   const [generatingElement, setGeneratingElement] = useState(false);
 
   // Template editor state
-  const [editorZones, setEditorZones] = useState<EditorZone[]>([]);
+  const [editorBlocks, setEditorBlocks] = useState<EditorBlock[]>([]);
   const [savedTemplates, setSavedTemplates] = useState<SavedTemplate[]>([]);
   const [editorTemplateName, setEditorTemplateName] = useState('');
   const [savingEditorTemplate, setSavingEditorTemplate] = useState(false);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [draggingZone, setDraggingZone] = useState<string | null>(null);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [resizingZone, setResizingZone] = useState<string | null>(null);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [dragStart, setDragStart] = useState<{ mouseX: number; mouseY: number; origArea: string } | null>(null);
+  const [dragging, setDragging] = useState<{ id: string; startX: number; startY: number; origX: number; origY: number } | null>(null);
+  const [resizing, setResizing] = useState<{ id: string; handle: string; startX: number; startY: number; origX: number; origY: number; origW: number; origH: number } | null>(null);
+  const canvasRef = useRef<HTMLDivElement>(null);
 
   // Project edit modal state
   const [editProjectOpen, setEditProjectOpen] = useState(false);
@@ -552,7 +556,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
       const tmpl = data.template || { layout: data.layout };
       setPrecisionTemplate(tmpl);
       if (tmpl.id) setPrecisionTemplateId(tmpl.id);
-      setEditorZones(zonesFromLayout(tmpl.layout || {}));
+      setEditorBlocks(editorBlocksFromLayout(tmpl.layout || {}));
       showToast('Szablon wygenerowany ✓');
     } catch (e) {
       console.error(e);
@@ -562,7 +566,11 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
   };
 
   const renderPrecision = async () => {
-    if (!precisionTemplate || !headline || !id) return;
+    if (!precisionTemplate && editorBlocks.length === 0) {
+      alert('Najpierw wygeneruj lub załaduj szablon.');
+      return;
+    }
+    if (!headline || !id) return;
     setRendering(true);
     try {
       const logoAsset = assets.find(a => a.type === 'logo');
@@ -570,8 +578,8 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          templateId: editorZones.length > 0 ? undefined : (precisionTemplateId || undefined),
-          layout: editorZones.length > 0 ? editorZonesToLayout() : (precisionTemplateId ? undefined : precisionTemplate.layout),
+          templateId: editorBlocks.length > 0 ? undefined : (precisionTemplateId || undefined),
+          layout: editorBlocks.length > 0 ? editorBlocksToLayout() : (precisionTemplateId ? undefined : precisionTemplate?.layout),
           headline,
           subtext,
           ctaText,
@@ -624,13 +632,13 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
     }
   };
 
-  const ZONE_COLORS: Record<string, string> = {
+  const BLOCK_COLORS: Record<string, string> = {
     logo: '#B3F5DC', headline: '#9BE5E0', subtext: '#9BE5E0',
     'central-image': '#B3A0F5', cta: '#F5D9A0', sticker: '#F5A0B3',
-    legal: '#A0B3F5', spacer: '#555', text: '#888',
+    legal: '#A0B3F5', spacer: '#888', text: '#888',
   };
 
-  const ZONE_LABELS: Record<string, string> = {
+  const BLOCK_LABELS: Record<string, string> = {
     logo: 'Logo', headline: 'Nagłówek', subtext: 'Podtytuł',
     'central-image': 'Element', cta: 'CTA', sticker: 'Sticker',
     legal: 'Tekst prawny', spacer: 'Spacer', text: 'Tekst',
@@ -638,16 +646,51 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
 
   const BLOCK_TYPES = ['logo', 'headline', 'subtext', 'central-image', 'cta', 'sticker', 'legal', 'spacer'] as const;
 
-  const zonesFromLayout = (layout: Record<string, unknown>): EditorZone[] => {
-    const zones = (layout.zones as Array<{id: string; gridArea: string; children: Array<{type: string}>; flexDirection?: string; justifyContent?: string; alignItems?: string; gap?: number}>) || [];
-    return zones.map(z => {
-      const primaryType = z.children[0]?.type || 'spacer';
+  const DEFAULT_BLOCK_POS: Record<string, { x: number; y: number; w: number; h: number }> = {
+    'logo':          { x: 3, y: 3, w: 25, h: 8 },
+    'central-image': { x: 10, y: 15, w: 80, h: 60 },
+    'headline':      { x: 3, y: 75, w: 94, h: 12 },
+    'subtext':       { x: 3, y: 87, w: 94, h: 7 },
+    'cta':           { x: 3, y: 85, w: 40, h: 9 },
+    'sticker':       { x: 72, y: 3, w: 22, h: 22 },
+    'legal':         { x: 3, y: 94, w: 94, h: 4 },
+    'spacer':        { x: 10, y: 40, w: 80, h: 20 },
+  };
+
+  const gridAreaToAbsolute = (gridArea: string) => {
+    const parts = gridArea.split('/').map(s => parseInt(s.trim()));
+    const rowStart = parts[0] || 1, colStart = parts[1] || 1;
+    const rowEnd = parts[2] || 2, colEnd = parts[3] || 13;
+    return {
+      x: ((colStart - 1) / 12) * 100,
+      y: ((rowStart - 1) / 12) * 100,
+      w: ((colEnd - colStart) / 12) * 100,
+      h: ((rowEnd - rowStart) / 12) * 100,
+    };
+  };
+
+  const toGridArea = (b: EditorBlock): string => {
+    const rowStart = Math.max(1, Math.round(b.y / 100 * 12) + 1);
+    const rowEnd = Math.max(rowStart + 1, Math.round((b.y + b.h) / 100 * 12) + 1);
+    const colStart = Math.max(1, Math.round(b.x / 100 * 12) + 1);
+    const colEnd = Math.max(colStart + 1, Math.round((b.x + b.w) / 100 * 12) + 1);
+    return `${rowStart} / ${colStart} / ${rowEnd} / ${colEnd}`;
+  };
+
+  const editorBlocksFromLayout = (layout: Record<string, unknown>): EditorBlock[] => {
+    type ZoneRaw = { id: string; gridArea: string; children: Array<{ type: string }>; flexDirection?: string; justifyContent?: string; alignItems?: string; gap?: number };
+    const zones = (layout.zones as ZoneRaw[]) || [];
+    return zones.map((z, i) => {
+      const primaryType = z.children?.[0]?.type || 'spacer';
+      const pos = z.gridArea ? gridAreaToAbsolute(z.gridArea) : (DEFAULT_BLOCK_POS[primaryType] || { x: 5, y: 5, w: 90, h: 20 });
       return {
         id: z.id,
-        gridArea: z.gridArea,
-        label: z.children.map((c: {type: string}) => ZONE_LABELS[c.type] || c.type).join(' + '),
-        color: ZONE_COLORS[primaryType] || '#888',
-        children: z.children,
+        type: primaryType,
+        label: (z.children || []).map(c => BLOCK_LABELS[c.type] || c.type).join(' + '),
+        required: primaryType === 'logo' || primaryType === 'headline',
+        ...pos,
+        zIndex: i + 1,
+        children: z.children || [{ type: primaryType }],
         flexDirection: z.flexDirection || 'column',
         justifyContent: z.justifyContent || 'flex-start',
         alignItems: z.alignItems || 'flex-start',
@@ -656,30 +699,68 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
     });
   };
 
-  const editorZonesToLayout = (): Record<string, unknown> => {
+  const editorBlocksToLayout = (): Record<string, unknown> => {
     if (!precisionTemplate) return {};
-    const zones = editorZones.map(z => ({
-      id: z.id,
-      gridArea: z.gridArea,
-      flexDirection: z.flexDirection,
-      justifyContent: z.justifyContent,
-      alignItems: z.alignItems,
-      gap: z.gap,
-      children: z.children,
+    const zones = editorBlocks.map(b => ({
+      id: b.id,
+      gridArea: toGridArea(b),
+      flexDirection: b.flexDirection || 'column',
+      justifyContent: b.justifyContent || 'flex-start',
+      alignItems: b.alignItems || 'flex-start',
+      gap: b.gap,
+      children: b.children,
     }));
     return { ...precisionTemplate.layout, zones };
   };
 
-  const parseGridArea = (gridArea: string) => {
-    const parts = gridArea.split('/').map(s => parseInt(s.trim()));
-    return { rowStart: parts[0] || 1, colStart: parts[1] || 1, rowEnd: parts[2] || 2, colEnd: parts[3] || 13 };
+  // Drag handlers
+  const handleCanvasMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!canvasRef.current || (!dragging && !resizing)) return;
+    const rect = canvasRef.current.getBoundingClientRect();
+    const px = (v: number, dim: number) => (v / dim) * 100;
+    if (dragging) {
+      const dx = px(e.clientX - dragging.startX, rect.width);
+      const dy = px(e.clientY - dragging.startY, rect.height);
+      setEditorBlocks(prev => prev.map(b => b.id === dragging.id
+        ? { ...b, x: Math.max(0, dragging.origX + dx), y: Math.max(0, dragging.origY + dy) }
+        : b));
+    }
+    if (resizing) {
+      const dx = px(e.clientX - resizing.startX, rect.width);
+      const dy = px(e.clientY - resizing.startY, rect.height);
+      setEditorBlocks(prev => prev.map(b => {
+        if (b.id !== resizing.id) return b;
+        const h = resizing.handle;
+        if (h === 'se') return { ...b, w: Math.max(5, resizing.origW + dx), h: Math.max(5, resizing.origH + dy) };
+        if (h === 'e')  return { ...b, w: Math.max(5, resizing.origW + dx) };
+        if (h === 's')  return { ...b, h: Math.max(5, resizing.origH + dy) };
+        if (h === 'n')  return { ...b, y: resizing.origY + dy, h: Math.max(5, resizing.origH - dy) };
+        if (h === 'w')  return { ...b, x: resizing.origX + dx, w: Math.max(5, resizing.origW - dx) };
+        return b;
+      }));
+    }
+  };
+
+  const handleCanvasMouseUp = () => { setDragging(null); setResizing(null); };
+
+  const startBlockDrag = (e: React.MouseEvent, block: EditorBlock) => {
+    e.stopPropagation();
+    const maxZ = Math.max(1, ...editorBlocks.map(b => b.zIndex));
+    setEditorBlocks(prev => prev.map(b => b.id === block.id ? { ...b, zIndex: maxZ + 1 } : b));
+    setDragging({ id: block.id, startX: e.clientX, startY: e.clientY, origX: block.x, origY: block.y });
+  };
+
+  const startBlockResize = (e: React.MouseEvent, block: EditorBlock, handle: string) => {
+    e.stopPropagation();
+    e.preventDefault();
+    setResizing({ id: block.id, handle, startX: e.clientX, startY: e.clientY, origX: block.x, origY: block.y, origW: block.w, origH: block.h });
   };
 
   const saveEditorTemplate = async () => {
     if (!id || !editorTemplateName.trim()) return;
     setSavingEditorTemplate(true);
     try {
-      const layout = editorZonesToLayout();
+      const layout = editorBlocksToLayout();
       const res = await fetch(`/api/projects/${id}/templates`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -696,11 +777,12 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
     }
   };
 
-  const loadSavedTemplate = async (tmplId: number) => {
-    const found = savedTemplates.find(t => t.id === tmplId);
-    if (!found) return;
-    // Just load the template metadata to set precisionTemplateId
-    setPrecisionTemplateId(tmplId);
+  const loadSavedTemplate = (tmplId: number) => {
+    const tmpl = savedTemplates.find(t => t.id === tmplId);
+    if (!tmpl?.layout) return;
+    setPrecisionTemplate({ layout: tmpl.layout, id: tmpl.id, name: tmpl.name, format: tmpl.format });
+    setPrecisionTemplateId(tmpl.id);
+    setEditorBlocks(editorBlocksFromLayout(tmpl.layout));
     showToast('Szablon załadowany ✓');
   };
 
@@ -1391,77 +1473,111 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
                           </div>
                         )}
 
-                        {/* Grid editor canvas */}
-                        {editorZones.length > 0 ? (
+                        {/* Absolute-positioned canvas editor */}
+                        {editorBlocks.length > 0 ? (
                           <div className="space-y-2">
-                            <p className="text-xs opacity-40">Podgląd układu (12×12 grid)</p>
+                            <p className="text-xs opacity-40">Edytor układu — przeciągnij bloki, złap narożnik/krawędź żeby zmienić rozmiar</p>
+                            {/* Canvas */}
                             <div
-                              className="relative bg-teal-deep/20 dark:bg-teal-mid/50 rounded-xl overflow-hidden border border-teal-deep/15 dark:border-holo-mint/10"
+                              ref={canvasRef}
+                              className="relative bg-teal-deep/10 dark:bg-teal-mid/50 rounded-xl border border-teal-deep/15 dark:border-holo-mint/10 select-none"
                               style={{
                                 width: '100%',
                                 aspectRatio: format === 'story' ? '9/16' : format === 'banner' ? '3/1' : format === 'ln_post' ? '1.91/1' : '1/1',
-                                display: 'grid',
-                                gridTemplateColumns: 'repeat(12, 1fr)',
-                                gridTemplateRows: 'repeat(12, 1fr)',
-                                gap: '1px',
                               }}
+                              onMouseMove={handleCanvasMouseMove}
+                              onMouseUp={handleCanvasMouseUp}
+                              onMouseLeave={handleCanvasMouseUp}
                             >
-                              {editorZones.map(zone => {
-                                const { rowStart, colStart, rowEnd, colEnd } = parseGridArea(zone.gridArea);
-                                return (
+                              {[...editorBlocks].sort((a, b) => a.zIndex - b.zIndex).map(block => (
+                                <div
+                                  key={block.id}
+                                  className="absolute rounded group"
+                                  style={{
+                                    left: `${block.x}%`,
+                                    top: `${block.y}%`,
+                                    width: `${block.w}%`,
+                                    height: `${block.h}%`,
+                                    zIndex: block.zIndex,
+                                    backgroundColor: (BLOCK_COLORS[block.type] || '#888') + '33',
+                                    border: `2px solid ${(BLOCK_COLORS[block.type] || '#888')}99`,
+                                    cursor: 'grab',
+                                    overflow: 'hidden',
+                                  }}
+                                  onMouseDown={e => startBlockDrag(e, block)}
+                                >
+                                  {/* Label */}
+                                  <span className="absolute top-0.5 left-1 text-teal-deep dark:text-offwhite font-bold pointer-events-none" style={{ fontSize: '9px' }}>{block.label}</span>
+                                  {/* Delete button */}
+                                  <button
+                                    onMouseDown={e => e.stopPropagation()}
+                                    onClick={() => setEditorBlocks(prev => prev.filter(b => b.id !== block.id))}
+                                    className="absolute top-0 right-0 w-4 h-4 bg-red-500/80 text-white rounded-bl items-center justify-center hidden group-hover:flex"
+                                    style={{ fontSize: '10px', lineHeight: 1 }}
+                                  >×</button>
+                                  {/* Resize handle SE */}
                                   <div
-                                    key={zone.id}
-                                    className="rounded flex items-center justify-center text-teal-deep text-xs font-bold select-none cursor-grab active:cursor-grabbing relative group"
-                                    style={{
-                                      gridArea: `${rowStart} / ${colStart} / ${rowEnd} / ${colEnd}`,
-                                      backgroundColor: zone.color + '33',
-                                      border: `2px solid ${zone.color}66`,
-                                      fontSize: '10px',
-                                      padding: '2px',
-                                      overflow: 'hidden',
-                                    }}
-                                    title={zone.label}
-                                  >
-                                    <span className="truncate">{zone.label}</span>
-                                    {/* Delete button */}
-                                    <button
-                                      onClick={() => setEditorZones(prev => prev.filter(z => z.id !== zone.id))}
-                                      className="absolute top-0 right-0 w-4 h-4 bg-red-500/80 text-white rounded-bl text-xs items-center justify-center hidden group-hover:flex"
-                                      style={{ fontSize: '10px', lineHeight: 1 }}
-                                    >×</button>
-                                  </div>
-                                );
-                              })}
+                                    className="absolute bottom-0 right-0 w-3 h-3 cursor-se-resize"
+                                    style={{ background: (BLOCK_COLORS[block.type] || '#888') + 'cc' }}
+                                    onMouseDown={e => startBlockResize(e, block, 'se')}
+                                  />
+                                  {/* Resize handle E */}
+                                  <div
+                                    className="absolute top-[25%] right-0 w-2 h-[50%] cursor-e-resize opacity-0 group-hover:opacity-100 transition-opacity"
+                                    style={{ background: (BLOCK_COLORS[block.type] || '#888') + '88', borderRadius: '2px 0 0 2px' }}
+                                    onMouseDown={e => startBlockResize(e, block, 'e')}
+                                  />
+                                  {/* Resize handle S */}
+                                  <div
+                                    className="absolute bottom-0 left-[25%] h-2 w-[50%] cursor-s-resize opacity-0 group-hover:opacity-100 transition-opacity"
+                                    style={{ background: (BLOCK_COLORS[block.type] || '#888') + '88', borderRadius: '2px 2px 0 0' }}
+                                    onMouseDown={e => startBlockResize(e, block, 's')}
+                                  />
+                                  {/* Resize handle N */}
+                                  <div
+                                    className="absolute top-0 left-[25%] h-2 w-[50%] cursor-n-resize opacity-0 group-hover:opacity-100 transition-opacity"
+                                    style={{ background: (BLOCK_COLORS[block.type] || '#888') + '88', borderRadius: '0 0 2px 2px' }}
+                                    onMouseDown={e => startBlockResize(e, block, 'n')}
+                                  />
+                                  {/* Resize handle W */}
+                                  <div
+                                    className="absolute top-[25%] left-0 w-2 h-[50%] cursor-w-resize opacity-0 group-hover:opacity-100 transition-opacity"
+                                    style={{ background: (BLOCK_COLORS[block.type] || '#888') + '88', borderRadius: '0 2px 2px 0' }}
+                                    onMouseDown={e => startBlockResize(e, block, 'w')}
+                                  />
+                                </div>
+                              ))}
                             </div>
 
                             {/* Add block dropdown */}
-                            <div className="flex gap-2">
-                              <select
-                                onChange={e => {
-                                  const type = e.target.value;
-                                  if (!type) return;
-                                  e.target.value = '';
-                                  const newId = `${type}-${Date.now()}`;
-                                  setEditorZones(prev => [...prev, {
-                                    id: newId,
-                                    gridArea: '11 / 1 / 13 / 13',
-                                    label: ZONE_LABELS[type] || type,
-                                    color: ZONE_COLORS[type] || '#888',
-                                    children: [{ type }],
-                                    flexDirection: 'column',
-                                    justifyContent: 'center',
-                                    alignItems: 'flex-start',
-                                  }]);
-                                }}
-                                className="flex-1 bg-offwhite dark:bg-teal-deep border border-teal-deep/15 dark:border-holo-mint/10 rounded-xl px-3 py-2 text-xs outline-none"
-                                defaultValue=""
-                              >
-                                <option value="">+ Dodaj blok...</option>
-                                {BLOCK_TYPES.filter(t => !editorZones.some(z => z.children[0]?.type === t && t !== 'spacer')).map(t => (
-                                  <option key={t} value={t}>{ZONE_LABELS[t]}</option>
-                                ))}
-                              </select>
-                            </div>
+                            <select
+                              onChange={e => {
+                                const type = e.target.value;
+                                if (!type) return;
+                                e.target.value = '';
+                                const def = DEFAULT_BLOCK_POS[type] || { x: 5, y: 5, w: 90, h: 20 };
+                                const maxZ = Math.max(1, ...editorBlocks.map(b => b.zIndex));
+                                setEditorBlocks(prev => [...prev, {
+                                  id: `${type}-${Date.now()}`,
+                                  type,
+                                  label: BLOCK_LABELS[type] || type,
+                                  required: type === 'logo' || type === 'headline',
+                                  ...def,
+                                  zIndex: maxZ + 1,
+                                  children: [{ type }],
+                                  flexDirection: 'column',
+                                  justifyContent: 'center',
+                                  alignItems: 'flex-start',
+                                }]);
+                              }}
+                              className="w-full bg-offwhite dark:bg-teal-deep border border-teal-deep/15 dark:border-holo-mint/10 rounded-xl px-3 py-2 text-xs outline-none"
+                              defaultValue=""
+                            >
+                              <option value="">+ Dodaj blok...</option>
+                              {BLOCK_TYPES.filter(t => !editorBlocks.some(b => b.type === t && t !== 'spacer')).map(t => (
+                                <option key={t} value={t}>{BLOCK_LABELS[t]}</option>
+                              ))}
+                            </select>
 
                             {/* Save template */}
                             <div className="flex gap-2">
@@ -1481,11 +1597,9 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
                               </button>
                             </div>
                           </div>
-                        ) : precisionTemplate ? (
-                          <div className="text-xs opacity-40 text-center py-4">Brak stref do edycji w tym szablonie</div>
                         ) : (
                           <div className="rounded-xl border border-dashed border-teal-deep/20 dark:border-holo-mint/15 p-8 text-center">
-                            <p className="text-xs opacity-30">Wygeneruj szablon żeby zobaczyć edytor układu</p>
+                            <p className="text-xs opacity-30">Wygeneruj lub załaduj szablon żeby edytować układ</p>
                           </div>
                         )}
                       </div>

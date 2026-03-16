@@ -7,7 +7,7 @@ const getDb = () => neon(process.env.DATABASE_URL!);
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const templates = await getDb()`
-    SELECT id, name, format, width, height, is_user_template, thumbnail_url, created_at
+    SELECT id, name, format, width, height, layout, is_user_template, thumbnail_url, created_at
     FROM templates
     WHERE project_id = ${parseInt(id)}
     ORDER BY created_at DESC

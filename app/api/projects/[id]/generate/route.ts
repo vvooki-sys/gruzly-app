@@ -234,7 +234,37 @@ If brand DNA conflicts with the brief — brand DNA wins.
 If absolute rules conflict with anything — absolute rules win.
 Generate ONE complete, publication-ready graphic.`;
 
-  const textPrompt = `You are a professional graphic designer creating social media graphics.
+  // For elementOnly: bypass brand hierarchy — use standalone no-branding prompt
+  const brandColors = elementOnly
+    ? (() => {
+        type BrandSec2 = { content: string };
+        const secs: BrandSec2[] = project.brand_sections || [];
+        const hexes: string[] = [];
+        for (const s of secs) {
+          const matches = s.content?.match(/#[0-9A-Fa-f]{6}/g) || [];
+          hexes.push(...matches);
+        }
+        return hexes.slice(0, 8).join(', ');
+      })()
+    : '';
+
+  const textPrompt = elementOnly
+    ? `Generate ONLY an abstract illustration to be used as a central decorative element in a social media graphic.
+
+ABSOLUTE RULES — ANY VIOLATION MAKES THE OUTPUT UNUSABLE:
+- NO logos, NO brand marks, NO wordmarks
+- NO text, NO letters, NO numbers, NO words of any language
+- NO UI elements, NO buttons, NO icons
+- NO circles, shapes, or any element containing text
+- NO human faces or recognizable people
+- NO recognizable products or product shots
+
+ELEMENT TO CREATE: "${headline}"
+${brief ? `VISUAL DIRECTION: "${brief}"` : ''}
+${brandColors ? `USE THESE COLORS: ${brandColors}` : 'Use harmonious, vibrant colors.'}
+
+OUTPUT: One abstract illustration — shapes, gradients, organic forms, textures. Square-ish composition. Zero text. Zero branding. Suitable for compositing over a brand-colored background.`
+    : `You are a professional graphic designer creating social media graphics.
 Follow the three-layer instruction hierarchy below. Higher layers override lower ones.
 ${layer1}${layer2}${layer3}${creativityBlock}${closing}`;
 
