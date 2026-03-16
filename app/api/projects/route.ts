@@ -7,6 +7,9 @@ export async function GET() {
   // Migrations
   await sql`ALTER TABLE projects ADD COLUMN IF NOT EXISTS brand_sections JSONB DEFAULT '[]'::jsonb`.catch(() => {});
   await sql`ALTER TABLE projects ADD COLUMN IF NOT EXISTS generation_mode VARCHAR(20) DEFAULT 'creative'`.catch(() => {});
+  await sql`ALTER TABLE brand_assets ADD COLUMN IF NOT EXISTS variant TEXT DEFAULT 'default'`.catch(() => {});
+  await sql`ALTER TABLE brand_assets ADD COLUMN IF NOT EXISTS description TEXT`.catch(() => {});
+  await sql`ALTER TABLE brand_assets ADD COLUMN IF NOT EXISTS mime_type TEXT`.catch(() => {});
   await sql`
     CREATE TABLE IF NOT EXISTS templates (
       id SERIAL PRIMARY KEY,

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import {
   ArrowLeft, Upload, Wand2, Image, Loader2, Download,
   Settings, Sun, Moon, BookmarkPlus, Trash2, Zap, Target, PenLine,
+  Layers, Camera, X, Check,
 } from 'lucide-react';
 
 interface Project {
@@ -46,6 +47,9 @@ interface Asset {
   type: string;
   url: string;
   filename: string;
+  variant?: string;
+  description?: string;
+  mime_type?: string;
   created_at: string;
 }
 
@@ -93,7 +97,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
   const [assets, setAssets] = useState<Asset[]>([]);
   const [generations, setGenerations] = useState<Generation[]>([]);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<'generate' | 'settings' | 'copy'>('generate');
+  const [tab, setTab] = useState<'generate' | 'settings' | 'copy' | 'assets'>('generate');
   const [isDark, setIsDark] = useState(true);
   const [toast, setToast] = useState<string | null>(null);
 
@@ -107,6 +111,21 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
   const [generating, setGenerating] = useState(false);
   const [selectedGeneration, setSelectedGeneration] = useState<Generation | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+
+  // Photo state (Creative mode generator)
+  const [photoMode, setPhotoMode] = useState<'none' | 'upload' | 'generate' | 'library'>('none');
+  const [photoUrl, setPhotoUrl] = useState('');
+  const [photoPrompt, setPhotoPrompt] = useState('');
+  const [generatingPhoto, setGeneratingPhoto] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+
+  // Asset library state
+  const [assetUploadOpen, setAssetUploadOpen] = useState(false);
+  const [assetUploadType, setAssetUploadType] = useState<'logo' | 'brand-element' | 'photo' | 'reference' | 'brandbook'>('brand-element');
+  const [assetUploadVariant, setAssetUploadVariant] = useState('default');
+  const [assetUploadName, setAssetUploadName] = useState('');
+  const [assetUploadDescription, setAssetUploadDescription] = useState('');
+  const [uploadingAsset, setUploadingAsset] = useState(false);
 
   // Edit state
   const [editingImage, setEditingImage] = useState<{ url: string; generationId?: number } | null>(null);
@@ -180,7 +199,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
       const res = await fetch(`/api/projects/${id}/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ headline, subtext, brief, format, mode, creativity }),
+        body: JSON.stringify({ headline, subtext, brief, format, mode, creativity, photoUrl: photoUrl || undefined, photoMode }),
       });
       const data = await res.json();
       if (data.imageUrls && data.imageUrls.length > 0) {
@@ -251,6 +270,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
     if (res.ok) {
       const asset = await res.json();
       setBrandbookAsset(asset);
+      setAssets(prev => [...prev.filter(a => a.type !== 'brandbook'), asset]);
       showToast('Brandbook wgrany ✓');
     }
   };
@@ -294,6 +314,79 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
     setHeadline(r.headline);
     setSubtext(r.subtext || '');
     setTab('generate');
+  };
+
+  const generatePhoto = async () => {
+    if (!photoPrompt || !id) return;
+    setGeneratingPhoto(true);
+    try {
+      const res = await fetch(`/api/projects/${id}/generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ headline: photoPrompt, format, elementOnly: true }),
+      });
+      const data = await res.json();
+      if (data.imageUrls?.[0]) {
+        setPhotoUrl(data.imageUrls[0]);
+      } else {
+        alert('Błąd generowania zdjęcia: ' + (data.error || 'Spróbuj ponownie'));
+      }
+    } catch {
+      alert('Błąd połączenia');
+    } finally {
+      setGeneratingPhoto(false);
+    }
+  };
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !id) return;
+    setUploadingPhoto(true);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('type', 'photo');
+      fd.append('name', file.name);
+      const res = await fetch(`/api/projects/${id}/assets`, { method: 'POST', body: fd });
+      if (res.ok) {
+        const asset = await res.json();
+        setPhotoUrl(asset.url);
+        setAssets(prev => [...prev, asset]);
+      }
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
+  const uploadAsset = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !id) return;
+    setUploadingAsset(true);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('type', assetUploadType);
+      fd.append('variant', assetUploadVariant);
+      fd.append('name', assetUploadName || file.name);
+      fd.append('description', assetUploadDescription);
+      const res = await fetch(`/api/projects/${id}/assets`, { method: 'POST', body: fd });
+      if (res.ok) {
+        const asset = await res.json();
+        setAssets(prev => [...prev, asset]);
+        setAssetUploadOpen(false);
+        setAssetUploadName('');
+        setAssetUploadDescription('');
+        showToast('Asset dodany ✓');
+        if (assetUploadType === 'logo') {
+          setProject(p => p ? { ...p, logo_url: asset.url } : p);
+        }
+      } else {
+        const err = await res.json();
+        alert('Błąd: ' + err.error);
+      }
+    } finally {
+      setUploadingAsset(false);
+    }
   };
 
   const saveGenerationMode = async (newMode: 'creative' | 'precision') => {
@@ -549,6 +642,13 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
             <PenLine className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Copywriter</span>
           </button>
+          <button
+            onClick={() => setTab('assets')}
+            className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 ${tab === 'assets' ? 'holo-gradient text-teal-deep shadow-sm' : 'opacity-50 hover:opacity-80'}`}
+          >
+            <Layers className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Assety</span>
+          </button>
         </div>
 
         <button
@@ -724,6 +824,100 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
                     value={brief}
                     onChange={e => setBrief(e.target.value)}
                   />
+                </div>
+
+                {/* Photo / Central element selector */}
+                <div>
+                  <label className="text-xs font-semibold opacity-50 mb-1.5 block uppercase tracking-wide flex items-center gap-1.5">
+                    <Camera className="h-3 w-3" /> Zdjęcie / Element centralny
+                  </label>
+                  <div className="rounded-xl border border-teal-deep/10 dark:border-holo-mint/10 bg-white dark:bg-teal-mid p-3 space-y-3">
+                    {/* Radio options */}
+                    <div className="grid grid-cols-2 gap-1.5">
+                      {([
+                        { value: 'none', label: 'Brak (AI decyduje)' },
+                        { value: 'upload', label: 'Własne zdjęcie' },
+                        { value: 'generate', label: 'Generuj AI' },
+                        { value: 'library', label: 'Z biblioteki' },
+                      ] as const).map(opt => (
+                        <button key={opt.value} onClick={() => { setPhotoMode(opt.value); setPhotoUrl(''); }}
+                          className={`h-8 px-3 rounded-lg text-xs font-semibold border transition-all text-left ${photoMode === opt.value ? 'border-holo-aqua bg-holo-aqua/10 text-holo-aqua' : 'border-teal-deep/10 dark:border-holo-mint/10 opacity-50 hover:opacity-80'}`}>
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Upload */}
+                    {photoMode === 'upload' && (
+                      photoUrl ? (
+                        <div className="flex items-center gap-2">
+                          <img src={photoUrl} className="w-14 h-14 object-cover rounded-lg border border-teal-deep/10 dark:border-holo-mint/10" alt="photo" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs opacity-50 truncate">Zdjęcie wgrane</p>
+                          </div>
+                          <button onClick={() => setPhotoUrl('')} className="w-7 h-7 rounded-full border border-red-500/20 flex items-center justify-center text-red-400 hover:bg-red-500/10 transition-colors">
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      ) : (
+                        <label className={`flex items-center justify-center gap-2 h-10 rounded-xl border-2 border-dashed border-teal-deep/20 dark:border-holo-mint/20 cursor-pointer hover:border-holo-mint/50 transition-colors text-sm ${uploadingPhoto ? 'opacity-50' : ''}`}>
+                          {uploadingPhoto ? <><Loader2 className="h-4 w-4 animate-spin" /> Wgrywam...</> : <><Upload className="h-4 w-4" /> Wybierz plik</>}
+                          <input type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} disabled={uploadingPhoto} />
+                        </label>
+                      )
+                    )}
+
+                    {/* Generate AI */}
+                    {photoMode === 'generate' && (
+                      <div className="space-y-2">
+                        {photoUrl ? (
+                          <div className="flex items-center gap-2">
+                            <img src={photoUrl} className="w-14 h-14 object-cover rounded-lg border border-teal-deep/10 dark:border-holo-mint/10" alt="generated" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs text-holo-aqua font-semibold">✓ Wygenerowano</p>
+                            </div>
+                            <button onClick={() => setPhotoUrl('')} className="w-7 h-7 rounded-full border border-red-500/20 flex items-center justify-center text-red-400 hover:bg-red-500/10 transition-colors">
+                              <X className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        ) : (
+                          <>
+                            <textarea className={`${inputCls} resize-none text-sm`} rows={2}
+                              placeholder="np. Samsung Galaxy A56 5G, dynamic angle, transparent bg, studio lighting..."
+                              value={photoPrompt} onChange={e => setPhotoPrompt(e.target.value)} />
+                            <button onClick={generatePhoto} disabled={generatingPhoto || !photoPrompt}
+                              className="w-full h-9 rounded-xl border border-holo-aqua/30 text-holo-aqua bg-holo-aqua/10 text-sm font-semibold disabled:opacity-40 hover:bg-holo-aqua/20 transition-colors flex items-center justify-center gap-2">
+                              {generatingPhoto ? <><Loader2 className="h-4 w-4 animate-spin" /> Generuję...</> : <><Wand2 className="h-4 w-4" /> Generuj zdjęcie</>}
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    )}
+
+                    {/* From library */}
+                    {photoMode === 'library' && (
+                      (() => {
+                        const photos = assets.filter(a => a.type === 'photo');
+                        return photos.length === 0 ? (
+                          <p className="text-xs opacity-40 text-center py-2">Brak zdjęć w bibliotece — wgraj w zakładce Assety</p>
+                        ) : (
+                          <div className="grid grid-cols-4 gap-1.5">
+                            {photos.map(p => (
+                              <button key={p.id} onClick={() => setPhotoUrl(p.url)}
+                                className={`relative aspect-square rounded-lg overflow-hidden border-2 transition-all ${photoUrl === p.url ? 'border-holo-aqua' : 'border-teal-deep/10 dark:border-holo-mint/10 hover:border-holo-aqua/50'}`}>
+                                <img src={p.url} className="w-full h-full object-cover" alt={p.filename} />
+                                {photoUrl === p.url && (
+                                  <div className="absolute inset-0 bg-holo-aqua/20 flex items-center justify-center">
+                                    <Check className="h-4 w-4 text-holo-aqua" />
+                                  </div>
+                                )}
+                              </button>
+                            ))}
+                          </div>
+                        );
+                      })()
+                    )}
+                  </div>
                 </div>
 
                 {/* Format picker */}
@@ -1190,6 +1384,189 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* ── TAB: ASSETS ──────────────────────────────────────────────────────── */}
+        {tab === 'assets' && (
+          <div className="max-w-2xl space-y-6">
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="font-black text-base">Biblioteka assetów</h2>
+              <button
+                onClick={() => setAssetUploadOpen(v => !v)}
+                className="h-9 px-4 rounded-full holo-gradient text-teal-deep text-xs font-black flex items-center gap-1.5 hover:opacity-90 transition-opacity"
+              >
+                <Upload className="h-3.5 w-3.5" /> Dodaj asset
+              </button>
+            </div>
+
+            {/* Upload form */}
+            {assetUploadOpen && (
+              <div className="rounded-2xl border border-holo-mint/20 bg-white dark:bg-teal-mid p-5 space-y-4">
+                <p className="text-sm font-bold">Nowy asset</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs opacity-50 mb-1 block">Typ *</label>
+                    <select value={assetUploadType} onChange={e => setAssetUploadType(e.target.value as typeof assetUploadType)}
+                      className={inputCls}>
+                      <option value="logo">Logo</option>
+                      <option value="brand-element">Element graficzny</option>
+                      <option value="photo">Zdjęcie / Packshot</option>
+                      <option value="reference">Referencja</option>
+                      <option value="brandbook">Brandbook (PDF)</option>
+                    </select>
+                  </div>
+                  {assetUploadType === 'logo' && (
+                    <div>
+                      <label className="text-xs opacity-50 mb-1 block">Wariant logo</label>
+                      <select value={assetUploadVariant} onChange={e => setAssetUploadVariant(e.target.value)} className={inputCls}>
+                        <option value="default">Domyślne</option>
+                        <option value="dark-bg">Na ciemne tło</option>
+                        <option value="light-bg">Na jasne tło</option>
+                      </select>
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <label className="text-xs opacity-50 mb-1 block">Nazwa (opcjonalnie)</label>
+                  <input type="text" className={inputCls} placeholder="np. Blob fioletowy, Sticker SALE…"
+                    value={assetUploadName} onChange={e => setAssetUploadName(e.target.value)} />
+                </div>
+                <div>
+                  <label className="text-xs opacity-50 mb-1 block">Opis (opcjonalnie — AI go użyje)</label>
+                  <textarea className={`${inputCls} resize-none`} rows={2}
+                    placeholder="np. Blob dekoracyjny fioletowy, używać w prawym górnym rogu grafiki"
+                    value={assetUploadDescription} onChange={e => setAssetUploadDescription(e.target.value)} />
+                </div>
+                <label className={`flex items-center justify-center gap-2 h-12 rounded-xl border-2 border-dashed border-holo-mint/30 cursor-pointer hover:border-holo-mint/60 transition-colors font-semibold text-sm ${uploadingAsset ? 'opacity-50 pointer-events-none' : ''}`}>
+                  {uploadingAsset ? <><Loader2 className="h-4 w-4 animate-spin" /> Wgrywam...</> : <><Upload className="h-4 w-4" /> Wybierz plik i wgraj</>}
+                  <input type="file" accept="image/*,application/pdf,.svg" className="hidden" onChange={uploadAsset} disabled={uploadingAsset} />
+                </label>
+              </div>
+            )}
+
+            {/* LOGO section */}
+            {(() => {
+              const logos = assets.filter(a => a.type === 'logo');
+              return (
+                <div className="rounded-2xl border border-teal-deep/10 dark:border-holo-mint/10 bg-white dark:bg-teal-mid p-4 space-y-3">
+                  <p className="text-xs font-bold opacity-40 uppercase tracking-wide">Logo ({logos.length})</p>
+                  {logos.length === 0 && <p className="text-xs opacity-30">Brak logo — dodaj wariant</p>}
+                  <div className="space-y-2">
+                    {logos.map(a => (
+                      <div key={a.id} className="flex items-center gap-3">
+                        <div className="w-16 h-10 rounded-lg bg-teal-deep/5 dark:bg-teal-deep/30 border border-teal-deep/10 dark:border-holo-mint/10 flex items-center justify-center overflow-hidden shrink-0">
+                          <img src={a.url} className="max-w-full max-h-full object-contain" alt={a.filename} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-semibold truncate">{a.filename}</p>
+                          <span className="text-xs px-1.5 py-0.5 rounded bg-holo-mint/10 text-holo-mint">{a.variant || 'default'}</span>
+                        </div>
+                        <button className="w-8 h-8 rounded-full border border-red-500/20 flex items-center justify-center opacity-40 hover:opacity-100 hover:text-red-400 transition-all"
+                          onClick={() => { fetch(`/api/projects/${id}/assets?assetId=${a.id}`, { method: 'DELETE' }).then(() => setAssets(prev => prev.filter(x => x.id !== a.id))); }}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* BRAND ELEMENTS section */}
+            {(() => {
+              const elements = assets.filter(a => a.type === 'brand-element');
+              return (
+                <div className="rounded-2xl border border-teal-deep/10 dark:border-holo-mint/10 bg-white dark:bg-teal-mid p-4 space-y-3">
+                  <p className="text-xs font-bold opacity-40 uppercase tracking-wide">Elementy graficzne ({elements.length})</p>
+                  {elements.length === 0 && <p className="text-xs opacity-30">Brak elementów — dodaj bloba, sticker, ikonę, teksturę…</p>}
+                  <div className="grid grid-cols-2 gap-2">
+                    {elements.map(a => (
+                      <div key={a.id} className="flex items-center gap-2 p-2 rounded-xl border border-teal-deep/10 dark:border-holo-mint/10">
+                        <div className="w-12 h-12 rounded-lg bg-teal-deep/5 dark:bg-teal-deep/30 border border-teal-deep/10 dark:border-holo-mint/10 flex items-center justify-center overflow-hidden shrink-0">
+                          <img src={a.url} className="max-w-full max-h-full object-contain" alt={a.filename} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-semibold truncate">{a.filename}</p>
+                          {a.description && <p className="text-xs opacity-40 truncate">{a.description}</p>}
+                        </div>
+                        <button className="w-7 h-7 rounded-full border border-red-500/20 flex items-center justify-center opacity-40 hover:opacity-100 hover:text-red-400 transition-all shrink-0"
+                          onClick={() => { fetch(`/api/projects/${id}/assets?assetId=${a.id}`, { method: 'DELETE' }).then(() => setAssets(prev => prev.filter(x => x.id !== a.id))); }}>
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* PHOTOS section */}
+            {(() => {
+              const photos = assets.filter(a => a.type === 'photo');
+              return (
+                <div className="rounded-2xl border border-teal-deep/10 dark:border-holo-mint/10 bg-white dark:bg-teal-mid p-4 space-y-3">
+                  <p className="text-xs font-bold opacity-40 uppercase tracking-wide">Zdjęcia / Packshoты ({photos.length})</p>
+                  {photos.length === 0 && <p className="text-xs opacity-30">Brak zdjęć — dodaj packshot, lifestyle photo…</p>}
+                  <div className="grid grid-cols-3 gap-2">
+                    {photos.map(a => (
+                      <div key={a.id} className="relative aspect-square rounded-xl overflow-hidden border border-teal-deep/10 dark:border-holo-mint/10 group">
+                        <img src={a.url} className="w-full h-full object-cover" alt={a.filename} />
+                        <div className="absolute inset-0 bg-teal-deep/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1 p-2">
+                          <p className="text-white text-xs font-semibold text-center truncate w-full">{a.filename}</p>
+                          <button className="w-7 h-7 rounded-full bg-red-500/80 flex items-center justify-center text-white"
+                            onClick={() => { fetch(`/api/projects/${id}/assets?assetId=${a.id}`, { method: 'DELETE' }).then(() => setAssets(prev => prev.filter(x => x.id !== a.id))); }}>
+                            <Trash2 className="h-3 w-3" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* BRANDBOOK + REFERENCES section */}
+            {(() => {
+              const brandbook = assets.find(a => a.type === 'brandbook');
+              const refs = assets.filter(a => a.type === 'reference');
+              return (
+                <div className="rounded-2xl border border-teal-deep/10 dark:border-holo-mint/10 bg-white dark:bg-teal-mid p-4 space-y-3">
+                  <p className="text-xs font-bold opacity-40 uppercase tracking-wide">Brandbook & Referencje</p>
+                  {brandbook ? (
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">📄</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-semibold truncate">{brandbook.filename}</p>
+                        <p className="text-xs opacity-40">Brandbook PDF</p>
+                      </div>
+                      <button className="w-8 h-8 rounded-full border border-red-500/20 flex items-center justify-center opacity-40 hover:opacity-100 hover:text-red-400 transition-all"
+                        onClick={() => { fetch(`/api/projects/${id}/assets?assetId=${brandbook.id}`, { method: 'DELETE' }).then(() => setAssets(prev => prev.filter(x => x.id !== brandbook.id))); }}>
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  ) : (
+                    <p className="text-xs opacity-30">Brak brandbookaużyj zakładki Brand do analizy grafik referencyjnych</p>
+                  )}
+                  {refs.length > 0 && (
+                    <div>
+                      <p className="text-xs opacity-40 mb-2">Referencje ({refs.length}/5)</p>
+                      <div className="grid grid-cols-5 gap-1.5">
+                        {refs.map(a => (
+                          <div key={a.id} className="relative aspect-square rounded-lg overflow-hidden border border-teal-deep/10 dark:border-holo-mint/10 group">
+                            <img src={a.url} className="w-full h-full object-cover" alt={a.filename} />
+                            <button className="absolute top-1 right-1 w-5 h-5 rounded-full bg-red-500/80 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                              onClick={() => { fetch(`/api/projects/${id}/assets?assetId=${a.id}`, { method: 'DELETE' }).then(() => setAssets(prev => prev.filter(x => x.id !== a.id))); }}>
+                              <X className="h-2.5 w-2.5" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </div>
         )}
 

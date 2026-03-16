@@ -37,7 +37,17 @@ async function urlToBase64(url: string): Promise<{ data: string; mimeType: strin
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { headline, subtext, brief, format, mode, creativity = 2, elementOnly = false } = await req.json();
+  const {
+    headline,
+    subtext,
+    brief,
+    format,
+    mode,
+    creativity = 2,
+    elementOnly = false,
+    photoUrl = '',
+    photoMode = 'none',
+  } = await req.json();
 
   if (!headline || !format) {
     return NextResponse.json({ error: 'headline and format required' }, { status: 400 });
@@ -51,30 +61,50 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   // Ensure parent_id column exists
   await sql`ALTER TABLE generations ADD COLUMN IF NOT EXISTS parent_id INTEGER REFERENCES generations(id)`.catch(() => {});
 
-  // ── Build image parts ──────────────────────────────────────────────────────
+  type AssetRow = { type: string; url: string; filename: string; variant?: string; description?: string; mime_type?: string };
+  const assetList = assets as AssetRow[];
+
+  // ── Build image parts ────────────────────────────────────────────────────
   const imageParts: Array<{ inlineData: { data: string; mimeType: string } }> = [];
 
-  const logoAsset = (assets as Array<{ type: string; url: string }>).find(a => a.type === 'logo');
-  // elementOnly mode: no logo or refs — just brand DNA for style context
+  // Logo: pick best variant for background context
+  // Prefer dark-bg variant (most social graphics have colored bg), fallback to default, then any
+  const logoAssets = assetList.filter(a => a.type === 'logo');
+  const logoAsset = logoAssets.find(a => a.variant === 'dark-bg')
+    || logoAssets.find(a => a.variant === 'default')
+    || logoAssets[0];
+
   if (!elementOnly && logoAsset && !logoAsset.url.toLowerCase().endsWith('.svg')) {
     const b64 = await urlToBase64(logoAsset.url);
     if (b64 && !b64.mimeType.includes('svg')) imageParts.push({ inlineData: b64 });
   }
 
-  // In fast mode or elementOnly skip reference images
+  // Reference images (skip in fast/elementOnly)
+  const refs = assetList.filter(a => a.type === 'reference').slice(0, 3);
   if (!elementOnly && mode !== 'fast') {
-    const refs = (assets as Array<{ type: string; url: string }>)
-      .filter(a => a.type === 'reference')
-      .slice(0, 3);
     for (const ref of refs) {
       const b64 = await urlToBase64(ref.url);
       if (b64) imageParts.push({ inlineData: b64 });
     }
   }
 
-  const refs = (assets as Array<{ type: string; url: string }>).filter(a => a.type === 'reference').slice(0, 3);
+  // Brand elements: include as inline images (max 2, skip large SVGs)
+  const brandElements = assetList.filter(a => a.type === 'brand-element').slice(0, 2);
+  if (!elementOnly) {
+    for (const el of brandElements) {
+      if (el.url.toLowerCase().endsWith('.svg')) continue;
+      const b64 = await urlToBase64(el.url);
+      if (b64 && !b64.mimeType.includes('svg')) imageParts.push({ inlineData: b64 });
+    }
+  }
 
-  // ── Build 3-layer prompt (PR 3b) ───────────────────────────────────────────
+  // Photo: include as inline image if provided
+  if (photoUrl && photoMode !== 'none' && !elementOnly) {
+    const b64 = await urlToBase64(photoUrl);
+    if (b64) imageParts.push({ inlineData: b64 });
+  }
+
+  // ── Build 3-layer prompt ─────────────────────────────────────────────────
   const sep = '════════════════════════════════════════';
 
   // Layer 1 — omit entirely if no brand rules
@@ -87,9 +117,29 @@ ${project.brand_rules.split('\n').filter((r: string) => r.trim()).map((r: string
 `
     : '';
 
-  // Brand asset context note (inside Layer 2)
+  // Asset note for Layer 2 header
+  const logoNote = logoAsset ? '\n- First image: brand LOGO — reproduce it exactly, place it prominently' : '';
+  const refNote = !elementOnly && mode !== 'fast' && refs.length > 0 ? `\n- Next ${refs.length} image(s): brand reference graphics — match this visual style closely` : '';
+  const elNote = !elementOnly && brandElements.length > 0 ? `\n- Brand graphic elements: use these decorative/brand elements in the composition` : '';
+  const photoNote = photoUrl && photoMode !== 'none' && !elementOnly ? '\n- PHOTO PROVIDED: place this as the central/hero image, compose brand elements around it' : '';
   const assetNote = imageParts.length > 0
-    ? `Provided visual assets:${logoAsset ? '\n- First image: brand LOGO — reproduce it exactly, place it prominently' : ''}${mode !== 'fast' && refs.length > 0 ? `\n- Next ${refs.length} image(s): brand reference graphics — match this visual style closely` : ''}\n\n`
+    ? `Provided visual assets:${logoNote}${refNote}${elNote}${photoNote}\n\n`
+    : '';
+
+  // AVAILABLE ASSETS text block for Layer 2
+  const availableAssets: string[] = [];
+  if (logoAssets.length > 0) {
+    logoAssets.forEach(l => availableAssets.push(`- Logo (${l.variant || 'default'}): ${l.url}`));
+  }
+  brandElements.forEach(el => {
+    availableAssets.push(`- Brand element "${el.filename}"${el.description ? ` — ${el.description}` : ''}: ${el.url}`);
+  });
+  const photoAssets = assetList.filter(a => a.type === 'photo');
+  photoAssets.forEach(p => {
+    availableAssets.push(`- Photo "${p.filename}"${p.description ? ` — ${p.description}` : ''}: ${p.url}`);
+  });
+  const assetsSection = availableAssets.length > 0
+    ? `\nAVAILABLE ASSETS:\n${availableAssets.join('\n')}\n`
     : '';
 
   // Brand DNA — prefer brand_sections, then brand_analysis text, then manual fields
@@ -112,16 +162,19 @@ ${project.brand_rules.split('\n').filter((r: string) => r.trim()).map((r: string
     ].filter(Boolean).join('\n') || 'modern, professional, event agency aesthetic';
   }
 
-  // 2a: Layer 2 — Brand DNA with directive intro
   const layer2 = `
 ${sep}
 LAYER 2 — BRAND DNA (visual identity — follow precisely)
 Apply rules from every section below to your design.
 ${sep}
-${assetNote}${layer2Content}
-`;
+${assetNote}${layer2Content}${assetsSection}`;
 
-  // 2b: Layer 3 — directive Creative Brief (or element-only mode)
+  // Photo instruction for Layer 3
+  const photoInstruction = photoUrl && photoMode !== 'none' && !elementOnly
+    ? `\nMAIN VISUAL ELEMENT: A photo has been provided (last inline image). Place it as the central/hero element of the composition. Do NOT replace it with AI-generated imagery. Compose all brand elements around it.`
+    : '';
+
+  // Layer 3 — Creative Brief or element-only
   const layer3 = elementOnly ? `
 ${sep}
 LAYER 3 — ELEMENT GENERATION
@@ -146,7 +199,7 @@ FORMAT: ${FORMAT_SIZES[format] || '1080x1080px square'} — design for this exac
 HEADLINE TEXT (render prominently on the graphic): "${headline}"
 ${subtext ? `SUBTEXT (render smaller, secondary): "${subtext}"` : ''}
 ${brief ? `CREATIVE DIRECTION (context for you, do not render verbatim): "${brief}"` : ''}
-
+${photoInstruction}
 OUTPUT REQUIREMENTS:
 - Reproduce the exact provided logo — placement per brand DNA rules, or top-left if unspecified
 - No human photography unless explicitly requested in creative direction
@@ -164,7 +217,6 @@ All Layer 1 rules still override this directive.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ` : '';
 
-  // 2c: Closing priority reminder
   const closing = `
 
 ${sep}
@@ -177,7 +229,7 @@ Generate ONE complete, publication-ready graphic.`;
 Follow the three-layer instruction hierarchy below. Higher layers override lower ones.
 ${layer1}${layer2}${layer3}${creativityBlock}${closing}`;
 
-  // ── Generate via Gemini ────────────────────────────────────────────────────
+  // ── Generate via Gemini ──────────────────────────────────────────────────
   const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_KEY!);
   const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-image-preview' });
 
@@ -222,7 +274,6 @@ ${layer1}${layer2}${layer3}${creativityBlock}${closing}`;
     return NextResponse.json({ error: 'Image generation failed — no image in response' }, { status: 500 });
   }
 
-  // Store format with :fast and :c{creativity} suffixes
   const formatWithCreativity = `${format.replace(/:c\d$/, '')}:c${creativity}`;
   const dbFormat = mode === 'fast' ? `${formatWithCreativity}:fast` : formatWithCreativity;
   const combinedBrief = [headline, subtext].filter(Boolean).join(' | ');
