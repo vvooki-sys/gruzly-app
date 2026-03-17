@@ -19,8 +19,23 @@ interface BrandScanData {
   industry: string;
   brandName: string;
   brandDescription: string;
+  fonts: string[];
+  headingFont: string;
+  bodyFont: string;
+  brandValues: string[];
+  ctaExamples: string[];
+  photoStyle: string;
+  targetAudience: string;
   logoUrl: string;
+  faviconUrl: string;
   socialLinks: { facebook?: string; instagram?: string; linkedin?: string; tiktok?: string };
+  socialMediaAnalysis?: {
+    tone?: string;
+    languageStyle?: string;
+    commonTopics?: string[];
+    ctaStyle?: string;
+    postingPatterns?: string;
+  } | null;
   scannedUrl: string;
   scannedAt: string;
 }
@@ -496,10 +511,16 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
         content: [
           brandScanResult.industry && `Branża: ${brandScanResult.industry}`,
           brandScanResult.visualStyle && `Styl wizualny: ${brandScanResult.visualStyle}`,
+          brandScanResult.targetAudience && `Grupa docelowa: ${brandScanResult.targetAudience}`,
           brandScanResult.primaryColor && `Kolor główny: ${brandScanResult.primaryColor}`,
           brandScanResult.secondaryColor && `Kolor dodatkowy: ${brandScanResult.secondaryColor}`,
           brandScanResult.accentColor && `Akcent: ${brandScanResult.accentColor}`,
+          brandScanResult.headingFont && `Font nagłówków: ${brandScanResult.headingFont}`,
+          brandScanResult.bodyFont && `Font treści: ${brandScanResult.bodyFont}`,
           brandScanResult.brandKeywords?.length && `Słowa kluczowe: ${brandScanResult.brandKeywords.join(', ')}`,
+          brandScanResult.brandValues?.length && `Wartości marki: ${brandScanResult.brandValues.join(', ')}`,
+          brandScanResult.photoStyle && `Styl zdjęć: ${brandScanResult.photoStyle}`,
+          brandScanResult.ctaExamples?.length && `Przykłady CTA: ${brandScanResult.ctaExamples.join(' | ')}`,
           brandScanResult.brandDescription && `Opis: ${brandScanResult.brandDescription}`,
         ].filter(Boolean).join('\n'),
         type: 'custom' as const,
@@ -2190,6 +2211,21 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
                     )}
                   </div>
 
+                  {/* Fonts */}
+                  {(brandScanResult.headingFont || brandScanResult.bodyFont || brandScanResult.fonts?.length > 0) && (
+                    <div className="space-y-1">
+                      <p className="text-xs font-semibold opacity-40 uppercase tracking-wide">Fonty</p>
+                      <div className="flex gap-3 flex-wrap text-xs">
+                        {brandScanResult.headingFont && (
+                          <span><span className="opacity-40">Nagłówki:</span> <span className="font-semibold">{brandScanResult.headingFont}</span></span>
+                        )}
+                        {brandScanResult.bodyFont && brandScanResult.bodyFont !== brandScanResult.headingFont && (
+                          <span><span className="opacity-40">Treść:</span> <span className="font-semibold">{brandScanResult.bodyFont}</span></span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Keywords */}
                   {brandScanResult.brandKeywords?.length > 0 && (
                     <div className="space-y-1">
@@ -2199,6 +2235,64 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
                           <span key={i} className="text-xs bg-teal-deep/5 dark:bg-teal-deep border border-teal-deep/10 dark:border-holo-mint/10 px-2 py-0.5 rounded-full">{kw}</span>
                         ))}
                       </div>
+                    </div>
+                  )}
+
+                  {/* Brand values */}
+                  {brandScanResult.brandValues?.length > 0 && (
+                    <div className="space-y-1">
+                      <p className="text-xs font-semibold opacity-40 uppercase tracking-wide">Wartości marki</p>
+                      <div className="flex gap-1.5 flex-wrap">
+                        {brandScanResult.brandValues.map((v, i) => (
+                          <span key={i} className="text-xs bg-holo-yellow/10 text-holo-yellow border border-holo-yellow/20 px-2 py-0.5 rounded-full">{v}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Target audience + photo style */}
+                  {(brandScanResult.targetAudience || brandScanResult.photoStyle) && (
+                    <div className="grid grid-cols-2 gap-2">
+                      {brandScanResult.targetAudience && (
+                        <div className="bg-teal-deep/5 dark:bg-teal-deep rounded-xl px-3 py-2">
+                          <p className="text-xs opacity-40 mb-0.5">Grupa docelowa</p>
+                          <p className="text-xs font-semibold">{brandScanResult.targetAudience}</p>
+                        </div>
+                      )}
+                      {brandScanResult.photoStyle && (
+                        <div className="bg-teal-deep/5 dark:bg-teal-deep rounded-xl px-3 py-2">
+                          <p className="text-xs opacity-40 mb-0.5">Styl zdjęć</p>
+                          <p className="text-xs font-semibold">{brandScanResult.photoStyle}</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* CTA examples */}
+                  {brandScanResult.ctaExamples?.length > 0 && (
+                    <div className="space-y-1">
+                      <p className="text-xs font-semibold opacity-40 uppercase tracking-wide">Przykłady CTA</p>
+                      <div className="flex gap-1.5 flex-wrap">
+                        {brandScanResult.ctaExamples.map((cta, i) => (
+                          <span key={i} className="text-xs bg-teal-deep/5 dark:bg-teal-deep border border-teal-deep/10 dark:border-holo-mint/10 px-2 py-0.5 rounded-full italic opacity-70">&quot;{cta}&quot;</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Social media analysis */}
+                  {brandScanResult.socialMediaAnalysis && (
+                    <div className="bg-teal-deep/5 dark:bg-teal-deep rounded-xl px-3 py-2 space-y-1">
+                      <p className="text-xs font-semibold opacity-40 uppercase tracking-wide">Social media</p>
+                      {brandScanResult.socialMediaAnalysis.tone && (
+                        <p className="text-xs"><span className="opacity-40">Ton: </span><span className="font-semibold">{brandScanResult.socialMediaAnalysis.tone}</span></p>
+                      )}
+                      {brandScanResult.socialMediaAnalysis.languageStyle && (
+                        <p className="text-xs opacity-60">{brandScanResult.socialMediaAnalysis.languageStyle}</p>
+                      )}
+                      {brandScanResult.socialMediaAnalysis.commonTopics && brandScanResult.socialMediaAnalysis.commonTopics.length > 0 && (
+                        <p className="text-xs"><span className="opacity-40">Tematy: </span>{brandScanResult.socialMediaAnalysis.commonTopics.join(', ')}</p>
+                      )}
                     </div>
                   )}
 
