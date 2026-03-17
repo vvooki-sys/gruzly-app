@@ -563,8 +563,8 @@ Return ONLY a valid JSON object (no markdown, no explanation):
     );
   }
 
-  // LinkedIn og:image as reference
-  if (socialLinks.linkedin) {
+  // LinkedIn og:image as reference — company pages only (/company/), skip personal profiles (/in/)
+  if (socialLinks.linkedin && socialLinks.linkedin.includes('/company/')) {
     socialScanPromises.push(
       (async () => {
         try {
@@ -584,6 +584,8 @@ Return ONLY a valid JSON object (no markdown, no explanation):
         }
       })()
     );
+  } else if (socialLinks.linkedin) {
+    console.log('LinkedIn: personal profile (/in/) — skipping og:image to avoid profile photo');
   }
 
   // FB Graph API: public profile picture (no token needed)
