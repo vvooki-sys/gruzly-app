@@ -142,17 +142,19 @@ function extractOgImage(html: string, baseUrl: string): string {
 
 const cleanSocialUrl = (u: string) => u.replace(/[?#].*$/, '').replace(/\/+$/, '');
 
-function extractSocialLinks(html: string): { facebook?: string; instagram?: string; linkedin?: string; tiktok?: string } {
-  const links: { facebook?: string; instagram?: string; linkedin?: string; tiktok?: string } = {};
+function extractSocialLinks(html: string): { facebook?: string; instagram?: string; linkedin?: string; tiktok?: string; youtube?: string } {
+  const links: { facebook?: string; instagram?: string; linkedin?: string; tiktok?: string; youtube?: string } = {};
   // Use href= to avoid matching FB SDK / analytics URLs
   const fb = html.match(/href=["'](https?:\/\/(?:www\.)?facebook\.com\/[^"']+)["']/i)?.[1];
   const ig = html.match(/href=["'](https?:\/\/(?:www\.)?instagram\.com\/[^"']+)["']/i)?.[1];
-  const li = html.match(/href=["'](https?:\/\/(?:www\.)?linkedin\.com\/[^"']+)["']/i)?.[1];
-  const tt = html.match(/href=["'](https?:\/\/(?:www\.)?tiktok\.com\/[^"']+)["']/i)?.[1];
+  const li = html.match(/href=["'](https?:\/\/(?:www\.)?linkedin\.com\/(?:company|in)\/[^"']+)["']/i)?.[1];
+  const tt = html.match(/href=["'](https?:\/\/(?:www\.)?tiktok\.com\/@[^"']+)["']/i)?.[1];
+  const yt = html.match(/href=["'](https?:\/\/(?:www\.)?youtube\.com\/(?:@|channel\/|c\/)[^"']+)["']/i)?.[1];
   if (fb) links.facebook = cleanSocialUrl(fb);
   if (ig) links.instagram = cleanSocialUrl(ig);
   if (li) links.linkedin = cleanSocialUrl(li);
   if (tt) links.tiktok = cleanSocialUrl(tt);
+  if (yt) links.youtube = cleanSocialUrl(yt);
   return links;
 }
 
@@ -304,7 +306,7 @@ export interface BrandDna {
   targetAudience: string;
   logoUrl: string;
   faviconUrl: string;
-  socialLinks: { facebook?: string; instagram?: string; linkedin?: string; tiktok?: string };
+  socialLinks: { facebook?: string; instagram?: string; linkedin?: string; tiktok?: string; youtube?: string };
   socialMediaAnalysis?: {
     tone?: string;
     languageStyle?: string;

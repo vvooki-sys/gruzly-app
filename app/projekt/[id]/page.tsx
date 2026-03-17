@@ -28,13 +28,34 @@ interface BrandScanData {
   targetAudience: string;
   logoUrl: string;
   faviconUrl: string;
-  socialLinks: { facebook?: string; instagram?: string; linkedin?: string; tiktok?: string };
+  socialLinks: { facebook?: string; instagram?: string; linkedin?: string; tiktok?: string; youtube?: string };
   socialMediaAnalysis?: {
     tone?: string;
     languageStyle?: string;
     commonTopics?: string[];
     ctaStyle?: string;
     postingPatterns?: string;
+  } | null;
+  platformResults?: Record<string, {
+    platform: string;
+    images: string[];
+    postsAnalyzed: number;
+    method: string | null;
+    error: string | null;
+  }> | null;
+  communicationPattern?: {
+    summary: string;
+    content_types: string[];
+    dominant_visual_style: string;
+    people_in_content: boolean;
+    product_focus: string;
+    text_in_posts: string;
+    production_quality: string;
+    platform_differences: string;
+    tags: string[];
+    gemini_recommendation: string;
+    use_photos_over_graphics: boolean;
+    suggested_gruzly_mode: 'creative' | 'photo' | 'precision';
   } | null;
   scannedUrl: string;
   scannedAt: string;
@@ -267,6 +288,9 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
   const [applyingBrandScan, setApplyingBrandScan] = useState(false);
   const [generatingBrandBook, setGeneratingBrandBook] = useState(false);
   const [brandBookUrl, setBrandBookUrl] = useState('');
+  const [socialPatternLoading, setSocialPatternLoading] = useState(false);
+  const [socialPatternResults, setSocialPatternResults] = useState<BrandScanData['platformResults']>(null);
+  const [communicationPattern, setCommunicationPattern] = useState<BrandScanData['communicationPattern']>(null);
 
   // Copywriter state
   const [copyFile, setCopyFile] = useState<File | null>(null);
@@ -294,7 +318,11 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
           }
           setGenerationMode((d.project.generation_mode || 'creative') as 'creative' | 'photo' | 'precision');
           setToneOfVoice(d.project.tone_of_voice || '');
-          if (d.project.brand_scan_data) setBrandScanResult(d.project.brand_scan_data);
+          if (d.project.brand_scan_data) {
+            setBrandScanResult(d.project.brand_scan_data);
+            if (d.project.brand_scan_data.platformResults) setSocialPatternResults(d.project.brand_scan_data.platformResults);
+            if (d.project.brand_scan_data.communicationPattern) setCommunicationPattern(d.project.brand_scan_data.communicationPattern);
+          }
           if (d.project.scanned_url) setBrandScanUrl(d.project.scanned_url);
           setLoading(false);
         });
@@ -546,6 +574,26 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
       showToast('Błąd zapisu');
     } finally {
       setApplyingBrandScan(false);
+    }
+  };
+
+  const analyzeSocialPattern = async () => {
+    if (!id) return;
+    setSocialPatternLoading(true);
+    try {
+      const res = await fetch(`/api/projects/${id}/social-pattern`, { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        setSocialPatternResults(data.results);
+        if (data.communicationPattern) setCommunicationPattern(data.communicationPattern);
+        showToast('Social Intelligence gotowe ✓');
+      } else {
+        showToast('Błąd analizy social');
+      }
+    } catch {
+      showToast('Błąd połączenia');
+    } finally {
+      setSocialPatternLoading(false);
     }
   };
 
@@ -2399,6 +2447,134 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
                     </a>
                   )}
                 </div>
+              </div>
+            )}
+
+            {/* SOCIAL INTELLIGENCE */}
+            {brandScanResult?.socialLinks && Object.values(brandScanResult.socialLinks).some(Boolean) && (
+              <div className="rounded-2xl border border-teal-deep/10 dark:border-holo-mint/10 bg-white dark:bg-teal-mid p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-bold">💡 Social Intelligence</p>
+                    <p className="text-xs opacity-40 mt-0.5">Analiza wizualnego wzorca komunikacji marki</p>
+                  </div>
+                  <button
+                    onClick={analyzeSocialPattern}
+                    disabled={socialPatternLoading}
+                    className="h-8 px-3 rounded-full holo-gradient text-teal-deep text-xs font-bold disabled:opacity-40 hover:opacity-90 transition-opacity flex items-center gap-1.5 shrink-0"
+                  >
+                    {socialPatternLoading
+                      ? <><Loader2 className="h-3 w-3 animate-spin" /> Analizuję...</>
+                      : <><Wand2 className="h-3 w-3" /> {socialPatternResults ? 'Analizuj ponownie' : 'Analizuj'}</>
+                    }
+                  </button>
+                </div>
+
+                {/* Platform cards grid */}
+                {(() => {
+                  const platforms = [
+                    { key: 'instagram', name: 'Instagram', icon: '📷' },
+                    { key: 'facebook', name: 'Facebook', icon: '📘' },
+                    { key: 'linkedin', name: 'LinkedIn', icon: '💼' },
+                    { key: 'tiktok', name: 'TikTok', icon: '🎵' },
+                    { key: 'youtube', name: 'YouTube', icon: '▶️' },
+                  ];
+                  const sl = brandScanResult.socialLinks as Record<string, string | undefined>;
+                  const visible = platforms.filter(p => sl[p.key]);
+                  if (visible.length === 0) return null;
+                  return (
+                    <div className="grid grid-cols-2 gap-2">
+                      {visible.map(p => {
+                        const result = socialPatternResults?.[p.key];
+                        const isLoading = socialPatternLoading;
+                        const isDone = !!result && !isLoading;
+                        const hasFailed = isDone && result.error && result.images.length === 0;
+                        return (
+                          <div key={p.key} className={`rounded-xl p-3 border transition-colors ${
+                            isDone && !hasFailed
+                              ? 'border-holo-mint/30 bg-holo-mint/5'
+                              : hasFailed
+                              ? 'border-red-500/20 bg-red-500/5'
+                              : 'border-teal-deep/10 dark:border-holo-mint/10 bg-teal-deep/3 dark:bg-teal-deep/20'
+                          }`}>
+                            <div className="flex items-center gap-2 mb-1.5">
+                              <span className="text-base">{p.icon}</span>
+                              <span className="text-xs font-bold flex-1">{p.name}</span>
+                              <span className="text-xs ml-auto">
+                                {!result && !isLoading && <span className="opacity-30">⬜ nie analizowano</span>}
+                                {isLoading && <span className="text-blue-400">⏳</span>}
+                                {isDone && !hasFailed && <span className="text-holo-mint">✓ {result.images.length} obrazów</span>}
+                                {hasFailed && <span className="text-red-400 text-xs truncate max-w-[70px]">✗ błąd</span>}
+                              </span>
+                            </div>
+                            {isDone && result.images.length > 0 && (
+                              <div className="flex gap-1 mb-1.5">
+                                {result.images.slice(0, 3).map((img, i) => (
+                                  <img key={i} src={img} className="w-11 h-11 rounded-lg object-cover border border-white/10" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                                ))}
+                              </div>
+                            )}
+                            {!result && sl[p.key] && (
+                              <p className="text-xs opacity-30 truncate">{sl[p.key]}</p>
+                            )}
+                            {isDone && result.method && (
+                              <p className="text-xs opacity-30">{result.method}</p>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+
+                {/* Communication Pattern Summary */}
+                {communicationPattern && (
+                  <div className="rounded-xl p-3 border border-blue-500/20 bg-blue-500/5 space-y-2">
+                    <p className="text-xs font-bold">🧠 Wzorzec komunikacji marki</p>
+                    <p className="text-xs opacity-80">{communicationPattern.summary}</p>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div>
+                        <p className="opacity-40 mb-1">Typy contentu</p>
+                        <ul className="space-y-0.5 opacity-70">
+                          {communicationPattern.content_types.slice(0, 4).map((t, i) => (
+                            <li key={i}>• {t}</li>
+                          ))}
+                        </ul>
+                      </div>
+                      <div className="space-y-1.5">
+                        <div>
+                          <p className="opacity-40 mb-0.5">Jakość produkcji</p>
+                          <p className="font-semibold">{communicationPattern.production_quality}</p>
+                        </div>
+                        <div>
+                          <p className="opacity-40 mb-0.5">Sugerowany tryb</p>
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+                            communicationPattern.suggested_gruzly_mode === 'photo' ? 'bg-holo-peach/20 text-holo-peach' :
+                            communicationPattern.suggested_gruzly_mode === 'precision' ? 'bg-blue-500/20 text-blue-400' :
+                            'bg-holo-mint/20 text-holo-mint'
+                          }`}>
+                            {communicationPattern.suggested_gruzly_mode === 'photo' ? '📸 Ze zdjęciem' :
+                             communicationPattern.suggested_gruzly_mode === 'precision' ? '🎯 Precyzja' :
+                             '🎨 Kreatywny'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-1 pt-1">
+                      {communicationPattern.tags.map((tag, i) => (
+                        <span key={i} className="px-1.5 py-0.5 rounded-full bg-white/10 dark:bg-white/5 text-xs opacity-70">{tag}</span>
+                      ))}
+                    </div>
+                    {communicationPattern.gemini_recommendation && (
+                      <p className="text-xs opacity-60 border-t border-white/10 pt-2">{communicationPattern.gemini_recommendation}</p>
+                    )}
+                    {communicationPattern.use_photos_over_graphics && (
+                      <div className="px-2 py-1 rounded-lg bg-holo-peach/10 text-holo-peach text-xs">
+                        💡 Ta marka preferuje zdjęcia — użyj trybu &ldquo;Ze zdjęciem&rdquo; dla najlepszych wyników
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 
