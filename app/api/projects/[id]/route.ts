@@ -17,7 +17,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const { id } = await params;
   const projectId = parseInt(id);
   const body = await req.json();
-  const { name, clientName, description, archived, styleDescription, typographyNotes, colorPalette, logoUrl, brandRules, brandAnalysis, brandSections, sectionId, sectionContent, generationMode, toneOfVoice } = body;
+  const { name, clientName, description, archived, styleDescription, typographyNotes, colorPalette, logoUrl, brandRules, brandAnalysis, brandSections, sectionId, sectionContent, generationMode, toneOfVoice, logoPosition } = body;
 
   // Full brand sections replace
   if (brandSections !== undefined) {
@@ -59,6 +59,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       logo_url = COALESCE(${logoUrl ?? null}, logo_url),
       tone_of_voice = COALESCE(${toneOfVoice ?? null}, tone_of_voice),
       description = COALESCE(${description ?? null}, description),
+      logo_position = COALESCE(${logoPosition ?? null}, logo_position),
       updated_at = NOW()
     WHERE id = ${projectId} RETURNING *
   `;

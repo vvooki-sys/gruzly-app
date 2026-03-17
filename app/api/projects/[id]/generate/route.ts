@@ -104,8 +104,14 @@ async function addLogoBackground(
 async function applyLogoOverlay(
   geminiImageBuffer: Buffer,
   brandAssets: AssetRow[],
-  format: string
+  format: string,
+  logoPosition: string = 'top-left'
 ): Promise<Buffer> {
+  if (logoPosition === 'none') {
+    console.log('Logo overlay: position=none, skipping');
+    return geminiImageBuffer;
+  }
+
   const meta = await sharp(geminiImageBuffer).metadata();
   const width = meta.width || 1080;
   const height = meta.height || 1080;
@@ -127,13 +133,15 @@ async function applyLogoOverlay(
       .resize(logoWidth, null, { fit: 'inside', withoutEnlargement: true })
       .toBuffer();
 
-    const logoX = Math.round(width * 0.04);
-    const logoY = Math.round(height * 0.04);
+    const logoMeta = await sharp(logoResized).metadata();
+    const logoH = logoMeta.height || Math.round(height * 0.08);
+
+    const margin = Math.round(width * 0.04);
+    const logoX = logoPosition.includes('right') ? width - logoWidth - margin : margin;
+    const logoY = logoPosition.includes('bottom') ? height - logoH - margin : margin;
 
     const brightness = await getTopLeftBrightness(geminiImageBuffer, width, height);
     const isDark = brightness < 128;
-    const logoMeta = await sharp(logoResized).metadata();
-    const logoH = logoMeta.height || Math.round(height * 0.08);
 
     const onlyOneVariant = brandAssets.filter(a => a.type === 'logo').length === 1;
     const needsBackground = onlyOneVariant && !isDark;
@@ -148,7 +156,7 @@ async function applyLogoOverlay(
       .png()
       .toBuffer();
 
-    console.log(`Logo overlay applied: ${logoAsset.variant || 'default'}, brightness: ${brightness.toFixed(0)}, needsBg: ${needsBackground}`);
+    console.log(`Logo overlay applied: pos=${logoPosition}, variant=${logoAsset.variant || 'default'}, brightness: ${brightness.toFixed(0)}, needsBg: ${needsBackground}`);
     return finalImage;
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);
@@ -236,6 +244,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   // ── Build 3-layer prompt ─────────────────────────────────────────────────
   const sep = '════════════════════════════════════════';
 
+  const logoPosition: string = project.logo_position || 'top-left';
+
+  const LOGO_EMPTY_ZONE: Record<string, string | null> = {
+    'top-left':     'top-left area (first 25% width, first 20% height)',
+    'top-right':    'top-right area (last 25% width, first 20% height)',
+    'bottom-left':  'bottom-left area (first 25% width, last 20% height)',
+    'bottom-right': 'bottom-right area (last 25% width, last 20% height)',
+    'none':         null,
+  };
+  const emptyZone = LOGO_EMPTY_ZONE[logoPosition] ?? LOGO_EMPTY_ZONE['top-left'];
+
   // Asset usage rules — always present (protects against content leakage from reference images)
   const assetUsageRules = [
     'Reference images show color palette, composition style and mood ONLY — do NOT copy faces, people, objects or scenes from them',
@@ -244,6 +263,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       ? ['NO PHOTO PROVIDED: create a purely illustrative/abstract central element — shapes, gradients, icons, brand colors — absolutely no faces or human photography']
       : []),
     'RENDER ONLY text listed under "TEXT TO APPEAR ON GRAPHIC" — no other text, captions or labels',
+    ...(emptyZone
+      ? [`DO NOT draw, paint or generate any logo or brand mark — leave the ${emptyZone} COMPLETELY EMPTY (no text, no graphics) — logo will be added programmatically`]
+      : ['No logo required — you may use the full canvas freely']),
   ];
 
   // Layer 1 — always present (asset rules + optional brand rules)
@@ -375,8 +397,8 @@ ${subtext ? `Subtext: "${subtext}"` : ''}
 ${brief ? `CREATIVE DIRECTION (context only — do not render verbatim): "${brief}"` : ''}
 ${photoInstruction}
 OUTPUT REQUIREMENTS:
-- DO NOT render any logo — top-left area (25% × 20%) must remain completely empty per Layer 1 rules
-- Logo overlay will be applied programmatically after generation
+- DO NOT render any logo — ${emptyZone ? `the ${emptyZone} must remain completely empty per Layer 1 rules` : 'you may use the full canvas (no logo required)'}
+- ${emptyZone ? 'Logo overlay will be applied programmatically after generation' : 'No logo overlay will be applied'}
 - No human photography unless explicitly requested in creative direction
 - Zero typos — double-check all text before rendering
 - Fill the entire canvas — no white borders or padding outside the design
@@ -468,7 +490,7 @@ ${layer1}${layer2}${layer3}${creativityBlock}${closing}`;
         const p = part as { inlineData?: { data: string; mimeType: string }; text?: string };
         if (p.inlineData) {
           const rawBuffer = Buffer.from(p.inlineData.data, 'base64');
-          const finalBuffer = await applyLogoOverlay(rawBuffer, assetList, format);
+          const finalBuffer = await applyLogoOverlay(rawBuffer, assetList, format, logoPosition);
           const filename = `gruzly/${id}/${Date.now()}.png`;
           const blob = await put(filename, finalBuffer, {
             access: 'public',

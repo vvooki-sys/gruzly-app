@@ -67,6 +67,7 @@ interface Project {
   generation_mode?: string | null;
   brand_scan_data?: BrandScanData | null;
   scanned_url?: string | null;
+  logo_position?: string | null;
   id: number;
   name: string;
   client_name: string | null;
@@ -460,6 +461,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
   const [editName, setEditName] = useState('');
   const [editClientName, setEditClientName] = useState('');
   const [editDescription, setEditDescription] = useState('');
+  const [editLogoPosition, setEditLogoPosition] = useState('top-left');
   const [savingProject, setSavingProject] = useState(false);
   const [deletingProject, setDeletingProject] = useState(false);
 
@@ -540,6 +542,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
     setEditName(project.name);
     setEditClientName(project.client_name || '');
     setEditDescription(project.description || '');
+    setEditLogoPosition(project.logo_position || 'top-left');
     setEditProjectOpen(true);
   };
 
@@ -550,9 +553,9 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
       await fetch(`/api/projects/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: editName.trim(), clientName: editClientName || null, description: editDescription || null }),
+        body: JSON.stringify({ name: editName.trim(), clientName: editClientName || null, description: editDescription || null, logoPosition: editLogoPosition }),
       });
-      setProject(p => p ? { ...p, name: editName.trim(), client_name: editClientName || null, description: editDescription || null } : p);
+      setProject(p => p ? { ...p, name: editName.trim(), client_name: editClientName || null, description: editDescription || null, logo_position: editLogoPosition } : p);
       setEditProjectOpen(false);
       showToast('Projekt zapisany ✓');
     } finally {
@@ -3150,6 +3153,20 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
                   value={editDescription}
                   onChange={e => setEditDescription(e.target.value)}
                 />
+              </div>
+              <div>
+                <label className="text-xs font-semibold opacity-50 uppercase tracking-wide block mb-1.5">Pozycja logo</label>
+                <select
+                  className="w-full bg-offwhite dark:bg-teal-deep rounded-xl px-3 py-2.5 text-sm border border-teal-deep/15 dark:border-holo-mint/10 focus:border-holo-mint outline-none transition-colors"
+                  value={editLogoPosition}
+                  onChange={e => setEditLogoPosition(e.target.value)}
+                >
+                  <option value="top-left">↖ Lewy górny</option>
+                  <option value="top-right">↗ Prawy górny</option>
+                  <option value="bottom-left">↙ Lewy dolny</option>
+                  <option value="bottom-right">↘ Prawy dolny</option>
+                  <option value="none">✕ Bez logo</option>
+                </select>
               </div>
             </div>
 
