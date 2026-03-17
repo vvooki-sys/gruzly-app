@@ -6,6 +6,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { ImageResponse } from 'next/og';
 import { buildCompositeElement, COMPOSITOR_FORMAT_SIZES, type LayoutPreset, type BrandColors } from '@/lib/compositor';
 import sharp from 'sharp';
+import { mergeBrandSections, getCanonicalTitle } from '@/lib/brand-sections';
 
 export const maxDuration = 30;
 
@@ -322,27 +323,24 @@ ${allLayer1Rules.map((r, i) => `${i + 1}. ${r}`).join('\n')}
     ? `\nAVAILABLE ASSETS:\n${availableAssets.join('\n')}\n`
     : '';
 
-  // Brand DNA — prefer brand_sections, then brand_analysis text, then manual fields
-  type BrandSec = { id: string; title: string; content: string; order: number };
-  const brandSections: BrandSec[] = project.brand_sections || [];
+  // Brand DNA — merge sections by canonical type to eliminate duplicates
+  type RawBrandSec = { id: string; title: string; content: string; order: number; source?: string; icon?: string; type?: string; confidence?: string };
+  const rawSections: RawBrandSec[] = project.brand_sections || [];
   let layer2Content: string;
 
-  const SOURCE_PRIORITY_GEN: Record<string, number> = { brandbook: 3, references: 2, brand_scan: 1, manual: 0 };
-  if (brandSections.length > 0) {
-    layer2Content = [...brandSections]
-      .sort((a: BrandSec, b: BrandSec) => {
-        const pa = SOURCE_PRIORITY_GEN[(a as BrandSec & { source?: string }).source || 'manual'] ?? 0;
-        const pb = SOURCE_PRIORITY_GEN[(b as BrandSec & { source?: string }).source || 'manual'] ?? 0;
-        if (pa !== pb) return pb - pa; // higher priority first
-        return a.order - b.order;
-      })
-      .map((s: BrandSec) => {
-        const sec = s as BrandSec & { source?: string };
-        const reliability = sec.source === 'brandbook' ? ' [CONFIRMED]'
-          : sec.source === 'references' ? ' [FROM REFERENCES]'
-          : sec.source === 'brand_scan' ? ' [AUTO-DETECTED]'
+  if (rawSections.length > 0) {
+    const merged = mergeBrandSections(rawSections);
+    console.log(`Brand sections: ${rawSections.length} raw → ${merged.length} merged`);
+
+    layer2Content = merged
+      .map(s => {
+        const sourceTag = s.sources.length > 1
+          ? ` [${s.sources.map(src => ({ brandbook: 'CONFIRMED', manual: 'MANUAL', references: 'FROM REFERENCES', brand_scan: 'AUTO-DETECTED' }[src] || src.toUpperCase())).join(' + ')}]`
+          : s.source === 'brandbook' ? ' [CONFIRMED]'
+          : s.source === 'references' ? ' [FROM REFERENCES]'
+          : s.source === 'brand_scan' ? ' [AUTO-DETECTED]'
           : '';
-        return `[${s.title.toUpperCase()}${reliability}]\n${s.content}`;
+        return `[${getCanonicalTitle(s.canonicalType).toUpperCase()}${sourceTag}]\n${s.content}`;
       })
       .join('\n\n');
   } else if (project.brand_analysis) {
@@ -359,20 +357,13 @@ ${allLayer1Rules.map((r, i) => `${i + 1}. ${r}`).join('\n')}
     ? `\nTONE OF VOICE:\n${project.tone_of_voice}\n`
     : '';
 
-  // Brand Scan section — append website analysis data if available
-  type BrandScanData = { visualStyle?: string; toneOfVoice?: string; brandKeywords?: string[]; primaryColor?: string; industry?: string };
-  const bsd: BrandScanData | null = project.brand_scan_data || null;
-  const brandScanSection = bsd
-    ? `\nBRAND SCAN (from website analysis):${bsd.visualStyle ? `\n- Visual style: ${bsd.visualStyle}` : ''}${bsd.toneOfVoice ? `\n- Tone: ${bsd.toneOfVoice}` : ''}${bsd.brandKeywords?.length ? `\n- Keywords: ${bsd.brandKeywords.join(', ')}` : ''}${bsd.primaryColor ? `\n- Primary color: ${bsd.primaryColor}` : ''}${bsd.industry ? `\n- Industry: ${bsd.industry}` : ''}\n`
-    : '';
-
   const layer2 = `
 ${sep}
 LAYER 2 — BRAND DNA (visual identity — follow precisely)
 Apply rules from every section below to your design.
 Brand content below may be in any language — treat it as authoritative visual identity data.
 ${sep}
-${assetNote}${layer2Content}${assetsSection}${tovSection}${brandScanSection}`;
+${assetNote}${layer2Content}${assetsSection}${tovSection}`;
 
   // Photo instruction for Layer 3
   const photoInstruction = photoUrl && photoMode !== 'none' && !elementOnly

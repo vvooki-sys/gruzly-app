@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
+import { mergeBrandSections } from '@/lib/brand-sections';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -367,16 +368,30 @@ function SocialProgress({ isAnalyzing, socialLinks }: {
   );
 }
 
+const SOURCE_BADGE_CONFIG: Record<string, { label: string; color: string }> = {
+  brandbook:  { label: '📖 Brandbook',  color: 'bg-green-500/20 text-green-400' },
+  references: { label: '🖼 Referencje', color: 'bg-blue-500/20 text-blue-400' },
+  brand_scan: { label: '🌐 Brand Scan', color: 'bg-yellow-500/20 text-yellow-400' },
+};
+
 function SourceBadge({ source }: { source?: string }) {
   if (!source || source === 'manual') return null;
-  const config: Record<string, { label: string; color: string }> = {
-    brandbook: { label: '📖 Brandbook', color: 'bg-green-500/20 text-green-400' },
-    references: { label: '🖼 Referencje', color: 'bg-blue-500/20 text-blue-400' },
-    brand_scan: { label: '🌐 Brand Scan', color: 'bg-yellow-500/20 text-yellow-400' },
-  };
-  const c = config[source];
+  const c = SOURCE_BADGE_CONFIG[source];
   if (!c) return null;
   return <span className={`px-2 py-0.5 rounded-full text-xs ${c.color}`}>{c.label}</span>;
+}
+
+function SourceBadges({ sources }: { sources: string[] }) {
+  const unique = [...new Set(sources)].filter(s => s !== 'manual');
+  if (unique.length === 0) return null;
+  return (
+    <>
+      {unique.map(s => {
+        const c = SOURCE_BADGE_CONFIG[s];
+        return c ? <span key={s} className={`px-2 py-0.5 rounded-full text-xs ${c.color}`}>{c.label}</span> : null;
+      })}
+    </>
+  );
 }
 
 export default function ProjectPage({ params }: { params: Promise<{ id: string }> }) {
@@ -2775,75 +2790,75 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
             )}
 
             {/* SEKCJE MARKI */}
-            {brandSections.length > 0 && (
-              <div className="space-y-2">
-                <p className="text-xs font-bold opacity-30 uppercase tracking-wide">Sekcje marki ({brandSections.length})</p>
-                {[...brandSections].sort((a, b) => a.order - b.order).map(section => (
-                  <div
-                    key={section.id}
-                    className={`rounded-xl border p-4 ${
-                      section.type === 'custom'
-                        ? 'border-holo-peach/30 bg-holo-peach/5'
-                        : 'border-teal-deep/10 dark:border-holo-mint/10 bg-white dark:bg-teal-mid'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-center gap-2 flex-1 min-w-0">
-                        <span className="text-base shrink-0">{section.icon || '📌'}</span>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <p className="text-sm font-semibold">{section.title}</p>
-                            {section.type === 'custom' && (
-                              <span className="text-xs bg-holo-peach/20 text-holo-peach px-1.5 py-0.5 rounded-full">auto</span>
+            {brandSections.length > 0 && (() => {
+              const mergedSections = mergeBrandSections(brandSections);
+              return (
+                <div className="space-y-2">
+                  <p className="text-xs font-bold opacity-30 uppercase tracking-wide">Sekcje marki ({mergedSections.length})</p>
+                  {mergedSections.map(section => (
+                    <div
+                      key={section.id}
+                      className={`rounded-xl border p-4 ${
+                        section.type === 'custom'
+                          ? 'border-holo-peach/30 bg-holo-peach/5'
+                          : 'border-teal-deep/10 dark:border-holo-mint/10 bg-white dark:bg-teal-mid'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          <span className="text-base shrink-0">{section.icon || '📌'}</span>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <p className="text-sm font-semibold">{section.title}</p>
+                              <SourceBadges sources={section.sources} />
+                            </div>
+                            {editingSectionId !== section.id && (
+                              <p className="text-xs opacity-50 mt-0.5 line-clamp-2">{section.primaryContent}</p>
                             )}
-                            <SourceBadge source={section.source} />
                           </div>
-                          {editingSectionId !== section.id && (
-                            <p className="text-xs opacity-50 mt-0.5 line-clamp-2">{section.content}</p>
+                        </div>
+                        <div className="flex gap-1 shrink-0">
+                          <button
+                            onClick={() => { setEditingSectionId(section.id); setEditingSectionContent(section.primaryContent); }}
+                            className="h-7 px-2.5 bg-teal-deep/5 dark:bg-teal-deep hover:bg-holo-mint/10 border border-teal-deep/10 dark:border-holo-mint/10 rounded-lg text-xs font-medium transition-colors"
+                          >
+                            Edytuj
+                          </button>
+                          {section.type === 'custom' && (
+                            <button
+                              onClick={() => deleteSection(section.id)}
+                              className="h-7 w-7 border border-red-500/20 hover:border-red-500/50 hover:text-red-400 rounded-lg text-sm flex items-center justify-center opacity-40 hover:opacity-100 transition-all"
+                            >×</button>
                           )}
                         </div>
                       </div>
-                      <div className="flex gap-1 shrink-0">
-                        <button
-                          onClick={() => { setEditingSectionId(section.id); setEditingSectionContent(section.content); }}
-                          className="h-7 px-2.5 bg-teal-deep/5 dark:bg-teal-deep hover:bg-holo-mint/10 border border-teal-deep/10 dark:border-holo-mint/10 rounded-lg text-xs font-medium transition-colors"
-                        >
-                          Edytuj
-                        </button>
-                        {section.type === 'custom' && (
-                          <button
-                            onClick={() => deleteSection(section.id)}
-                            className="h-7 w-7 border border-red-500/20 hover:border-red-500/50 hover:text-red-400 rounded-lg text-sm flex items-center justify-center opacity-40 hover:opacity-100 transition-all"
-                          >×</button>
-                        )}
-                      </div>
-                    </div>
 
-                    {editingSectionId === section.id && (
-                      <div className="mt-3 space-y-2">
-                        <textarea
-                          className="w-full bg-offwhite dark:bg-teal-deep text-teal-deep dark:text-offwhite border border-teal-deep/15 dark:border-holo-mint/10 focus:border-holo-mint rounded-xl px-3 py-2 text-sm resize-none outline-none transition-colors"
-                          rows={4}
-                          value={editingSectionContent}
-                          onChange={e => setEditingSectionContent(e.target.value)}
-                          autoFocus
-                        />
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => setEditingSectionId(null)}
-                            className="h-8 px-3 rounded-full border border-teal-deep/15 dark:border-holo-mint/15 text-xs font-semibold opacity-50 hover:opacity-100 transition-opacity"
-                          >Anuluj</button>
-                          <button
-                            onClick={() => saveSection(section.id, editingSectionContent)}
-                            className="h-8 px-4 rounded-full bg-holo-mint/20 hover:bg-holo-mint/30 text-holo-mint border border-holo-mint/30 text-xs font-semibold transition-colors"
-                          >Zapisz sekcję</button>
+                      {editingSectionId === section.id && (
+                        <div className="mt-3 space-y-2">
+                          <textarea
+                            className="w-full bg-offwhite dark:bg-teal-deep text-teal-deep dark:text-offwhite border border-teal-deep/15 dark:border-holo-mint/10 focus:border-holo-mint rounded-xl px-3 py-2 text-sm resize-none outline-none transition-colors"
+                            rows={4}
+                            value={editingSectionContent}
+                            onChange={e => setEditingSectionContent(e.target.value)}
+                            autoFocus
+                          />
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => setEditingSectionId(null)}
+                              className="h-8 px-3 rounded-full border border-teal-deep/15 dark:border-holo-mint/15 text-xs font-semibold opacity-50 hover:opacity-100 transition-opacity"
+                            >Anuluj</button>
+                            <button
+                              onClick={() => saveSection(section.id, editingSectionContent)}
+                              className="h-8 px-4 rounded-full bg-holo-mint/20 hover:bg-holo-mint/30 text-holo-mint border border-holo-mint/30 text-xs font-semibold transition-colors"
+                            >Zapisz sekcję</button>
+                          </div>
                         </div>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
+                      )}
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
 
             {/* TON & GŁOS MARKI */}
             <div className="rounded-2xl border border-teal-deep/15 dark:border-holo-mint/15 bg-white dark:bg-teal-mid p-4 space-y-3">
