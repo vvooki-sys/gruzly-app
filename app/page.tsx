@@ -136,10 +136,14 @@ export default function HomePage() {
                 <div className="flex items-start justify-between mb-4">
                   <div className="w-10 h-10 bg-offwhite dark:bg-teal-deep rounded-xl flex items-center justify-center overflow-hidden border border-teal-deep/10 dark:border-holo-mint/10">
                     {p.logo_url ? (
-                      <img src={p.logo_url} alt={p.name} className="w-8 h-8 object-contain" />
-                    ) : (
-                      <span className="font-black text-sm holo-text">{p.name[0]}</span>
-                    )}
+                      <img
+                        src={p.logo_url}
+                        alt={p.name}
+                        className="w-8 h-8 object-contain"
+                        onError={e => { (e.target as HTMLImageElement).style.display = 'none'; (e.target as HTMLImageElement).nextElementSibling?.removeAttribute('style'); }}
+                      />
+                    ) : null}
+                    <span className="font-black text-sm holo-text" style={p.logo_url ? { display: 'none' } : undefined}>{p.name[0]}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     {p.archived && <span className="text-xs opacity-40 bg-teal-deep/10 dark:bg-teal-mid px-2 py-0.5 rounded-full">archiwum</span>}

@@ -33,7 +33,12 @@ export async function GET() {
   await getDb()`ALTER TABLE projects ADD COLUMN IF NOT EXISTS scanned_url TEXT`.catch(() => {});
 
   const rows = await getDb()`
-    SELECT p.*, COUNT(g.id)::int as generation_count
+    SELECT p.*,
+           COUNT(g.id)::int as generation_count,
+           COALESCE(
+             (SELECT url FROM brand_assets WHERE project_id = p.id AND type = 'logo' AND variant != 'icon' ORDER BY created_at ASC LIMIT 1),
+             p.logo_url
+           ) as logo_url
     FROM projects p
     LEFT JOIN generations g ON g.project_id = p.id
     GROUP BY p.id
