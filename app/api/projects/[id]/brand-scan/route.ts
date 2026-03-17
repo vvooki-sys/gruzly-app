@@ -156,6 +156,20 @@ function extractSocialLinks(html: string): { facebook?: string; instagram?: stri
   return links;
 }
 
+function decodeHtmlEntities(str: string): string {
+  return str.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+}
+
+function extractOgImageFromHtml(html: string, baseUrl: string): string {
+  const raw =
+    html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i)?.[1] ||
+    html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i)?.[1] ||
+    html.match(/property="og:image"\s+content="([^"]+)"/i)?.[1] ||
+    html.match(/content="([^"]+)"\s+property="og:image"/i)?.[1];
+  if (!raw) return '';
+  return resolveUrl(decodeHtmlEntities(raw), baseUrl);
+}
+
 function extractFBPostTexts(fbHtml: string): string[] {
   const texts: string[] = [];
   // og:description often contains page description
@@ -168,11 +182,8 @@ function extractFBPostTexts(fbHtml: string): string[] {
 }
 
 function extractFBPostImages(fbHtml: string, baseUrl: string): string[] {
-  const images: string[] = [];
-  // og:image
-  const ogImg = fbHtml.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i)?.[1];
-  if (ogImg) images.push(resolveUrl(ogImg, baseUrl));
-  return images.slice(0, 3);
+  const ogImg = extractOgImageFromHtml(fbHtml, baseUrl);
+  return ogImg ? [ogImg] : [];
 }
 
 async function urlToBase64(url: string): Promise<{ data: string; mimeType: string } | null> {
@@ -484,10 +495,10 @@ Return ONLY a valid JSON object (no markdown, no explanation):
           const igDesc = igHtml?.match(/<meta[^>]+property=["']og:description["'][^>]+content=["']([^"']{20,}?)["']/i)?.[1];
           if (igDesc) collectedPosts.push(igDesc.substring(0, 500));
           // Try og:image from IG profile
-          const igOgImage =
-            igHtml?.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i)?.[1] ||
-            igHtml?.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i)?.[1];
-          if (igOgImage) collectedImages.push(igOgImage);
+          if (igHtml) {
+            const igOgImage = extractOgImageFromHtml(igHtml, socialLinks.instagram!);
+            if (igOgImage) collectedImages.push(igOgImage);
+          }
         } catch {
           // IG blocked — skip silently
         }
@@ -695,7 +706,9 @@ ${collectedPosts.map((p, i) => `[${i + 1}] ${p}`).join('\n')}`;
     assetPromises.push(downloadAndSaveAsset(projectId, faviconUrl, 'logo', 'icon', 'Auto-downloaded icon/favicon from website scan'));
   }
   for (const imgUrl of collectedImages.slice(0, 3)) {
-    assetPromises.push(downloadAndSaveAsset(projectId, imgUrl, 'reference', 'default', 'Auto-downloaded from social media post'));
+    // Use last 40 chars of URL as unique key — avoids dedup blocking all images with same generic description
+    const urlKey = imgUrl.replace(/[?#].*$/, '').slice(-40);
+    assetPromises.push(downloadAndSaveAsset(projectId, imgUrl, 'reference', 'social', `Social media image: ${urlKey}`));
   }
 
   await Promise.allSettled(assetPromises);
