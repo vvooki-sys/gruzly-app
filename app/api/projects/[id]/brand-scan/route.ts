@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { neon } from '@neondatabase/serverless';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { put } from '@vercel/blob';
+import { decrypt } from '@/lib/encrypt';
 
 export const maxDuration = 60;
 
@@ -338,7 +339,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   }
 
   // Load current project for merge
-  const [currentProject] = await getDb()`SELECT id, brand_sections FROM projects WHERE id = ${projectId}`;
+  const [currentProject] = await getDb()`SELECT id, brand_sections, fb_token FROM projects WHERE id = ${projectId}`;
   if (!currentProject) return NextResponse.json({ error: 'Project not found' }, { status: 404 });
 
   await getDb()`ALTER TABLE projects ADD COLUMN IF NOT EXISTS brand_scan_data JSONB`.catch(() => {});
@@ -606,6 +607,41 @@ Return ONLY a valid JSON object (no markdown, no explanation):
           }
         } catch {
           // Graph API unavailable — skip silently
+        }
+      })()
+    );
+  }
+
+  // FB Graph API (authenticated): cover photo + profile picture using stored token
+  if (socialLinks.facebook && currentProject.fb_token) {
+    socialScanPromises.push(
+      (async () => {
+        try {
+          const token = decrypt(currentProject.fb_token as string);
+          const pageSlug = socialLinks.facebook!.match(/facebook\.com\/([^/?#]+)/)?.[1];
+          if (pageSlug && pageSlug !== 'pages' && pageSlug !== 'groups') {
+            const graphRes = await fetch(
+              `https://graph.facebook.com/v19.0/${pageSlug}?fields=cover%7Bsource%7D%2Cpicture%7Burl%7D&access_token=${token}`,
+              { signal: AbortSignal.timeout(5000) }
+            );
+            if (graphRes.ok) {
+              const data = await graphRes.json() as {
+                cover?: { source?: string };
+                picture?: { data?: { url?: string } };
+              };
+              const coverUrl = data?.cover?.source;
+              const pictureUrl = data?.picture?.data?.url;
+              console.log('FB Graph cover:', coverUrl || '(none)', '| picture:', pictureUrl || '(none)');
+              if (coverUrl && !collectedImages.includes(coverUrl)) collectedImages.push(coverUrl);
+              if (pictureUrl && !isDefaultSocialIcon(pictureUrl) && !collectedImages.includes(pictureUrl)) {
+                collectedImages.push(pictureUrl);
+              }
+            } else {
+              console.log('FB Graph API error:', graphRes.status, await graphRes.text().catch(() => ''));
+            }
+          }
+        } catch (e) {
+          console.error('FB Graph API (authenticated) failed:', e);
         }
       })()
     );
