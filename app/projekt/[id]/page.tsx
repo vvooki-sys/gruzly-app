@@ -2703,8 +2703,8 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
               <p className="text-xs opacity-40 mb-3">Gemini nie obsługuje SVG — wgraj PNG lub JPG</p>
               <div className="flex items-center gap-3">
                 {(() => {
-                  const logoAsset = assets.find(a => a.type === 'logo' && a.variant !== 'icon' && !a.url.endsWith('.svg'));
-                  const logoSrc = logoAsset?.url || (!project.logo_url?.endsWith('.svg') ? project.logo_url : null);
+                  const logoAsset = assets.find(a => a.type === 'logo' && a.variant !== 'icon');
+                  const logoSrc = logoAsset?.url || project.logo_url;
                   return logoSrc ? (
                     <img src={logoSrc} alt="logo" className="h-12 w-auto rounded-xl border border-teal-deep/10 dark:border-holo-mint/10 bg-white p-1"
                       onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />

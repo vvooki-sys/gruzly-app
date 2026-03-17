@@ -187,6 +187,10 @@ function isDefaultSocialIcon(imgUrl: string): boolean {
 async function isValidBrandImage(imageUrl: string): Promise<boolean> {
   try {
     if (isDefaultSocialIcon(imageUrl)) return false;
+    // IG/CDN thumbnail size patterns: s100x100, s150x150, s240x240, etc.
+    if (imageUrl.match(/s\d{2,3}x\d{2,3}/)) return false;
+    if (imageUrl.includes('cdninstagram.com') && imageUrl.includes('s100x100')) return false;
+    if (imageUrl.includes('instagram.com/static')) return false;
     const res = await fetch(imageUrl, { method: 'HEAD', signal: AbortSignal.timeout(3000) });
     const contentLength = parseInt(res.headers.get('content-length') || '0');
     if (contentLength > 0 && contentLength < 5000) return false;
@@ -781,15 +785,22 @@ ${collectedPosts.map((p, i) => `[${i + 1}] ${p}`).join('\n')}`;
   if (faviconUrl && faviconUrl !== logoUrl) {
     assetPromises.push(downloadAndSaveAsset(projectId, faviconUrl, 'logo', 'icon', 'Auto-downloaded icon/favicon from website scan'));
   }
-  for (const imgUrl of collectedImages.slice(0, 5)) {
+  // Exclude logo/favicon URLs from references — they're already saved as type='logo'
+  const logoUrls = new Set([logoUrl, faviconUrl].filter(Boolean));
+  const referenceImages = collectedImages.filter(u => !logoUrls.has(u)).slice(0, 5);
+  for (const imgUrl of referenceImages) {
     // Use last 40 chars of URL as unique key — avoids dedup blocking all images with same generic description
     const urlKey = imgUrl.replace(/[?#].*$/, '').slice(-40);
     assetPromises.push(downloadAndSaveAsset(projectId, imgUrl, 'reference', 'social', `Social media image: ${urlKey}`));
   }
 
   // Product images from main site HTML — /cars/, /products/, /gallery/, /portfolio/ paths
+  // Exclude logoUrl/faviconUrl to prevent the site logo ending up in references
   const productImageMatches = [...html.matchAll(/src=["']\s*(https?:\/\/[^"']*\/(?:cars|products|gallery|portfolio|photos)[^"']*\.(?:webp|jpg|jpeg|png))["']/gi)];
-  const productImages = productImageMatches.map(m => m[1].trim()).filter((u, i, arr) => arr.indexOf(u) === i).slice(0, 3);
+  const productImages = productImageMatches
+    .map(m => m[1].trim())
+    .filter((u, i, arr) => arr.indexOf(u) === i && !logoUrls.has(u))
+    .slice(0, 3);
   for (const imgUrl of productImages) {
     const urlKey = imgUrl.replace(/[?#].*$/, '').slice(-40);
     assetPromises.push(downloadAndSaveAsset(projectId, imgUrl, 'reference', 'product', `Product image: ${urlKey}`));
