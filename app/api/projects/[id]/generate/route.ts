@@ -73,17 +73,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   // ── Build image parts ────────────────────────────────────────────────────
   const imageParts: Array<{ inlineData: { data: string; mimeType: string } }> = [];
 
-  // Logo: pick best variant for background context
-  // Prefer dark-bg variant (most social graphics have colored bg), fallback to default, then any
+  // Logo: reserved for compositor overlay only — NOT sent to Gemini as inlineData
   const logoAssets = assetList.filter(a => a.type === 'logo');
   const logoAsset = logoAssets.find(a => a.variant === 'dark-bg')
     || logoAssets.find(a => a.variant === 'default')
     || logoAssets[0];
-
-  if (!elementOnly && logoAsset && !logoAsset.url.toLowerCase().endsWith('.svg')) {
-    const b64 = await urlToBase64(logoAsset.url);
-    if (b64 && !b64.mimeType.includes('svg')) imageParts.push({ inlineData: b64 });
-  }
 
   // Reference images: kept for text context only — NOT passed as inlineData.
   // Passing reference photos as inline images causes Gemini to extract faces/content from them
@@ -131,7 +125,7 @@ ${allLayer1Rules.map((r, i) => `${i + 1}. ${r}`).join('\n')}
 `;
 
   // Asset note for Layer 2 header (refs are NOT inline images — they are style-reference text only)
-  const logoNote = logoAsset ? '\n- First image: brand LOGO — reproduce it exactly, place it prominently' : '';
+  const logoNote = '';
   const elNote = !elementOnly && brandElements.length > 0 ? `\n- Brand graphic elements: use these decorative/brand elements in the composition` : '';
   const photoNote = photoUrl && photoMode !== 'none' && !elementOnly ? '\n- PHOTO PROVIDED: place this as the central/hero image, compose brand elements around it' : '';
   const assetNote = imageParts.length > 0
