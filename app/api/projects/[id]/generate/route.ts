@@ -80,14 +80,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     if (b64 && !b64.mimeType.includes('svg')) imageParts.push({ inlineData: b64 });
   }
 
-  // Reference images (skip in fast/elementOnly)
+  // Reference images: kept for text context only — NOT passed as inlineData.
+  // Passing reference photos as inline images causes Gemini to extract faces/content from them
+  // and use them as central graphic elements instead of treating them as style inspiration.
   const refs = assetList.filter(a => a.type === 'reference').slice(0, 5);
-  if (!elementOnly && mode !== 'fast') {
-    for (const ref of refs) {
-      const b64 = await urlToBase64(ref.url);
-      if (b64) imageParts.push({ inlineData: b64 });
-    }
-  }
 
   // Brand elements: include as inline images (max 2, skip large SVGs)
   const brandElements = assetList.filter(a => a.type === 'brand-element').slice(0, 2);
@@ -108,23 +104,33 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   // ── Build 3-layer prompt ─────────────────────────────────────────────────
   const sep = '════════════════════════════════════════';
 
-  // Layer 1 — omit entirely if no brand rules
-  const layer1 = project.brand_rules
-    ? `\n${sep}
+  // Asset usage rules — always present (protects against content leakage from reference images)
+  const assetUsageRules = [
+    'Reference images show color palette, composition style and mood ONLY — do NOT copy faces, people, objects or scenes from them',
+    'DO NOT reproduce any identifiable person from any reference image',
+    ...((!photoUrl || photoMode === 'none') && !elementOnly
+      ? ['NO PHOTO PROVIDED: create a purely illustrative/abstract central element — shapes, gradients, icons, brand colors — absolutely no faces or human photography']
+      : []),
+  ];
+
+  // Layer 1 — always present (asset rules + optional brand rules)
+  const brandRuleLines = project.brand_rules
+    ? project.brand_rules.split('\n').filter((r: string) => r.trim()).map((r: string) => r.trim())
+    : [];
+  const allLayer1Rules = [...assetUsageRules, ...brandRuleLines];
+  const layer1 = `\n${sep}
 LAYER 1 — ABSOLUTE RULES (non-negotiable constraints)
 These are hard limits. Violating ANY of these is unacceptable, regardless of the brief.
 ${sep}
-${project.brand_rules.split('\n').filter((r: string) => r.trim()).map((r: string, i: number) => `${i + 1}. ${r.trim()}`).join('\n')}
-`
-    : '';
+${allLayer1Rules.map((r, i) => `${i + 1}. ${r}`).join('\n')}
+`;
 
-  // Asset note for Layer 2 header
+  // Asset note for Layer 2 header (refs are NOT inline images — they are style-reference text only)
   const logoNote = logoAsset ? '\n- First image: brand LOGO — reproduce it exactly, place it prominently' : '';
-  const refNote = !elementOnly && mode !== 'fast' && refs.length > 0 ? `\n- Next ${refs.length} image(s): brand reference graphics — match this visual style closely` : '';
   const elNote = !elementOnly && brandElements.length > 0 ? `\n- Brand graphic elements: use these decorative/brand elements in the composition` : '';
   const photoNote = photoUrl && photoMode !== 'none' && !elementOnly ? '\n- PHOTO PROVIDED: place this as the central/hero image, compose brand elements around it' : '';
   const assetNote = imageParts.length > 0
-    ? `Provided visual assets:${logoNote}${refNote}${elNote}${photoNote}\n\n`
+    ? `Provided visual assets:${logoNote}${elNote}${photoNote}\n\n`
     : '';
 
   // AVAILABLE ASSETS text block for Layer 2
@@ -135,6 +141,12 @@ ${project.brand_rules.split('\n').filter((r: string) => r.trim()).map((r: string
   brandElements.forEach(el => {
     availableAssets.push(`- Brand element "${el.filename}"${el.description ? ` — ${el.description}` : ''}: ${el.url}`);
   });
+  // Refs listed as style-inspiration text (NOT inline images — do not copy their content)
+  if (!elementOnly && refs.length > 0) {
+    refs.forEach(r => {
+      availableAssets.push(`- Style reference "${r.filename}"${r.description ? ` — ${r.description}` : ''} [STYLE INSPIRATION ONLY — extract color palette and mood, do NOT copy faces, people or objects]: ${r.url}`);
+    });
+  }
   const photoAssets = assetList.filter(a => a.type === 'photo');
   photoAssets.forEach(p => {
     availableAssets.push(`- Photo "${p.filename}"${p.description ? ` — ${p.description}` : ''}: ${p.url}`);
@@ -167,13 +179,20 @@ ${project.brand_rules.split('\n').filter((r: string) => r.trim()).map((r: string
     ? `\nTONE OF VOICE:\n${project.tone_of_voice}\n`
     : '';
 
+  // Brand Scan section — append website analysis data if available
+  type BrandScanData = { visualStyle?: string; toneOfVoice?: string; brandKeywords?: string[]; primaryColor?: string; industry?: string };
+  const bsd: BrandScanData | null = project.brand_scan_data || null;
+  const brandScanSection = bsd
+    ? `\nBRAND SCAN (from website analysis):${bsd.visualStyle ? `\n- Visual style: ${bsd.visualStyle}` : ''}${bsd.toneOfVoice ? `\n- Tone: ${bsd.toneOfVoice}` : ''}${bsd.brandKeywords?.length ? `\n- Keywords: ${bsd.brandKeywords.join(', ')}` : ''}${bsd.primaryColor ? `\n- Primary color: ${bsd.primaryColor}` : ''}${bsd.industry ? `\n- Industry: ${bsd.industry}` : ''}\n`
+    : '';
+
   const layer2 = `
 ${sep}
 LAYER 2 — BRAND DNA (visual identity — follow precisely)
 Apply rules from every section below to your design.
 Brand content below may be in any language — treat it as authoritative visual identity data.
 ${sep}
-${assetNote}${layer2Content}${assetsSection}${tovSection}`;
+${assetNote}${layer2Content}${assetsSection}${tovSection}${brandScanSection}`;
 
   // Photo instruction for Layer 3
   const photoInstruction = photoUrl && photoMode !== 'none' && !elementOnly

@@ -9,10 +9,28 @@ import {
   Layers, Camera, X, Check, MoreVertical, Archive,
 } from 'lucide-react';
 
+interface BrandScanData {
+  primaryColor: string;
+  secondaryColor: string;
+  accentColor: string;
+  visualStyle: string;
+  toneOfVoice: string;
+  brandKeywords: string[];
+  industry: string;
+  brandName: string;
+  brandDescription: string;
+  logoUrl: string;
+  socialLinks: { facebook?: string; instagram?: string; linkedin?: string; tiktok?: string };
+  scannedUrl: string;
+  scannedAt: string;
+}
+
 interface Project {
   brand_analysis?: string | null;
   brand_rules?: string | null;
   generation_mode?: string | null;
+  brand_scan_data?: BrandScanData | null;
+  scanned_url?: string | null;
   id: number;
   name: string;
   client_name: string | null;
@@ -208,6 +226,14 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
   const [savingTov, setSavingTov] = useState(false);
   const [generatingTov, setGeneratingTov] = useState(false);
 
+  // Brand Scan state
+  const [brandScanUrl, setBrandScanUrl] = useState('');
+  const [brandScanLoading, setBrandScanLoading] = useState(false);
+  const [brandScanStatus, setBrandScanStatus] = useState('');
+  const [brandScanResult, setBrandScanResult] = useState<BrandScanData | null>(null);
+  const [brandScanError, setBrandScanError] = useState('');
+  const [applyingBrandScan, setApplyingBrandScan] = useState(false);
+
   // Copywriter state
   const [copyFile, setCopyFile] = useState<File | null>(null);
   const [copyBrief, setCopyBrief] = useState('');
@@ -231,6 +257,8 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
           setBrandSections(d.project.brand_sections || []);
           setGenerationMode((d.project.generation_mode || 'creative') as 'creative' | 'photo' | 'precision');
           setToneOfVoice(d.project.tone_of_voice || '');
+          if (d.project.brand_scan_data) setBrandScanResult(d.project.brand_scan_data);
+          if (d.project.scanned_url) setBrandScanUrl(d.project.scanned_url);
           setLoading(false);
         });
       fetch(`/api/projects/${p.id}/templates`)
@@ -423,6 +451,88 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
       alert('Błąd połączenia');
     } finally {
       setGeneratingTov(false);
+    }
+  };
+
+  const scanBrand = async () => {
+    if (!id || !brandScanUrl) return;
+    setBrandScanLoading(true);
+    setBrandScanError('');
+    setBrandScanStatus('Skanuję stronę...');
+    try {
+      setBrandScanStatus('Analizuję brand...');
+      const res = await fetch(`/api/projects/${id}/brand-scan`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: brandScanUrl }),
+      });
+      const data = await res.json();
+      if (data.success && data.brandDna) {
+        setBrandScanResult(data.brandDna);
+        setBrandScanStatus('Gotowe!');
+        showToast('Brand DNA zeskanowany ✓');
+      } else if (data.fallback) {
+        setBrandScanError('Strona blokuje skanowanie — użyj ręcznego uploadu');
+        setBrandScanStatus('');
+      } else {
+        setBrandScanError(data.error || 'Błąd skanowania');
+        setBrandScanStatus('');
+      }
+    } catch {
+      setBrandScanError('Błąd połączenia');
+      setBrandScanStatus('');
+    } finally {
+      setBrandScanLoading(false);
+    }
+  };
+
+  const applyBrandScan = async () => {
+    if (!id || !brandScanResult) return;
+    setApplyingBrandScan(true);
+    try {
+      const scanSection = {
+        id: 'brand_scan',
+        title: 'Brand Scan',
+        content: [
+          brandScanResult.industry && `Branża: ${brandScanResult.industry}`,
+          brandScanResult.visualStyle && `Styl wizualny: ${brandScanResult.visualStyle}`,
+          brandScanResult.primaryColor && `Kolor główny: ${brandScanResult.primaryColor}`,
+          brandScanResult.secondaryColor && `Kolor dodatkowy: ${brandScanResult.secondaryColor}`,
+          brandScanResult.accentColor && `Akcent: ${brandScanResult.accentColor}`,
+          brandScanResult.brandKeywords?.length && `Słowa kluczowe: ${brandScanResult.brandKeywords.join(', ')}`,
+          brandScanResult.brandDescription && `Opis: ${brandScanResult.brandDescription}`,
+        ].filter(Boolean).join('\n'),
+        type: 'custom' as const,
+        order: 99,
+        icon: '🌐',
+      };
+
+      const updatedSections = [
+        ...brandSections.filter(s => s.id !== 'brand_scan'),
+        scanSection,
+      ];
+
+      await fetch(`/api/projects/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ brandSections: updatedSections }),
+      });
+      setBrandSections(updatedSections);
+
+      if (!toneOfVoice && brandScanResult.toneOfVoice) {
+        setToneOfVoice(brandScanResult.toneOfVoice);
+        await fetch(`/api/projects/${id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ toneOfVoice: brandScanResult.toneOfVoice }),
+        });
+      }
+
+      showToast('Brand DNA zastosowany do projektu ✓');
+    } catch {
+      showToast('Błąd zapisu');
+    } finally {
+      setApplyingBrandScan(false);
     }
   };
 
@@ -1989,6 +2099,121 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
                   <p className="text-xs opacity-30">Wgraj brandbook — AI wyciągnie z niego kolory, fonty i zasady automatycznie</p>
                 )}
               </div>
+            </div>
+
+            {/* BRAND SCAN */}
+            <div className="rounded-2xl border border-teal-deep/10 dark:border-holo-mint/10 bg-white dark:bg-teal-mid p-4 space-y-3">
+              <div>
+                <p className="text-sm font-bold">🌐 Brand Scan</p>
+                <p className="text-xs opacity-40 mt-0.5">Podaj URL strony — AI automatycznie wyciągnie Brand DNA</p>
+              </div>
+              <div className="flex gap-2">
+                <input
+                  type="url"
+                  placeholder="https://example.com"
+                  value={brandScanUrl}
+                  onChange={e => setBrandScanUrl(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && scanBrand()}
+                  className="flex-1 bg-offwhite dark:bg-teal-deep text-teal-deep dark:text-offwhite border border-teal-deep/15 dark:border-holo-mint/10 focus:border-holo-mint rounded-xl px-3 py-2 text-sm outline-none transition-colors"
+                  disabled={brandScanLoading}
+                />
+                <button
+                  onClick={scanBrand}
+                  disabled={brandScanLoading || !brandScanUrl}
+                  className="h-9 px-4 rounded-full holo-gradient text-teal-deep text-xs font-bold disabled:opacity-40 hover:opacity-90 transition-opacity whitespace-nowrap shrink-0 flex items-center gap-1.5"
+                >
+                  {brandScanLoading
+                    ? <><Loader2 className="h-3 w-3 animate-spin" /> {brandScanStatus}</>
+                    : <><Wand2 className="h-3 w-3" /> Skanuj markę</>
+                  }
+                </button>
+              </div>
+
+              {brandScanError && (
+                <div className="flex items-start gap-2 text-xs text-red-400 bg-red-500/10 px-3 py-2 rounded-xl">
+                  <span>⚠️</span>
+                  <span>{brandScanError}{brandScanError.includes('blokuje') && ' — spróbuj ręcznego uploadu brandbooka.'}</span>
+                </div>
+              )}
+
+              {brandScanResult && (
+                <div className="border-t border-teal-deep/10 dark:border-holo-mint/10 pt-3 space-y-3">
+                  {/* Colors */}
+                  {(brandScanResult.primaryColor || brandScanResult.secondaryColor || brandScanResult.accentColor) && (
+                    <div className="space-y-1">
+                      <p className="text-xs font-semibold opacity-40 uppercase tracking-wide">Kolory</p>
+                      <div className="flex gap-2 flex-wrap">
+                        {brandScanResult.primaryColor && (
+                          <div className="flex items-center gap-1.5">
+                            <div className="h-5 w-5 rounded-full border border-white/20 shrink-0" style={{ backgroundColor: brandScanResult.primaryColor }} />
+                            <span className="text-xs font-mono opacity-60">{brandScanResult.primaryColor}</span>
+                            <span className="text-xs opacity-30">główny</span>
+                          </div>
+                        )}
+                        {brandScanResult.secondaryColor && (
+                          <div className="flex items-center gap-1.5">
+                            <div className="h-5 w-5 rounded-full border border-white/20 shrink-0" style={{ backgroundColor: brandScanResult.secondaryColor }} />
+                            <span className="text-xs font-mono opacity-60">{brandScanResult.secondaryColor}</span>
+                            <span className="text-xs opacity-30">dodatkowy</span>
+                          </div>
+                        )}
+                        {brandScanResult.accentColor && (
+                          <div className="flex items-center gap-1.5">
+                            <div className="h-5 w-5 rounded-full border border-white/20 shrink-0" style={{ backgroundColor: brandScanResult.accentColor }} />
+                            <span className="text-xs font-mono opacity-60">{brandScanResult.accentColor}</span>
+                            <span className="text-xs opacity-30">akcent</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Style & Tone */}
+                  <div className="flex gap-3 flex-wrap">
+                    {brandScanResult.visualStyle && (
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs opacity-40">Styl:</span>
+                        <span className="text-xs font-semibold bg-holo-mint/10 text-holo-mint px-2 py-0.5 rounded-full">{brandScanResult.visualStyle}</span>
+                      </div>
+                    )}
+                    {brandScanResult.toneOfVoice && (
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs opacity-40">Ton:</span>
+                        <span className="text-xs font-semibold bg-holo-peach/10 text-holo-peach px-2 py-0.5 rounded-full">{brandScanResult.toneOfVoice}</span>
+                      </div>
+                    )}
+                    {brandScanResult.industry && (
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs opacity-40">Branża:</span>
+                        <span className="text-xs font-semibold opacity-70">{brandScanResult.industry}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Keywords */}
+                  {brandScanResult.brandKeywords?.length > 0 && (
+                    <div className="space-y-1">
+                      <p className="text-xs font-semibold opacity-40 uppercase tracking-wide">Słowa kluczowe</p>
+                      <div className="flex gap-1.5 flex-wrap">
+                        {brandScanResult.brandKeywords.map((kw, i) => (
+                          <span key={i} className="text-xs bg-teal-deep/5 dark:bg-teal-deep border border-teal-deep/10 dark:border-holo-mint/10 px-2 py-0.5 rounded-full">{kw}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <button
+                    onClick={applyBrandScan}
+                    disabled={applyingBrandScan}
+                    className="w-full h-9 rounded-full bg-holo-mint/20 hover:bg-holo-mint/30 text-holo-mint border border-holo-mint/30 text-xs font-bold transition-colors disabled:opacity-40 flex items-center justify-center gap-1.5"
+                  >
+                    {applyingBrandScan
+                      ? <><Loader2 className="h-3 w-3 animate-spin" /> Zastosowuję...</>
+                      : <><Check className="h-3 w-3" /> Zastosuj do projektu</>
+                    }
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* SEKCJE MARKI */}

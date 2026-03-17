@@ -29,6 +29,8 @@ export async function GET() {
   `.catch(() => {});
   await getDb()`ALTER TABLE templates ADD COLUMN IF NOT EXISTS is_user_template BOOLEAN DEFAULT false`.catch(() => {});
   await getDb()`ALTER TABLE templates ADD COLUMN IF NOT EXISTS thumbnail_url TEXT`.catch(() => {});
+  await getDb()`ALTER TABLE projects ADD COLUMN IF NOT EXISTS brand_scan_data JSONB`.catch(() => {});
+  await getDb()`ALTER TABLE projects ADD COLUMN IF NOT EXISTS scanned_url TEXT`.catch(() => {});
 
   const rows = await getDb()`
     SELECT p.*, COUNT(g.id)::int as generation_count
