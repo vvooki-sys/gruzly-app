@@ -110,6 +110,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     ...((!photoUrl || photoMode === 'none') && !elementOnly
       ? ['NO PHOTO PROVIDED: create a purely illustrative/abstract central element — shapes, gradients, icons, brand colors — absolutely no faces or human photography']
       : []),
+    'RENDER ONLY text listed under "TEXT TO APPEAR ON GRAPHIC" — no other text, captions or labels',
   ];
 
   // Layer 1 — always present (asset rules + optional brand rules)
@@ -241,7 +242,8 @@ ${subtext ? `Subtext: "${subtext}"` : ''}
 ${brief ? `CREATIVE DIRECTION (context only — do not render verbatim): "${brief}"` : ''}
 ${photoInstruction}
 OUTPUT REQUIREMENTS:
-- Reproduce the exact provided logo — placement per brand DNA rules, or top-left if unspecified
+- DO NOT render any logo — top-left area (25% × 20%) must remain completely empty per Layer 1 rules
+- Logo overlay will be applied programmatically after generation
 - No human photography unless explicitly requested in creative direction
 - Zero typos — double-check all text before rendering
 - Fill the entire canvas — no white borders or padding outside the design
