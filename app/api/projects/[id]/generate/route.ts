@@ -50,6 +50,21 @@ async function getTopLeftBrightness(imageBuffer: Buffer, width: number, height: 
   }
 }
 
+async function getLogoBrightness(url: string): Promise<number> {
+  try {
+    const ab = await fetch(url, { signal: AbortSignal.timeout(8000) }).then(r => r.arrayBuffer());
+    // Flatten transparent pixels to mid-grey so they don't skew the average
+    const data = await sharp(Buffer.from(new Uint8Array(ab)))
+      .flatten({ background: '#808080' })
+      .greyscale()
+      .raw()
+      .toBuffer();
+    return data.reduce((s: number, p: number) => s + p, 0) / data.length;
+  } catch {
+    return 128; // unknown → neutral
+  }
+}
+
 async function selectLogoAsset(
   brandAssets: AssetRow[],
   imageBuffer: Buffer,
@@ -60,18 +75,24 @@ async function selectLogoAsset(
   if (logoAssets.length === 0) return null;
   if (logoAssets.length === 1) return logoAssets[0];
 
-  const brightness = await getTopLeftBrightness(imageBuffer, width, height);
-  const isDark = brightness < 128;
+  const bgBrightness = await getTopLeftBrightness(imageBuffer, width, height);
+  const isDark = bgBrightness < 128;
 
-  if (isDark) {
-    return logoAssets.find(a => a.variant === 'dark-bg')
-      || logoAssets.find(a => a.variant === 'default')
-      || logoAssets[0];
-  } else {
-    return logoAssets.find(a => a.variant === 'light-bg')
-      || logoAssets.find(a => a.variant === 'default')
-      || logoAssets[0];
-  }
+  // Measure actual brightness of each logo — pick the one with best contrast against bg
+  // isDark bg → want lightest logo; light bg → want darkest logo
+  const withBrightness = await Promise.all(
+    logoAssets.map(async a => ({ asset: a, brightness: await getLogoBrightness(a.url) }))
+  );
+
+  withBrightness.forEach(({ asset, brightness }) => {
+    console.log(`Logo brightness: ${asset.variant || 'default'} = ${brightness.toFixed(0)}`);
+  });
+
+  const sorted = withBrightness.sort((a, b) =>
+    isDark ? b.brightness - a.brightness : a.brightness - b.brightness
+  );
+
+  return sorted[0].asset;
 }
 
 async function addLogoBackground(
