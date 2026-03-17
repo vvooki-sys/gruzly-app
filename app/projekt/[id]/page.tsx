@@ -96,6 +96,8 @@ interface BrandSection {
   type: 'standard' | 'custom';
   order: number;
   icon?: string;
+  source?: 'brandbook' | 'references' | 'brand_scan' | 'manual';
+  confidence?: 'high' | 'medium' | 'auto';
 }
 
 interface SavedTemplate {
@@ -152,6 +154,18 @@ function getBaseFormat(fmt: string) {
 }
 function getFormatLabel(fmt: string) {
   return FORMATS.find(f => f.value === getBaseFormat(fmt))?.label ?? fmt;
+}
+
+function SourceBadge({ source }: { source?: string }) {
+  if (!source || source === 'manual') return null;
+  const config: Record<string, { label: string; color: string }> = {
+    brandbook: { label: '📖 Brandbook', color: 'bg-green-500/20 text-green-400' },
+    references: { label: '🖼 Referencje', color: 'bg-blue-500/20 text-blue-400' },
+    brand_scan: { label: '🌐 Brand Scan', color: 'bg-yellow-500/20 text-yellow-400' },
+  };
+  const c = config[source];
+  if (!c) return null;
+  return <span className={`px-2 py-0.5 rounded-full text-xs ${c.color}`}>{c.label}</span>;
 }
 
 export default function ProjectPage({ params }: { params: Promise<{ id: string }> }) {
@@ -487,6 +501,9 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
       const data = await res.json();
       if (data.success && data.brandDna) {
         setBrandScanResult(data.brandDna);
+        if (data.brandSections) {
+          setBrandSections(data.brandSections);
+        }
         setBrandScanStatus('Gotowe!');
         showToast('Brand DNA zeskanowany ✓');
       } else if (data.fallback) {
@@ -508,41 +525,6 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
     if (!id || !brandScanResult) return;
     setApplyingBrandScan(true);
     try {
-      const scanSection = {
-        id: 'brand_scan',
-        title: 'Brand Scan',
-        content: [
-          brandScanResult.industry && `Branża: ${brandScanResult.industry}`,
-          brandScanResult.visualStyle && `Styl wizualny: ${brandScanResult.visualStyle}`,
-          brandScanResult.targetAudience && `Grupa docelowa: ${brandScanResult.targetAudience}`,
-          brandScanResult.primaryColor && `Kolor główny: ${brandScanResult.primaryColor}`,
-          brandScanResult.secondaryColor && `Kolor dodatkowy: ${brandScanResult.secondaryColor}`,
-          brandScanResult.accentColor && `Akcent: ${brandScanResult.accentColor}`,
-          brandScanResult.headingFont && `Font nagłówków: ${brandScanResult.headingFont}`,
-          brandScanResult.bodyFont && `Font treści: ${brandScanResult.bodyFont}`,
-          brandScanResult.brandKeywords?.length && `Słowa kluczowe: ${brandScanResult.brandKeywords.join(', ')}`,
-          brandScanResult.brandValues?.length && `Wartości marki: ${brandScanResult.brandValues.join(', ')}`,
-          brandScanResult.photoStyle && `Styl zdjęć: ${brandScanResult.photoStyle}`,
-          brandScanResult.ctaExamples?.length && `Przykłady CTA: ${brandScanResult.ctaExamples.join(' | ')}`,
-          brandScanResult.brandDescription && `Opis: ${brandScanResult.brandDescription}`,
-        ].filter(Boolean).join('\n'),
-        type: 'custom' as const,
-        order: 99,
-        icon: '🌐',
-      };
-
-      const updatedSections = [
-        ...brandSections.filter(s => s.id !== 'brand_scan'),
-        scanSection,
-      ];
-
-      await fetch(`/api/projects/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ brandSections: updatedSections }),
-      });
-      setBrandSections(updatedSections);
-
       if (!toneOfVoice && brandScanResult.toneOfVoice) {
         setToneOfVoice(brandScanResult.toneOfVoice);
         await fetch(`/api/projects/${id}`, {
@@ -551,8 +533,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
           body: JSON.stringify({ toneOfVoice: brandScanResult.toneOfVoice }),
         });
       }
-
-      showToast('Brand DNA zastosowany do projektu ✓');
+      showToast('Ton głosu zastosowany ✓');
     } catch {
       showToast('Błąd zapisu');
     } finally {
@@ -2382,6 +2363,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
                             {section.type === 'custom' && (
                               <span className="text-xs bg-holo-peach/20 text-holo-peach px-1.5 py-0.5 rounded-full">auto</span>
                             )}
+                            <SourceBadge source={section.source} />
                           </div>
                           {editingSectionId !== section.id && (
                             <p className="text-xs opacity-50 mt-0.5 line-clamp-2">{section.content}</p>

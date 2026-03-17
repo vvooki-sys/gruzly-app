@@ -257,6 +257,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: 'Invalid URL' }, { status: 400 });
   }
 
+  // Load current project for merge
+  const [currentProject] = await getDb()`SELECT id, brand_sections FROM projects WHERE id = ${projectId}`;
+  if (!currentProject) return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+
   await getDb()`ALTER TABLE projects ADD COLUMN IF NOT EXISTS brand_scan_data JSONB`.catch(() => {});
   await getDb()`ALTER TABLE projects ADD COLUMN IF NOT EXISTS scanned_url TEXT`.catch(() => {});
 
@@ -460,10 +464,116 @@ ${collectedPosts.map((p, i) => `[${i + 1}] ${p}`).join('\n')}`;
     scannedAt: new Date().toISOString(),
   };
 
+  // ── Stage 3b: Build structured brand sections from scan data ──────────────
+  const SOURCE_PRIORITY: Record<string, number> = { brandbook: 3, references: 2, brand_scan: 1, manual: 0 };
+
+  const newScanSections: Array<{
+    id: string; title: string; content: string;
+    type: 'standard'; order: number; icon: string;
+    source: string; confidence: string;
+  }> = [];
+
+  if (brandDna.primaryColor || brandDna.secondaryColor || brandDna.accentColor) {
+    newScanSections.push({
+      id: 'kolorystyka', title: 'Kolory marki',
+      content: [
+        brandDna.primaryColor && `Primary color: ${brandDna.primaryColor}`,
+        brandDna.secondaryColor && `Secondary color: ${brandDna.secondaryColor}`,
+        brandDna.accentColor && `Accent color: ${brandDna.accentColor}`,
+      ].filter(Boolean).join('\n'),
+      type: 'standard', order: 10, icon: '🎨', source: 'brand_scan', confidence: 'auto',
+    });
+  }
+
+  if (brandDna.headingFont || brandDna.bodyFont || brandDna.fonts.length > 0) {
+    newScanSections.push({
+      id: 'typografia', title: 'Typografia',
+      content: [
+        brandDna.headingFont && `Heading font: ${brandDna.headingFont}`,
+        brandDna.bodyFont && `Body font: ${brandDna.bodyFont}`,
+        brandDna.fonts.length > 0 && `All detected fonts: ${brandDna.fonts.join(', ')}`,
+      ].filter(Boolean).join('\n'),
+      type: 'standard', order: 11, icon: '📝', source: 'brand_scan', confidence: 'auto',
+    });
+  }
+
+  if (brandDna.toneOfVoice || brandDna.brandKeywords.length > 0) {
+    newScanSections.push({
+      id: 'tone', title: 'Tone of Voice',
+      content: [
+        brandDna.toneOfVoice && `Tone of voice: ${brandDna.toneOfVoice}`,
+        brandDna.brandKeywords.length > 0 && `Brand keywords: ${brandDna.brandKeywords.join(', ')}`,
+        socialMediaAnalysis?.languageStyle && `Language style: ${socialMediaAnalysis.languageStyle}`,
+        socialMediaAnalysis?.tone && `Social media tone: ${socialMediaAnalysis.tone}`,
+      ].filter(Boolean).join('\n'),
+      type: 'standard', order: 12, icon: '💬', source: 'brand_scan',
+      confidence: socialMediaAnalysis ? 'medium' : 'auto',
+    });
+  }
+
+  if (brandDna.brandValues.length > 0) {
+    newScanSections.push({
+      id: 'values', title: 'Wartości marki',
+      content: `Brand values: ${brandDna.brandValues.join(', ')}`,
+      type: 'standard', order: 13, icon: '⭐', source: 'brand_scan', confidence: 'auto',
+    });
+  }
+
+  if (brandDna.visualStyle || brandDna.photoStyle) {
+    newScanSections.push({
+      id: 'visual_style', title: 'Styl wizualny',
+      content: [
+        brandDna.visualStyle && `Visual style: ${brandDna.visualStyle}`,
+        brandDna.photoStyle && `Photo style: ${brandDna.photoStyle}`,
+        brandDna.industry && `Industry: ${brandDna.industry}`,
+      ].filter(Boolean).join('\n'),
+      type: 'standard', order: 14, icon: '🖼', source: 'brand_scan', confidence: 'auto',
+    });
+  }
+
+  if (brandDna.targetAudience) {
+    newScanSections.push({
+      id: 'target', title: 'Grupa docelowa',
+      content: `Target audience: ${brandDna.targetAudience}`,
+      type: 'standard', order: 15, icon: '👥', source: 'brand_scan', confidence: 'auto',
+    });
+  }
+
+  if (brandDna.ctaExamples.length > 0) {
+    newScanSections.push({
+      id: 'cta_style', title: 'Call to Action',
+      content: `CTA examples: ${brandDna.ctaExamples.join(' | ')}`,
+      type: 'standard', order: 16, icon: '🎯', source: 'brand_scan', confidence: 'auto',
+    });
+  }
+
+  // Merge: remove old-style monolith "brand_scan" section, then merge new structured sections
+  // brand_scan does NOT overwrite sections with source brandbook or references
+  type ExistingSec = Record<string, unknown>;
+  const existingSections: ExistingSec[] = (currentProject.brand_sections || []).filter(
+    (s: ExistingSec) => s.id !== 'brand_scan'
+  );
+  const mergedSections = [...existingSections];
+
+  for (const newSec of newScanSections) {
+    const existingIdx = mergedSections.findIndex(s => s.id === newSec.id);
+    if (existingIdx >= 0) {
+      const existingSource = (mergedSections[existingIdx].source as string) || 'manual';
+      const existingPriority = SOURCE_PRIORITY[existingSource] ?? 0;
+      // brand_scan only overwrites brand_scan or manual, not brandbook/references
+      if (SOURCE_PRIORITY['brand_scan'] >= existingPriority) {
+        mergedSections[existingIdx] = newSec;
+      }
+    } else {
+      mergedSections.push(newSec);
+    }
+  }
+
   // Save to DB
   await getDb()`
     UPDATE projects
     SET brand_scan_data = ${JSON.stringify(brandDna)}::jsonb,
+        brand_sections = ${JSON.stringify(mergedSections)}::jsonb,
         scanned_url = ${url},
         updated_at = NOW()
     WHERE id = ${projectId}
@@ -484,5 +594,5 @@ ${collectedPosts.map((p, i) => `[${i + 1}] ${p}`).join('\n')}`;
 
   await Promise.allSettled(assetPromises);
 
-  return NextResponse.json({ success: true, brandDna, message: 'Brand DNA extracted successfully' });
+  return NextResponse.json({ success: true, brandDna, brandSections: mergedSections, message: 'Brand DNA extracted successfully' });
 }

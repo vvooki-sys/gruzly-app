@@ -178,16 +178,40 @@ Return this exact JSON:
       };
     }
 
+    // Add source field to all new sections
+    const sectionSource = source === 'brandbook' ? 'brandbook' : 'references';
+    const sectionsWithSource = parsed.sections.map(s => ({ ...s, source: sectionSource, confidence: 'high' }));
+
     // Build brand_analysis text fallback (for generate route backward compat)
-    const brandAnalysis = [...parsed.sections]
+    const brandAnalysis = [...sectionsWithSource]
       .sort((a, b) => a.order - b.order)
       .map(s => `${s.title.toUpperCase()}: ${s.content}`)
       .join('\n\n');
 
+    // Merge with existing sections — new source replaces same-id sections only if priority >=
+    const SOURCE_PRIORITY: Record<string, number> = { brandbook: 3, references: 2, brand_scan: 1, manual: 0 };
+    type ExistingSec = Record<string, unknown>;
+    const existingSections: ExistingSec[] = project.brand_sections || [];
+    const mergedSections = [...existingSections];
+
+    for (const newSec of sectionsWithSource) {
+      const existingIdx = mergedSections.findIndex(s => s.id === newSec.id);
+      const newPriority = SOURCE_PRIORITY[sectionSource] ?? 0;
+      if (existingIdx >= 0) {
+        const existingSource = (mergedSections[existingIdx].source as string) || 'manual';
+        const existingPriority = SOURCE_PRIORITY[existingSource] ?? 0;
+        if (newPriority >= existingPriority) {
+          mergedSections[existingIdx] = newSec;
+        }
+      } else {
+        mergedSections.push(newSec);
+      }
+    }
+
     // Save brand_sections and brand_analysis
     await getDb()`
       UPDATE projects
-      SET brand_sections = ${JSON.stringify(parsed.sections)}::jsonb,
+      SET brand_sections = ${JSON.stringify(mergedSections)}::jsonb,
           brand_analysis = ${brandAnalysis},
           updated_at = NOW()
       WHERE id = ${projectId}
@@ -207,7 +231,7 @@ Return this exact JSON:
     }
 
     return NextResponse.json({
-      sections: parsed.sections,
+      sections: mergedSections,
       analysis: brandAnalysis,
       brandRules: brandRules || undefined,
       suggestedRules: suggestedRules || undefined,

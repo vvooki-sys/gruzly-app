@@ -165,10 +165,23 @@ ${allLayer1Rules.map((r, i) => `${i + 1}. ${r}`).join('\n')}
   const brandSections: BrandSec[] = project.brand_sections || [];
   let layer2Content: string;
 
+  const SOURCE_PRIORITY_GEN: Record<string, number> = { brandbook: 3, references: 2, brand_scan: 1, manual: 0 };
   if (brandSections.length > 0) {
     layer2Content = [...brandSections]
-      .sort((a: BrandSec, b: BrandSec) => a.order - b.order)
-      .map((s: BrandSec) => `[${s.title.toUpperCase()}]\n${s.content}`)
+      .sort((a: BrandSec, b: BrandSec) => {
+        const pa = SOURCE_PRIORITY_GEN[(a as BrandSec & { source?: string }).source || 'manual'] ?? 0;
+        const pb = SOURCE_PRIORITY_GEN[(b as BrandSec & { source?: string }).source || 'manual'] ?? 0;
+        if (pa !== pb) return pb - pa; // higher priority first
+        return a.order - b.order;
+      })
+      .map((s: BrandSec) => {
+        const sec = s as BrandSec & { source?: string };
+        const reliability = sec.source === 'brandbook' ? ' [CONFIRMED]'
+          : sec.source === 'references' ? ' [FROM REFERENCES]'
+          : sec.source === 'brand_scan' ? ' [AUTO-DETECTED]'
+          : '';
+        return `[${s.title.toUpperCase()}${reliability}]\n${s.content}`;
+      })
       .join('\n\n');
   } else if (project.brand_analysis) {
     layer2Content = project.brand_analysis;
