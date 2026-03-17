@@ -2001,7 +2001,8 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
                     {logos.map(a => (
                       <div key={a.id} className="flex items-center gap-3">
                         <div className="w-16 h-10 rounded-lg bg-teal-deep/5 dark:bg-teal-deep/30 border border-teal-deep/10 dark:border-holo-mint/10 flex items-center justify-center overflow-hidden shrink-0">
-                          <img src={a.url} className="max-w-full max-h-full object-contain" alt={a.filename} />
+                          <img src={a.url} className="max-w-full max-h-full object-contain" alt={a.filename}
+                            onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-xs font-semibold truncate">{a.filename}</p>
@@ -2523,7 +2524,8 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
               <p className="text-xs opacity-40 mb-3">Gemini nie obsługuje SVG — wgraj PNG lub JPG</p>
               <div className="flex items-center gap-3">
                 {project.logo_url && !project.logo_url.endsWith('.svg') && (
-                  <img src={project.logo_url} alt="logo" className="h-12 w-auto rounded-xl border border-teal-deep/10 dark:border-holo-mint/10 bg-white p-1" />
+                  <img src={project.logo_url} alt="logo" className="h-12 w-auto rounded-xl border border-teal-deep/10 dark:border-holo-mint/10 bg-white p-1"
+                    onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
                 )}
                 <label className="cursor-pointer h-9 px-4 rounded-full border border-teal-deep/15 dark:border-holo-mint/15 text-sm font-semibold flex items-center gap-2 hover:border-holo-mint/50 transition-colors opacity-70 hover:opacity-100">
                   <Upload className="h-4 w-4" />

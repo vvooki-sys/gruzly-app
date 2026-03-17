@@ -173,11 +173,15 @@ async function downloadAndSaveAsset(
     `;
     if (existing.length > 0) return false;
 
-    const res = await fetch(assetUrl, { signal: AbortSignal.timeout(8000) });
+    const res = await fetch(assetUrl, {
+      signal: AbortSignal.timeout(8000),
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; Googlebot/2.1)' },
+    });
     if (!res.ok) return false;
 
-    const ct = res.headers.get('content-type') || 'image/png';
-    // Skip tiny favicons (ICO) that Gemini won't use anyway
+    const ct = res.headers.get('content-type') || '';
+    // Must be an actual image — reject HTML, JSON, text, redirects, ICO
+    if (!ct.startsWith('image/') && !ct.includes('svg')) return false;
     if (ct.includes('x-icon') || ct.includes('vnd.microsoft')) return false;
 
     const buffer = Buffer.from(await res.arrayBuffer());
