@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import {
   ArrowLeft, Upload, Wand2, Image, Loader2, Download,
   Settings, Sun, Moon, BookmarkPlus, Trash2, Zap, Target, PenLine,
-  Layers, Camera, X, Check, MoreVertical, Archive,
+  Layers, Camera, X, Check, MoreVertical, Archive, ExternalLink,
 } from 'lucide-react';
 
 interface BrandScanData {
@@ -265,6 +265,8 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
   const [brandScanResult, setBrandScanResult] = useState<BrandScanData | null>(null);
   const [brandScanError, setBrandScanError] = useState('');
   const [applyingBrandScan, setApplyingBrandScan] = useState(false);
+  const [generatingBrandBook, setGeneratingBrandBook] = useState(false);
+  const [brandBookUrl, setBrandBookUrl] = useState('');
 
   // Copywriter state
   const [copyFile, setCopyFile] = useState<File | null>(null);
@@ -287,6 +289,9 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
           setEditRules(d.project.brand_rules || '');
           setBrandbookAsset(d.assets.find((a: Asset) => a.type === 'brandbook') || null);
           setBrandSections(d.project.brand_sections || []);
+          if (d.project.brand_scan_data?.brandbook_generated_at) {
+            setBrandBookUrl(`/brandbook/${id}`);
+          }
           setGenerationMode((d.project.generation_mode || 'creative') as 'creative' | 'photo' | 'precision');
           setToneOfVoice(d.project.tone_of_voice || '');
           if (d.project.brand_scan_data) setBrandScanResult(d.project.brand_scan_data);
@@ -538,6 +543,26 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
       showToast('Błąd zapisu');
     } finally {
       setApplyingBrandScan(false);
+    }
+  };
+
+  const generateBrandBook = async () => {
+    if (!id) return;
+    setGeneratingBrandBook(true);
+    try {
+      const res = await fetch(`/api/projects/${id}/brandbook/generate`, { method: 'POST' });
+      const data = await res.json();
+      if (data.url) {
+        setBrandBookUrl(data.url);
+        window.open(data.url, '_blank');
+        showToast('Brand Book wygenerowany ✓');
+      } else {
+        showToast('Błąd generowania Brand Book');
+      }
+    } catch {
+      showToast('Błąd połączenia');
+    } finally {
+      setGeneratingBrandBook(false);
     }
   };
 
@@ -2340,6 +2365,38 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
                 </div>
               )}
             </div>
+
+            {/* BRAND BOOK */}
+            {(project.brand_scan_data || brandScanResult) && (
+              <div className="rounded-2xl border border-holo-lavender/20 bg-holo-lavender/5 p-4 space-y-3">
+                <div>
+                  <p className="text-sm font-bold">📖 Brand Book</p>
+                  <p className="text-xs opacity-40 mt-0.5">Wygeneruj piękną stronę z Brand Guidelines gotową do udostępnienia</p>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={generateBrandBook}
+                    disabled={generatingBrandBook}
+                    className="flex-1 h-9 rounded-full bg-holo-lavender/20 hover:bg-holo-lavender/30 text-holo-lavender border border-holo-lavender/30 text-xs font-bold transition-colors disabled:opacity-40 flex items-center justify-center gap-1.5"
+                  >
+                    {generatingBrandBook
+                      ? <><Loader2 className="h-3 w-3 animate-spin" /> Generuję...</>
+                      : <><Wand2 className="h-3 w-3" /> Generuj Brand Book</>
+                    }
+                  </button>
+                  {brandBookUrl && (
+                    <a
+                      href={brandBookUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="h-9 px-4 rounded-full border border-holo-lavender/30 text-holo-lavender text-xs font-bold hover:bg-holo-lavender/10 transition-colors flex items-center gap-1.5 shrink-0"
+                    >
+                      <ExternalLink className="h-3 w-3" /> Otwórz
+                    </a>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* SEKCJE MARKI */}
             {brandSections.length > 0 && (
