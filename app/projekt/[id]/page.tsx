@@ -768,7 +768,8 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
     if (!id || !brandScanResult) return;
     setApplyingBrandScan(true);
     try {
-      if (!toneOfVoice && brandScanResult.toneOfVoice) {
+      // 1. Tone of voice (separate project field)
+      if (brandScanResult.toneOfVoice) {
         setToneOfVoice(brandScanResult.toneOfVoice);
         await fetch(`/api/projects/${id}`, {
           method: 'PATCH',
@@ -776,7 +777,71 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
           body: JSON.stringify({ toneOfVoice: brandScanResult.toneOfVoice }),
         });
       }
-      showToast('Ton głosu zastosowany ✓');
+
+      // 2. Build brand sections from scan data (plain text content for Gemini)
+      const bsd = brandScanResult;
+      const candidateSections = [
+        {
+          title: 'Kolory marki', icon: '🎨', order: 10,
+          content: [
+            bsd.primaryColor   && `Primary color: ${bsd.primaryColor}`,
+            bsd.secondaryColor && `Secondary color: ${bsd.secondaryColor}`,
+            bsd.accentColor    && `Accent color: ${bsd.accentColor}`,
+          ].filter(Boolean).join('\n'),
+        },
+        {
+          title: 'Typografia', icon: '🔤', order: 20,
+          content: [
+            bsd.headingFont && `Heading font: ${bsd.headingFont}`,
+            bsd.bodyFont    && `Body font: ${bsd.bodyFont}`,
+            bsd.fonts?.length && `Available fonts: ${bsd.fonts.join(', ')}`,
+          ].filter(Boolean).join('\n'),
+        },
+        {
+          title: 'Ton głosu i komunikacja', icon: '💬', order: 30,
+          content: [
+            bsd.toneOfVoice          && `Tone of voice: ${bsd.toneOfVoice}`,
+            bsd.brandKeywords?.length && `Brand keywords: ${bsd.brandKeywords.join(', ')}`,
+            bsd.socialMediaAnalysis?.languageStyle && `Language style: ${bsd.socialMediaAnalysis.languageStyle}`,
+            bsd.socialMediaAnalysis?.tone          && `Social media tone: ${bsd.socialMediaAnalysis.tone}`,
+          ].filter(Boolean).join('\n'),
+        },
+        {
+          title: 'Styl wizualny', icon: '✨', order: 40,
+          content: [
+            bsd.visualStyle && `Visual style: ${bsd.visualStyle}`,
+            bsd.photoStyle  && `Photo style: ${bsd.photoStyle}`,
+            bsd.industry    && `Industry: ${bsd.industry}`,
+          ].filter(Boolean).join('\n'),
+        },
+        {
+          title: 'Wartości marki', icon: '💎', order: 50,
+          content: bsd.brandValues?.length ? `Brand values: ${bsd.brandValues.join(', ')}` : '',
+        },
+        {
+          title: 'Grupa docelowa', icon: '🎯', order: 60,
+          content: bsd.targetAudience ? `Target audience: ${bsd.targetAudience}` : '',
+        },
+        {
+          title: 'Call to Action', icon: '🚀', order: 70,
+          content: bsd.ctaExamples?.length ? `CTA examples: ${bsd.ctaExamples.join(' | ')}` : '',
+        },
+      ].filter(s => s.content.trim().length > 0);
+
+      const res = await fetch(`/api/projects/${id}/sections/apply-scan`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sections: candidateSections }),
+      });
+      const { appliedCount } = await res.json();
+
+      // 3. Refresh local brand sections state
+      const updated = await fetch(`/api/projects/${id}`).then(r => r.json());
+      if (updated.project?.brand_sections) {
+        setBrandSections(updated.project.brand_sections);
+      }
+
+      showToast(`Brand DNA zastosowane — ${appliedCount} sekcji ✓`);
     } catch {
       showToast('Błąd zapisu');
     } finally {
