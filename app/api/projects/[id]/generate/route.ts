@@ -421,8 +421,7 @@ ${subtext ? `Subtext: "${subtext}"` : ''}
 ${brief ? `CREATIVE DIRECTION (context only — do not render verbatim): "${brief}"` : ''}
 ${photoInstruction}
 OUTPUT REQUIREMENTS:
-- LOGO ZONE (${emptyZone ?? 'none'}) ${emptyZone ? `must be clean background fill only — logo is applied programmatically after generation` : '— no logo zone, use full canvas'}
-- ${emptyZone ? 'Logo overlay will be applied programmatically after generation' : 'No logo overlay will be applied'}
+- LOGO ZONE (${emptyZone ?? 'none'}) ${emptyZone ? `must be a seamless continuation of the surrounding background style — no objects, shapes, text, flat fills or boxes. Logo PNG is composited here after generation.` : '— no logo zone, use full canvas'}
 - RENDER ONLY the text lines listed above under "TEXT TO APPEAR ON GRAPHIC" — render each line EXACTLY ONCE, no repetition, no paraphrasing, no additional captions
 - No human photography unless explicitly requested in creative direction
 - Zero typos — double-check all text before rendering
