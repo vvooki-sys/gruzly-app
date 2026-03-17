@@ -300,7 +300,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       : []),
     'RENDER ONLY text listed under "TEXT TO APPEAR ON GRAPHIC" — no other text, captions or labels',
     ...(emptyZone
-      ? [`Do NOT place any element, shape, text or overlay in the logo zone (${emptyZone}). The background must show through naturally in that area — no boxes, no rectangles, no placeholders, no empty fills. Just let the background continue as if that area does not exist.`]
+      ? [`[LOGO ZONE — ${emptyZone}]: Render this area as a clean, uninterrupted continuation of the main background — solid fill, no shapes, no text, no gradients, no decorative elements. This zone must be pixel-perfect background so a logo PNG can be composited cleanly in post-processing.`]
       : ['No logo required — you may use the full canvas freely']),
   ];
 
@@ -421,7 +421,7 @@ ${subtext ? `Subtext: "${subtext}"` : ''}
 ${brief ? `CREATIVE DIRECTION (context only — do not render verbatim): "${brief}"` : ''}
 ${photoInstruction}
 OUTPUT REQUIREMENTS:
-- DO NOT render any logo — ${emptyZone ? `the ${emptyZone} must remain completely empty per Layer 1 rules` : 'you may use the full canvas (no logo required)'}
+- LOGO ZONE (${emptyZone ?? 'none'}) ${emptyZone ? `must be clean background fill only — logo is applied programmatically after generation` : '— no logo zone, use full canvas'}
 - ${emptyZone ? 'Logo overlay will be applied programmatically after generation' : 'No logo overlay will be applied'}
 - RENDER ONLY the text lines listed above under "TEXT TO APPEAR ON GRAPHIC" — render each line EXACTLY ONCE, no repetition, no paraphrasing, no additional captions
 - No human photography unless explicitly requested in creative direction
