@@ -5,6 +5,7 @@ import { put } from '@vercel/blob';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { ImageResponse } from 'next/og';
 import { buildCompositeElement, COMPOSITOR_FORMAT_SIZES, type LayoutPreset, type BrandColors } from '@/lib/compositor';
+import sharp from 'sharp';
 
 export const maxDuration = 30;
 
@@ -24,6 +25,139 @@ const CREATIVITY_BLOCKS: Record<number, string> = {
   4: 'Design a striking, editorial-level graphic. Push visual complexity — layered shapes, depth, bold typographic treatment, dynamic composition. Stay within brand palette and layout rules.',
   5: 'Create a premium, award-worthy graphic. Maximum visual richness within brand rules. Cinematic composition, complex multi-layer design, immersive use of brand colors and graphic elements. Every pixel intentional.',
 };
+
+// ── Logo compositor ───────────────────────────────────────────────────────────
+
+type AssetRow = { type: string; url: string; filename: string; variant?: string; description?: string; mime_type?: string };
+
+async function getTopLeftBrightness(imageBuffer: Buffer, width: number, height: number): Promise<number> {
+  try {
+    const region = await sharp(imageBuffer)
+      .extract({
+        left: 0,
+        top: 0,
+        width: Math.round(width * 0.30),
+        height: Math.round(height * 0.25),
+      })
+      .greyscale()
+      .raw()
+      .toBuffer();
+    const avg = region.reduce((sum: number, px: number) => sum + px, 0) / region.length;
+    return avg;
+  } catch {
+    return 0;
+  }
+}
+
+async function selectLogoAsset(
+  brandAssets: AssetRow[],
+  imageBuffer: Buffer,
+  width: number,
+  height: number
+): Promise<AssetRow | null> {
+  const logoAssets = brandAssets.filter(a => a.type === 'logo');
+  if (logoAssets.length === 0) return null;
+  if (logoAssets.length === 1) return logoAssets[0];
+
+  const brightness = await getTopLeftBrightness(imageBuffer, width, height);
+  const isDark = brightness < 128;
+
+  if (isDark) {
+    return logoAssets.find(a => a.variant === 'dark-bg')
+      || logoAssets.find(a => a.variant === 'default')
+      || logoAssets[0];
+  } else {
+    return logoAssets.find(a => a.variant === 'light-bg')
+      || logoAssets.find(a => a.variant === 'default')
+      || logoAssets[0];
+  }
+}
+
+async function addLogoBackground(
+  imageBuffer: Buffer,
+  logoX: number,
+  logoY: number,
+  logoW: number,
+  logoH: number,
+  isDark: boolean
+): Promise<Buffer> {
+  const padding = 16;
+  const gradientSvg = `<svg width="${logoW + padding * 2}" height="${logoH + padding * 2}">
+    <defs>
+      <radialGradient id="g" cx="50%" cy="50%" r="60%">
+        <stop offset="0%" stop-color="${isDark ? 'rgba(0,0,0,0.35)' : 'rgba(255,255,255,0.35)'}" />
+        <stop offset="100%" stop-color="rgba(0,0,0,0)" />
+      </radialGradient>
+    </defs>
+    <rect width="100%" height="100%" fill="url(#g)" rx="8" />
+  </svg>`;
+
+  return sharp(imageBuffer)
+    .composite([{
+      input: Buffer.from(gradientSvg),
+      left: Math.max(0, logoX - padding),
+      top: Math.max(0, logoY - padding),
+    }])
+    .toBuffer();
+}
+
+async function applyLogoOverlay(
+  geminiImageBuffer: Buffer,
+  brandAssets: AssetRow[],
+  format: string
+): Promise<Buffer> {
+  const meta = await sharp(geminiImageBuffer).metadata();
+  const width = meta.width || 1080;
+  const height = meta.height || 1080;
+
+  const logoAsset = await selectLogoAsset(brandAssets, geminiImageBuffer, width, height);
+  if (!logoAsset) {
+    console.log('Logo overlay: no logo asset found, skipping');
+    return geminiImageBuffer;
+  }
+
+  try {
+    const logoArrayBuffer = await fetch(logoAsset.url).then(r => r.arrayBuffer());
+    const logoBuffer = Buffer.from(new Uint8Array(logoArrayBuffer));
+
+    const logoWidthRatio = format === 'banner' ? 0.15 : 0.22;
+    const logoWidth = Math.round(width * logoWidthRatio);
+
+    const logoResized = await sharp(logoBuffer)
+      .resize(logoWidth, null, { fit: 'inside', withoutEnlargement: true })
+      .toBuffer();
+
+    const logoX = Math.round(width * 0.04);
+    const logoY = Math.round(height * 0.04);
+
+    const brightness = await getTopLeftBrightness(geminiImageBuffer, width, height);
+    const isDark = brightness < 128;
+    const logoMeta = await sharp(logoResized).metadata();
+    const logoH = logoMeta.height || Math.round(height * 0.08);
+
+    const onlyOneVariant = brandAssets.filter(a => a.type === 'logo').length === 1;
+    const needsBackground = onlyOneVariant && !isDark;
+
+    let baseImage = geminiImageBuffer;
+    if (needsBackground) {
+      baseImage = await addLogoBackground(geminiImageBuffer, logoX, logoY, logoWidth, logoH, false);
+    }
+
+    const finalImage = await sharp(baseImage)
+      .composite([{ input: logoResized, top: logoY, left: logoX }])
+      .png()
+      .toBuffer();
+
+    console.log(`Logo overlay applied: ${logoAsset.variant || 'default'}, brightness: ${brightness.toFixed(0)}, needsBg: ${needsBackground}`);
+    return finalImage;
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.log('Logo overlay failed, returning without logo:', msg);
+    return geminiImageBuffer;
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 async function urlToBase64(url: string): Promise<{ data: string; mimeType: string } | null> {
   try {
@@ -67,7 +201,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   // Ensure parent_id column exists
   await getDb()`ALTER TABLE generations ADD COLUMN IF NOT EXISTS parent_id INTEGER REFERENCES generations(id)`.catch(() => {});
 
-  type AssetRow = { type: string; url: string; filename: string; variant?: string; description?: string; mime_type?: string };
   const assetList = assets as AssetRow[];
 
   // ── Build image parts ────────────────────────────────────────────────────
@@ -334,12 +467,12 @@ ${layer1}${layer2}${layer3}${creativityBlock}${closing}`;
       for (const part of candidate.content.parts) {
         const p = part as { inlineData?: { data: string; mimeType: string }; text?: string };
         if (p.inlineData) {
-          const buffer = Buffer.from(p.inlineData.data, 'base64');
-          const ext = p.inlineData.mimeType === 'image/png' ? 'png' : 'jpg';
-          const filename = `gruzly/${id}/${Date.now()}.${ext}`;
-          const blob = await put(filename, buffer, {
+          const rawBuffer = Buffer.from(p.inlineData.data, 'base64');
+          const finalBuffer = await applyLogoOverlay(rawBuffer, assetList, format);
+          const filename = `gruzly/${id}/${Date.now()}.png`;
+          const blob = await put(filename, finalBuffer, {
             access: 'public',
-            contentType: p.inlineData.mimeType,
+            contentType: 'image/png',
           });
           imageUrls.push(blob.url);
         }
