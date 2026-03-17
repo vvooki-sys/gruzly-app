@@ -220,10 +220,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     || logoAssets.find(a => a.variant === 'default')
     || logoAssets[0];
 
-  // Reference images: kept for text context only — NOT passed as inlineData.
-  // Passing reference photos as inline images causes Gemini to extract faces/content from them
-  // and use them as central graphic elements instead of treating them as style inspiration.
-  const refs = assetList.filter(a => a.type === 'reference').slice(0, 5);
+  // Reference images: sent as inlineData for visual style extraction (max 3, skip SVG)
+  // Guardrail in prompt: extract color/mood only, do NOT copy faces/objects/scenes
+  const refs = assetList.filter(a => a.type === 'reference').slice(0, 3);
+  const refParts: Array<{ inlineData: { data: string; mimeType: string } }> = [];
+  if (!elementOnly) {
+    for (const ref of refs) {
+      if (ref.url.toLowerCase().endsWith('.svg')) continue;
+      const b64 = await urlToBase64(ref.url);
+      if (b64 && !b64.mimeType.includes('svg')) refParts.push({ inlineData: b64 });
+    }
+  }
 
   // Brand elements: include as inline images (max 2, skip large SVGs)
   const brandElements = assetList.filter(a => a.type === 'brand-element').slice(0, 2);
@@ -264,7 +271,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       : []),
     'RENDER ONLY text listed under "TEXT TO APPEAR ON GRAPHIC" — no other text, captions or labels',
     ...(emptyZone
-      ? [`DO NOT draw, paint or generate any logo or brand mark — leave the ${emptyZone} COMPLETELY EMPTY (no text, no graphics) — logo will be added programmatically`]
+      ? [`Do NOT place any element, shape, text or overlay in the logo zone (${emptyZone}). The background must show through naturally in that area — no boxes, no rectangles, no placeholders, no empty fills. Just let the background continue as if that area does not exist.`]
       : ['No logo required — you may use the full canvas freely']),
   ];
 
@@ -280,12 +287,12 @@ ${sep}
 ${allLayer1Rules.map((r, i) => `${i + 1}. ${r}`).join('\n')}
 `;
 
-  // Asset note for Layer 2 header (refs are NOT inline images — they are style-reference text only)
-  const logoNote = '';
+  const refNote = !elementOnly && refParts.length > 0 ? `\n- Style reference images (${refParts.length}): EXTRACT color palette, mood and visual style ONLY — do NOT copy faces, people, objects, scenes or compositions from them` : '';
   const elNote = !elementOnly && brandElements.length > 0 ? `\n- Brand graphic elements: use these decorative/brand elements in the composition` : '';
   const photoNote = photoUrl && photoMode !== 'none' && !elementOnly ? '\n- PHOTO PROVIDED: place this as the central/hero image, compose brand elements around it' : '';
-  const assetNote = imageParts.length > 0
-    ? `Provided visual assets:${logoNote}${elNote}${photoNote}\n\n`
+  const allParts = [...refParts, ...imageParts];
+  const assetNote = allParts.length > 0
+    ? `Provided visual assets:${refNote}${elNote}${photoNote}\n\n`
     : '';
 
   // AVAILABLE ASSETS text block for Layer 2
@@ -296,11 +303,9 @@ ${allLayer1Rules.map((r, i) => `${i + 1}. ${r}`).join('\n')}
   brandElements.forEach(el => {
     availableAssets.push(`- Brand element "${el.filename}"${el.description ? ` — ${el.description}` : ''}: ${el.url}`);
   });
-  // Refs listed as style-inspiration text (NOT inline images — do not copy their content)
-  if (!elementOnly && refs.length > 0) {
-    refs.forEach(r => {
-      availableAssets.push(`- Style reference "${r.filename}"${r.description ? ` — ${r.description}` : ''} [STYLE INSPIRATION ONLY — extract color palette and mood, do NOT copy faces, people or objects]: ${r.url}`);
-    });
+  // Refs sent as inlineData — note their count and guardrail in prompt
+  if (!elementOnly && refParts.length > 0) {
+    availableAssets.push(`- Style reference images (${refParts.length} provided as inline images): extract color palette, mood and visual style — do NOT copy faces, people, objects or scenes`);
   }
   const photoAssets = assetList.filter(a => a.type === 'photo');
   photoAssets.forEach(p => {
@@ -399,6 +404,7 @@ ${photoInstruction}
 OUTPUT REQUIREMENTS:
 - DO NOT render any logo — ${emptyZone ? `the ${emptyZone} must remain completely empty per Layer 1 rules` : 'you may use the full canvas (no logo required)'}
 - ${emptyZone ? 'Logo overlay will be applied programmatically after generation' : 'No logo overlay will be applied'}
+- RENDER ONLY the text lines listed above under "TEXT TO APPEAR ON GRAPHIC" — render each line EXACTLY ONCE, no repetition, no paraphrasing, no additional captions
 - No human photography unless explicitly requested in creative direction
 - Zero typos — double-check all text before rendering
 - Fill the entire canvas — no white borders or padding outside the design
@@ -473,7 +479,8 @@ ${layer1}${layer2}${layer3}${creativityBlock}${closing}`;
 
   try {
     const parts: Array<{ inlineData: { data: string; mimeType: string } } | { text: string }> = [
-      ...imageParts,
+      ...refParts,   // style references first
+      ...imageParts, // brand elements + photo
       { text: textPrompt },
     ];
 
