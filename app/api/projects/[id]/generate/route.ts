@@ -227,7 +227,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   // Reference images: sent as inlineData for visual style extraction (max 3, skip SVG)
   // Guardrail in prompt: extract color/mood only, do NOT copy faces/objects/scenes
-  const refs = assetList.filter(a => a.type === 'reference').slice(0, 3);
+  const refs = assetList.filter(a => a.type === 'reference').slice(0, 5);
   const refParts: Array<{ inlineData: { data: string; mimeType: string } }> = [];
   if (!elementOnly) {
     for (const ref of refs) {

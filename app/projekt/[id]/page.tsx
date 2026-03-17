@@ -2932,13 +2932,13 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
                 <div>
                   <h3 className="font-bold text-sm">Grafiki referencyjne</h3>
                   <p className="text-xs opacity-40">{references.length}/10</p>
-                  <p className="text-xs opacity-30 mt-0.5">Wgraj 3–6 grafik w spójnym stylu marki. AI analizuje do 5 na raz — im bardziej spójne referencje, tym lepsze wyniki.</p>
+                  <p className="text-xs opacity-30 mt-0.5">Wgraj do 10 grafik w spójnym stylu marki. Im bardziej spójne referencje, tym lepsze wyniki.</p>
                 </div>
                 {references.length < 10 && (
                   <label className="cursor-pointer h-8 px-3 rounded-full border border-teal-deep/15 dark:border-holo-mint/15 text-xs font-semibold flex items-center gap-1.5 hover:border-holo-mint/50 transition-colors opacity-70 hover:opacity-100">
                     <Upload className="h-3 w-3" /> Dodaj
                     <input type="file" accept="image/*" multiple className="hidden" onChange={async (e) => {
-                      const files = Array.from(e.target.files || []).slice(0, 5 - references.length);
+                      const files = Array.from(e.target.files || []).slice(0, 10 - references.length);
                       for (const file of files) {
                         if (!id) continue;
                         const fd = new FormData();
