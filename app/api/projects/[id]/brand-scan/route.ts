@@ -170,6 +170,17 @@ function extractOgImageFromHtml(html: string, baseUrl: string): string {
   return resolveUrl(decodeHtmlEntities(raw), baseUrl);
 }
 
+// Returns true if the URL is a known IG/FB default icon (not a real brand image)
+function isDefaultSocialIcon(imgUrl: string): boolean {
+  return (
+    imgUrl.includes('instagram.com/images/') ||
+    imgUrl.includes('static.cdninstagram.com/rsrc') ||
+    imgUrl.includes('facebook.com/images/') ||
+    imgUrl.includes('static.xx.fbcdn.net/rsrc') ||
+    imgUrl.includes('/assets/') && imgUrl.includes('facebook')
+  );
+}
+
 function extractFBPostTexts(fbHtml: string): string[] {
   const texts: string[] = [];
   // og:description often contains page description
@@ -227,7 +238,11 @@ async function downloadAndSaveAsset(
     if (ct.includes('x-icon') || ct.includes('vnd.microsoft')) return false;
 
     const buffer = Buffer.from(await res.arrayBuffer());
-    if (buffer.length < 500) return false; // skip suspiciously small files
+    const minSize = type === 'reference' ? 5000 : 500; // social images < 5KB = default icon
+    if (buffer.length < minSize) {
+      console.log(`Asset too small (${buffer.length} bytes), skipping:`, assetUrl);
+      return false;
+    }
 
     const ext = ct.includes('svg') ? 'svg' : ct.includes('png') ? 'png' : ct.includes('webp') ? 'webp' : 'jpg';
     const filename = `brand-scan-${type}-${Date.now()}.${ext}`;
@@ -475,7 +490,10 @@ Return ONLY a valid JSON object (no markdown, no explanation):
             const posts = extractFBPostTexts(fbHtml);
             collectedPosts.push(...posts);
             const images = extractFBPostImages(fbHtml, socialLinks.facebook!);
-            collectedImages.push(...images);
+            console.log('FB og:image candidates:', images);
+            for (const img of images) {
+              if (!isDefaultSocialIcon(img)) collectedImages.push(img);
+            }
           }
         } catch {
           // FB blocked — skip silently
@@ -488,16 +506,26 @@ Return ONLY a valid JSON object (no markdown, no explanation):
     socialScanPromises.push(
       (async () => {
         try {
-          const igHtml = await fetch(socialLinks.instagram!, {
+          const igUrl = socialLinks.instagram!;
+          // Must be a profile URL (not just instagram.com root)
+          if (!igUrl.match(/instagram\.com\/[^/?#]{2,}/)) {
+            console.log('IG URL is not a profile page, skipping:', igUrl);
+            return;
+          }
+          console.log('Fetching IG profile:', igUrl);
+          const igHtml = await fetch(igUrl, {
             headers: { 'User-Agent': 'Mozilla/5.0 (compatible; Googlebot/2.1)' },
             signal: AbortSignal.timeout(5000),
           }).then(r => r.ok ? r.text() : '');
           const igDesc = igHtml?.match(/<meta[^>]+property=["']og:description["'][^>]+content=["']([^"']{20,}?)["']/i)?.[1];
           if (igDesc) collectedPosts.push(igDesc.substring(0, 500));
-          // Try og:image from IG profile
+          // Try og:image from IG profile — skip default IG icons
           if (igHtml) {
-            const igOgImage = extractOgImageFromHtml(igHtml, socialLinks.instagram!);
-            if (igOgImage) collectedImages.push(igOgImage);
+            const igOgImage = extractOgImageFromHtml(igHtml, igUrl);
+            console.log('IG og:image:', igOgImage || '(none)');
+            if (igOgImage && !isDefaultSocialIcon(igOgImage)) {
+              collectedImages.push(igOgImage);
+            }
           }
         } catch {
           // IG blocked — skip silently
@@ -713,5 +741,7 @@ ${collectedPosts.map((p, i) => `[${i + 1}] ${p}`).join('\n')}`;
 
   await Promise.allSettled(assetPromises);
 
-  return NextResponse.json({ success: true, brandDna, brandSections: mergedSections, message: 'Brand DNA extracted successfully' });
+  const freshAssets = await getDb()`SELECT * FROM brand_assets WHERE project_id = ${projectId} ORDER BY created_at ASC`;
+
+  return NextResponse.json({ success: true, brandDna, brandSections: mergedSections, assets: freshAssets, message: 'Brand DNA extracted successfully' });
 }

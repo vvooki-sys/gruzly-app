@@ -509,6 +509,9 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
         if (data.brandSections) {
           setBrandSections(data.brandSections);
         }
+        if (data.assets) {
+          setAssets(data.assets);
+        }
         setBrandScanStatus('Gotowe!');
         showToast('Brand DNA zeskanowany ✓');
       } else if (data.fallback) {
