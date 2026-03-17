@@ -236,7 +236,7 @@ function ScanProgress({ isScanning, socialLinks }: {
   }, [isScanning]);
 
   const stepData = SCAN_STEPS[step];
-  let label = stepData?.label ?? '';
+  let label: string = stepData?.label ?? '';
   if (stepData?.id === 'social' && socialLinks) {
     const platforms = [
       socialLinks.facebook && 'Facebook',
