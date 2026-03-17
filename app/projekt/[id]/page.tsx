@@ -177,6 +177,195 @@ function getFormatLabel(fmt: string) {
   return FORMATS.find(f => f.value === getBaseFormat(fmt))?.label ?? fmt;
 }
 
+// ── Brand Scan progress ──────────────────────────────────────────────────────
+
+const SCAN_STEPS = [
+  { id: 'fetch',  icon: '🌐', label: 'Pobieranie strony...',          duration: 2500 },
+  { id: 'colors', icon: '🎨', label: 'Analiza kolorów i fontów...',   duration: 2500 },
+  { id: 'gemini', icon: '🤖', label: 'Gemini analizuje brand DNA...', duration: 5000 },
+  { id: 'logo',   icon: '🖼', label: 'Pobieranie logo...',            duration: 2000 },
+  { id: 'social', icon: '💡', label: 'Skanowanie social media...',    duration: 5000, dynamic: true },
+  { id: 'save',   icon: '💾', label: 'Zapisywanie Brand DNA...',      duration: 1000 },
+] as const;
+const SCAN_TOTAL = SCAN_STEPS.reduce((a, s) => a + s.duration, 0);
+
+function ScanProgress({ isScanning, socialLinks }: {
+  isScanning: boolean;
+  socialLinks?: { facebook?: string; instagram?: string; linkedin?: string; tiktok?: string; youtube?: string } | null;
+}) {
+  const [step, setStep] = useState(0);
+  const [progress, setProgress] = useState(0);
+  const [done, setDone] = useState(false);
+
+  useEffect(() => {
+    if (!isScanning) {
+      if (progress > 0) {
+        setProgress(100);
+        setDone(true);
+        const t = setTimeout(() => { setDone(false); setProgress(0); setStep(0); }, 1500);
+        return () => clearTimeout(t);
+      }
+      return;
+    }
+    setDone(false);
+    let stepIdx = 0;
+    let canceled = false;
+    let intervalId: ReturnType<typeof setInterval>;
+    let timeoutId: ReturnType<typeof setTimeout>;
+    const offsetMs = (idx: number) => SCAN_STEPS.slice(0, idx).reduce((a, s) => a + s.duration, 0);
+
+    const runStep = () => {
+      if (canceled || stepIdx >= SCAN_STEPS.length) return;
+      setStep(stepIdx);
+      const stepDur = SCAN_STEPS[stepIdx].duration;
+      let elapsed = 0;
+      intervalId = setInterval(() => {
+        elapsed += 100;
+        const total = offsetMs(stepIdx) + elapsed;
+        setProgress(Math.min((total / SCAN_TOTAL) * 100, 99));
+      }, 100);
+      timeoutId = setTimeout(() => {
+        clearInterval(intervalId);
+        stepIdx++;
+        runStep();
+      }, stepDur);
+    };
+    runStep();
+    return () => { canceled = true; clearInterval(intervalId); clearTimeout(timeoutId); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isScanning]);
+
+  const stepData = SCAN_STEPS[step];
+  let label = stepData?.label ?? '';
+  if (stepData?.id === 'social' && socialLinks) {
+    const platforms = [
+      socialLinks.facebook && 'Facebook',
+      socialLinks.instagram && 'Instagram',
+      socialLinks.linkedin && 'LinkedIn',
+      socialLinks.tiktok && 'TikTok',
+      socialLinks.youtube && 'YouTube',
+    ].filter(Boolean);
+    if (platforms.length > 0) label = `Skanowanie: ${platforms.join(', ')}...`;
+  }
+
+  if (!isScanning && !done) return null;
+
+  if (done) return (
+    <div className="flex items-center gap-2 text-holo-mint text-sm font-bold mt-3">
+      <Check className="h-4 w-4" /> Brand DNA gotowe!
+    </div>
+  );
+
+  return (
+    <div className="mt-3 space-y-2">
+      <div className="relative h-1.5 rounded-full overflow-hidden bg-white/10">
+        <div className="absolute inset-y-0 left-0 rounded-full transition-all duration-300"
+          style={{ width: `${progress}%`, background: 'linear-gradient(90deg, #00a589, #4DC8E8)' }} />
+      </div>
+      <div className="flex items-center gap-2">
+        <span className="text-base animate-pulse">{stepData?.icon}</span>
+        <span className="text-xs text-white/70 flex-1">{label}</span>
+        <span className="text-xs text-white/40">{Math.round(progress)}%</span>
+      </div>
+      <div className="flex gap-1">
+        {SCAN_STEPS.map((s, i) => (
+          <div key={s.id} className={`flex-1 h-0.5 rounded-full transition-all duration-500 ${
+            i < step ? 'opacity-100' : i === step ? 'opacity-70 animate-pulse' : 'opacity-20'
+          }`} style={{ background: i <= step ? '#00a589' : 'rgba(255,255,255,0.3)' }} title={s.label} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Social Intelligence progress ─────────────────────────────────────────────
+
+function SocialProgress({ isAnalyzing, socialLinks }: {
+  isAnalyzing: boolean;
+  socialLinks?: { facebook?: string; instagram?: string; linkedin?: string; tiktok?: string; youtube?: string } | null;
+}) {
+  const platformSteps = [
+    socialLinks?.facebook  && { id: 'facebook',  icon: '📘', label: 'Facebook...' },
+    socialLinks?.instagram && { id: 'instagram', icon: '📷', label: 'Instagram...' },
+    socialLinks?.linkedin  && { id: 'linkedin',  icon: '💼', label: 'LinkedIn...' },
+    socialLinks?.tiktok    && { id: 'tiktok',    icon: '🎵', label: 'TikTok...' },
+    socialLinks?.youtube   && { id: 'youtube',   icon: '▶️', label: 'YouTube...' },
+    { id: 'gemini', icon: '🤖', label: 'Gemini analizuje wzorzec...' },
+  ].filter(Boolean) as { id: string; icon: string; label: string }[];
+
+  const stepDur = 3000;
+  const total = platformSteps.length * stepDur;
+
+  const [step, setStep] = useState(0);
+  const [progress, setProgress] = useState(0);
+  const [done, setDone] = useState(false);
+
+  useEffect(() => {
+    if (!isAnalyzing) {
+      if (progress > 0) {
+        setProgress(100);
+        setDone(true);
+        const t = setTimeout(() => { setDone(false); setProgress(0); setStep(0); }, 1500);
+        return () => clearTimeout(t);
+      }
+      return;
+    }
+    setDone(false);
+    let stepIdx = 0;
+    let canceled = false;
+    let intervalId: ReturnType<typeof setInterval>;
+    let timeoutId: ReturnType<typeof setTimeout>;
+
+    const runStep = () => {
+      if (canceled || stepIdx >= platformSteps.length) return;
+      setStep(stepIdx);
+      let elapsed = 0;
+      intervalId = setInterval(() => {
+        elapsed += 100;
+        setProgress(Math.min(((stepIdx * stepDur + elapsed) / total) * 100, 99));
+      }, 100);
+      timeoutId = setTimeout(() => {
+        clearInterval(intervalId);
+        stepIdx++;
+        runStep();
+      }, stepDur);
+    };
+    runStep();
+    return () => { canceled = true; clearInterval(intervalId); clearTimeout(timeoutId); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAnalyzing]);
+
+  if (!isAnalyzing && !done) return null;
+
+  if (done) return (
+    <div className="flex items-center gap-2 text-holo-mint text-xs font-bold mt-2">
+      <Check className="h-3 w-3" /> Social Intelligence gotowe!
+    </div>
+  );
+
+  const current = platformSteps[step];
+  return (
+    <div className="mt-2 space-y-1.5">
+      <div className="relative h-1 rounded-full overflow-hidden bg-white/10">
+        <div className="absolute inset-y-0 left-0 rounded-full transition-all duration-300"
+          style={{ width: `${progress}%`, background: 'linear-gradient(90deg, #00a589, #4DC8E8)' }} />
+      </div>
+      <div className="flex items-center gap-1.5">
+        <span className="animate-pulse">{current?.icon}</span>
+        <span className="text-xs text-white/60 flex-1">{current?.label}</span>
+        <span className="text-xs text-white/40">{Math.round(progress)}%</span>
+      </div>
+      <div className="flex gap-1">
+        {platformSteps.map((s, i) => (
+          <div key={s.id} className={`flex-1 h-0.5 rounded-full transition-all duration-500 ${
+            i < step ? 'opacity-100' : i === step ? 'opacity-70 animate-pulse' : 'opacity-20'
+          }`} style={{ background: i <= step ? '#00a589' : 'rgba(255,255,255,0.3)' }} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function SourceBadge({ source }: { source?: string }) {
   if (!source || source === 'manual') return null;
   const config: Record<string, { label: string; color: string }> = {
@@ -2252,11 +2441,13 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
                   className="h-9 px-4 rounded-full holo-gradient text-teal-deep text-xs font-bold disabled:opacity-40 hover:opacity-90 transition-opacity whitespace-nowrap shrink-0 flex items-center gap-1.5"
                 >
                   {brandScanLoading
-                    ? <><Loader2 className="h-3 w-3 animate-spin" /> {brandScanStatus}</>
+                    ? <><Loader2 className="h-3 w-3 animate-spin" /> Skanuję...</>
                     : <><Wand2 className="h-3 w-3" /> Skanuj markę</>
                   }
                 </button>
               </div>
+
+              <ScanProgress isScanning={brandScanLoading} socialLinks={brandScanResult?.socialLinks} />
 
               {brandScanError && (
                 <div className="flex items-start gap-2 text-xs text-red-400 bg-red-500/10 px-3 py-2 rounded-xl">
@@ -2469,6 +2660,8 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
                     }
                   </button>
                 </div>
+
+                <SocialProgress isAnalyzing={socialPatternLoading} socialLinks={brandScanResult?.socialLinks} />
 
                 {/* Platform cards grid */}
                 {(() => {
