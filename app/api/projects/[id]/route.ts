@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { neon } from '@neondatabase/serverless';
+import { encrypt } from '@/lib/encrypt';
 
 const getDb = () => neon(process.env.DATABASE_URL!);
 
@@ -10,14 +11,25 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   if (!project) return NextResponse.json({ error: 'Not found' }, { status: 404 });
   const assets = await getDb()`SELECT * FROM brand_assets WHERE project_id = ${parseInt(id)} ORDER BY created_at ASC`;
   const generations = await getDb()`SELECT * FROM generations WHERE project_id = ${parseInt(id)} ORDER BY created_at DESC`;
-  return NextResponse.json({ project, assets, generations });
+
+  // Never return the raw encrypted token — expose only presence flag
+  const { fb_token, ...projectSafe } = project as Record<string, unknown>;
+  const projectOut = { ...projectSafe, has_fb_token: !!fb_token };
+
+  return NextResponse.json({ project: projectOut, assets, generations });
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const projectId = parseInt(id);
   const body = await req.json();
-  const { name, clientName, description, archived, styleDescription, typographyNotes, colorPalette, logoUrl, brandRules, brandAnalysis, brandSections, sectionId, sectionContent, generationMode, toneOfVoice, logoPosition } = body;
+  const {
+    name, clientName, description, archived, styleDescription, typographyNotes,
+    colorPalette, logoUrl, brandRules, brandAnalysis, brandSections, sectionId,
+    sectionContent, generationMode, toneOfVoice, logoPosition,
+    fbToken,       // new: plain token from UI — will be encrypted
+    clearFbToken,  // new: true → set fb_token to NULL
+  } = body;
 
   // Full brand sections replace
   if (brandSections !== undefined) {
@@ -46,6 +58,23 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json({ ok: true });
   }
 
+  // FB token fast-path
+  if (clearFbToken) {
+    await getDb()`UPDATE projects SET fb_token = NULL, updated_at = NOW() WHERE id = ${projectId}`;
+    return NextResponse.json({ ok: true });
+  }
+  if (fbToken && typeof fbToken === 'string' && fbToken.trim()) {
+    let encrypted: string | null = null;
+    try {
+      encrypted = encrypt(fbToken.trim());
+    } catch (e) {
+      console.error('Token encryption failed (ENCRYPTION_KEY missing?):', e);
+      return NextResponse.json({ error: 'Token encryption failed — ENCRYPTION_KEY not set' }, { status: 500 });
+    }
+    await getDb()`UPDATE projects SET fb_token = ${encrypted}, updated_at = NOW() WHERE id = ${projectId}`;
+    return NextResponse.json({ ok: true });
+  }
+
   // Regular fields update
   const rows = await getDb()`
     UPDATE projects SET
@@ -63,7 +92,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       updated_at = NOW()
     WHERE id = ${projectId} RETURNING *
   `;
-  return NextResponse.json(rows[0]);
+  const { fb_token: _ft, ...safe } = rows[0] as Record<string, unknown>;
+  return NextResponse.json({ ...safe, has_fb_token: !!_ft });
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

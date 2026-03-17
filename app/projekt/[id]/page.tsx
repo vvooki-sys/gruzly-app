@@ -69,6 +69,7 @@ interface Project {
   brand_scan_data?: BrandScanData | null;
   scanned_url?: string | null;
   logo_position?: string | null;
+  has_fb_token?: boolean;
   id: number;
   name: string;
   client_name: string | null;
@@ -477,6 +478,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
   const [editClientName, setEditClientName] = useState('');
   const [editDescription, setEditDescription] = useState('');
   const [editLogoPosition, setEditLogoPosition] = useState('top-left');
+  const [editFbToken, setEditFbToken] = useState('');
   const [savingProject, setSavingProject] = useState(false);
   const [deletingProject, setDeletingProject] = useState(false);
 
@@ -558,6 +560,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
     setEditClientName(project.client_name || '');
     setEditDescription(project.description || '');
     setEditLogoPosition(project.logo_position || 'top-left');
+    setEditFbToken(''); // never pre-fill — token is write-only
     setEditProjectOpen(true);
   };
 
@@ -570,6 +573,16 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: editName.trim(), clientName: editClientName || null, description: editDescription || null, logoPosition: editLogoPosition }),
       });
+      // Save FB token separately (only if filled in — write-only field)
+      if (editFbToken.trim()) {
+        await fetch(`/api/projects/${id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ fbToken: editFbToken.trim() }),
+        });
+        setProject(p => p ? { ...p, has_fb_token: true } : p);
+        setEditFbToken('');
+      }
       setProject(p => p ? { ...p, name: editName.trim(), client_name: editClientName || null, description: editDescription || null, logo_position: editLogoPosition } : p);
       setEditProjectOpen(false);
       showToast('Projekt zapisany ✓');
@@ -3247,6 +3260,35 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
                   <option value="bottom-right">↘ Prawy dolny</option>
                   <option value="none">✕ Bez logo</option>
                 </select>
+              </div>
+              <div>
+                <label className="text-xs font-semibold opacity-50 uppercase tracking-wide block mb-1">
+                  Facebook App Token
+                  {project?.has_fb_token && (
+                    <span className="ml-2 text-green-400 normal-case font-normal">✓ zapisany</span>
+                  )}
+                </label>
+                <p className="text-xs opacity-30 mb-1.5">Umożliwia pobieranie zdjęć z Facebook podczas Brand Scan. <a href="https://developers.facebook.com/tools/explorer/" target="_blank" rel="noopener noreferrer" className="underline opacity-70 hover:opacity-100">Wygeneruj token →</a></p>
+                <input
+                  type="password"
+                  className="w-full bg-offwhite dark:bg-teal-deep rounded-xl px-3 py-2.5 text-sm border border-teal-deep/15 dark:border-holo-mint/10 focus:border-holo-mint outline-none transition-colors"
+                  placeholder={project?.has_fb_token ? '••••••• (wklej nowy żeby zmienić)' : 'Wklej App Access Token'}
+                  value={editFbToken}
+                  onChange={e => setEditFbToken(e.target.value)}
+                  autoComplete="off"
+                />
+                {project?.has_fb_token && (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await fetch(`/api/projects/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clearFbToken: true }) });
+                      setProject(p => p ? { ...p, has_fb_token: false } : p);
+                    }}
+                    className="mt-1 text-xs text-red-400 opacity-60 hover:opacity-100 transition-opacity"
+                  >
+                    Usuń token
+                  </button>
+                )}
               </div>
             </div>
 
