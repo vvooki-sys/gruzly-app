@@ -15,6 +15,21 @@ const SYSTEM_FONTS = new Set([
   'Helvetica', 'Georgia', 'Times New Roman', 'Courier New', 'Verdana', 'Tahoma',
 ]);
 
+function getLuminance(hex: string): number {
+  const h = hex.replace('#', '');
+  if (h.length < 6) return 0;
+  const r = parseInt(h.slice(0, 2), 16) / 255;
+  const g = parseInt(h.slice(2, 4), 16) / 255;
+  const b = parseInt(h.slice(4, 6), 16) / 255;
+  return 0.299 * r + 0.587 * g + 0.114 * b;
+}
+
+const GENERIC_COLORS = new Set([
+  '#ffffff', '#000000', '#333333', '#666666', '#999999', '#cccccc',
+  '#eeeeee', '#f0f0f0', '#f5f5f5', '#fafafa', '#1a1a1a', '#222222',
+  '#fff', '#000', '#333', '#666',
+]);
+
 function extractColors(html: string): string[] {
   const colors: string[] = [];
   const themeColor =
@@ -25,6 +40,19 @@ function extractColors(html: string): string[] {
   const hexSet = new Set(hexMatches);
   hexSet.forEach(h => { if (!colors.includes(h)) colors.push(h); });
   return colors.slice(0, 10);
+}
+
+function extractTopColors(html: string): Array<{ color: string; count: number }> {
+  const hexMatches = html.match(/#[0-9A-Fa-f]{6}\b/g) || [];
+  const freq: Record<string, number> = {};
+  for (const c of hexMatches) {
+    const norm = c.toLowerCase();
+    if (!GENERIC_COLORS.has(norm)) freq[norm] = (freq[norm] || 0) + 1;
+  }
+  return Object.entries(freq)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10)
+    .map(([color, count]) => ({ color, count }));
 }
 
 function extractFonts(html: string): string[] {
@@ -112,16 +140,19 @@ function extractOgImage(html: string, baseUrl: string): string {
   return '';
 }
 
+const cleanSocialUrl = (u: string) => u.replace(/[?#].*$/, '').replace(/\/+$/, '');
+
 function extractSocialLinks(html: string): { facebook?: string; instagram?: string; linkedin?: string; tiktok?: string } {
   const links: { facebook?: string; instagram?: string; linkedin?: string; tiktok?: string } = {};
-  const fb = html.match(/https?:\/\/(?:www\.)?facebook\.com\/[^\s"'<>)]+/i)?.[0];
-  const ig = html.match(/https?:\/\/(?:www\.)?instagram\.com\/[^\s"'<>)]+/i)?.[0];
-  const li = html.match(/https?:\/\/(?:www\.)?linkedin\.com\/[^\s"'<>)]+/i)?.[0];
-  const tt = html.match(/https?:\/\/(?:www\.)?tiktok\.com\/[^\s"'<>)]+/i)?.[0];
-  if (fb) links.facebook = fb;
-  if (ig) links.instagram = ig;
-  if (li) links.linkedin = li;
-  if (tt) links.tiktok = tt;
+  // Use href= to avoid matching FB SDK / analytics URLs
+  const fb = html.match(/href=["'](https?:\/\/(?:www\.)?facebook\.com\/[^"']+)["']/i)?.[1];
+  const ig = html.match(/href=["'](https?:\/\/(?:www\.)?instagram\.com\/[^"']+)["']/i)?.[1];
+  const li = html.match(/href=["'](https?:\/\/(?:www\.)?linkedin\.com\/[^"']+)["']/i)?.[1];
+  const tt = html.match(/href=["'](https?:\/\/(?:www\.)?tiktok\.com\/[^"']+)["']/i)?.[1];
+  if (fb) links.facebook = cleanSocialUrl(fb);
+  if (ig) links.instagram = cleanSocialUrl(ig);
+  if (li) links.linkedin = cleanSocialUrl(li);
+  if (tt) links.tiktok = cleanSocialUrl(tt);
   return links;
 }
 
@@ -293,12 +324,18 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   // Extract from HTML
   const extractedColors = extractColors(html);
+  const topColors = extractTopColors(html);
   const brandText = extractBrandText(html);
   const logoUrl = extractLogoUrl(html, url);
   const faviconUrl = extractFaviconUrl(html, url);
   const ogImageUrl = extractOgImage(html, url);
   const socialLinks = extractSocialLinks(html);
   const fonts = extractFonts(html);
+
+  // Detect body background color from CSS
+  const bodyBg =
+    html.match(/body\s*\{[^}]*background(?:-color)?\s*:\s*(#[0-9a-fA-F]{6})/i)?.[1] ||
+    html.match(/html\s*\{[^}]*background(?:-color)?\s*:\s*(#[0-9a-fA-F]{6})/i)?.[1] || '';
 
   // ── Stage 2: Gemini analysis ─────────────────────────────────────────────
   type GeminiResult = {
@@ -329,13 +366,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       if (imgData) parts.push({ inlineData: imgData });
     }
 
+    const colorContext = topColors.length > 0
+      ? `\nEXTRACTED CSS COLORS (sorted by frequency of use):\n${topColors.map(c => `${c.color} (${c.count}x)`).join(', ')}${bodyBg ? `\nBody/page background: ${bodyBg}` : ''}\n\nCOLOR RULES:\n- PRIMARY = dominant background or main brand color (dark for dark-theme sites)\n- SECONDARY = supporting color (text, borders, cards)\n- ACCENT = CTA / highlight / interactive element color\n- All three MUST be DIFFERENT hex values`
+      : '';
+
     const textContext = [
       `Website: ${url}`,
       brandText.title && `Title: ${brandText.title}`,
       brandText.description && `Description: ${brandText.description}`,
       brandText.h1 && `Main heading: ${brandText.h1}`,
       brandText.paragraphs.length > 0 && `Content: ${brandText.paragraphs.join(' | ')}`,
-      extractedColors.length > 0 && `Colors found on page: ${extractedColors.slice(0, 5).join(', ')}`,
+      extractedColors.length > 0 && `Theme/meta colors: ${extractedColors.slice(0, 5).join(', ')}`,
       fonts.length > 0 && `Fonts found on page: ${fonts.join(', ')}`,
     ].filter(Boolean).join('\n');
 
@@ -343,12 +384,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
 Website data:
 ${textContext}
+${colorContext}
 
 Return ONLY a valid JSON object (no markdown, no explanation):
 {
-  "PRIMARY_COLOR": "hex color of the most dominant brand color",
-  "SECONDARY_COLOR": "hex color of secondary brand color",
-  "ACCENT_COLOR": "hex color of call-to-action or highlight color",
+  "PRIMARY_COLOR": "hex — dominant background or main brand color (use dark color for dark-theme sites)",
+  "SECONDARY_COLOR": "hex — supporting color, MUST differ from PRIMARY",
+  "ACCENT_COLOR": "hex — CTA/highlight color, MUST differ from both PRIMARY and SECONDARY",
   "VISUAL_STYLE": "one of: minimalist / bold / elegant / playful / corporate / warm / technical",
   "TONE_OF_VOICE": "one of: formal / casual / friendly / professional / inspirational / technical",
   "BRAND_KEYWORDS": ["word1", "word2", "word3", "word4", "word5", "word6", "word7", "word8"],
@@ -367,6 +409,38 @@ Return ONLY a valid JSON object (no markdown, no explanation):
     const text = result.response.text();
     const cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
     geminiResult = JSON.parse(cleaned);
+
+    // ── Post-Gemini color validation ──────────────────────────────────────
+    // Ensure primary/secondary/accent are all distinct
+    const pri = (geminiResult.PRIMARY_COLOR || '').toLowerCase();
+    const sec = (geminiResult.SECONDARY_COLOR || '').toLowerCase();
+    const acc = (geminiResult.ACCENT_COLOR || '').toLowerCase();
+
+    // If primary === accent: one of them is wrong — reclassify
+    if (pri && acc && pri === acc) {
+      const priLum = getLuminance(pri);
+      if (priLum > 0.3) {
+        // Primary is light/colorful — likely it's actually the accent; find dark primary
+        geminiResult.ACCENT_COLOR = geminiResult.PRIMARY_COLOR;
+        const darkCandidate = topColors.find(c => getLuminance(c.color) < 0.15 && c.color !== acc);
+        geminiResult.PRIMARY_COLOR = darkCandidate?.color || (bodyBg || '#1a1a2e');
+      } else {
+        // Primary is dark — find a different accent (lighter, colorful)
+        const accentCandidate = topColors.find(c =>
+          c.color !== pri && c.color !== sec && getLuminance(c.color) > 0.2
+        );
+        if (accentCandidate) geminiResult.ACCENT_COLOR = accentCandidate.color;
+      }
+    }
+
+    // If primary === secondary: pick a different secondary
+    if (geminiResult.PRIMARY_COLOR?.toLowerCase() === geminiResult.SECONDARY_COLOR?.toLowerCase()) {
+      const secCandidate = topColors.find(c =>
+        c.color !== geminiResult.PRIMARY_COLOR?.toLowerCase() &&
+        c.color !== geminiResult.ACCENT_COLOR?.toLowerCase()
+      );
+      geminiResult.SECONDARY_COLOR = secCandidate?.color || '#555555';
+    }
   } catch (e) {
     console.error('Gemini brand scan error:', e);
   }
@@ -409,8 +483,36 @@ Return ONLY a valid JSON object (no markdown, no explanation):
           }).then(r => r.ok ? r.text() : '');
           const igDesc = igHtml?.match(/<meta[^>]+property=["']og:description["'][^>]+content=["']([^"']{20,}?)["']/i)?.[1];
           if (igDesc) collectedPosts.push(igDesc.substring(0, 500));
+          // Try og:image from IG profile
+          const igOgImage =
+            igHtml?.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i)?.[1] ||
+            igHtml?.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i)?.[1];
+          if (igOgImage) collectedImages.push(igOgImage);
         } catch {
           // IG blocked — skip silently
+        }
+      })()
+    );
+  }
+
+  // FB Graph API: public profile picture (no token needed)
+  if (socialLinks.facebook) {
+    socialScanPromises.push(
+      (async () => {
+        try {
+          const pageId = socialLinks.facebook!.match(/facebook\.com\/([^/?#]+)/)?.[1];
+          if (pageId && pageId !== 'pages' && pageId !== 'groups') {
+            const picRes = await fetch(
+              `https://graph.facebook.com/${pageId}/picture?type=large&redirect=false`,
+              { signal: AbortSignal.timeout(3000) }
+            );
+            if (picRes.ok) {
+              const picData = await picRes.json() as { data?: { url?: string } };
+              if (picData?.data?.url) collectedImages.push(picData.data.url);
+            }
+          }
+        } catch {
+          // Graph API unavailable — skip silently
         }
       })()
     );

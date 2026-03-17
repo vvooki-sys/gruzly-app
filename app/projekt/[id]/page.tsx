@@ -2523,13 +2523,17 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
               <h3 className="font-bold text-sm mb-0.5">Logo</h3>
               <p className="text-xs opacity-40 mb-3">Gemini nie obsługuje SVG — wgraj PNG lub JPG</p>
               <div className="flex items-center gap-3">
-                {project.logo_url && !project.logo_url.endsWith('.svg') && (
-                  <img src={project.logo_url} alt="logo" className="h-12 w-auto rounded-xl border border-teal-deep/10 dark:border-holo-mint/10 bg-white p-1"
-                    onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-                )}
+                {(() => {
+                  const logoAsset = assets.find(a => a.type === 'logo' && a.variant !== 'icon' && !a.url.endsWith('.svg'));
+                  const logoSrc = logoAsset?.url || (!project.logo_url?.endsWith('.svg') ? project.logo_url : null);
+                  return logoSrc ? (
+                    <img src={logoSrc} alt="logo" className="h-12 w-auto rounded-xl border border-teal-deep/10 dark:border-holo-mint/10 bg-white p-1"
+                      onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                  ) : null;
+                })()}
                 <label className="cursor-pointer h-9 px-4 rounded-full border border-teal-deep/15 dark:border-holo-mint/15 text-sm font-semibold flex items-center gap-2 hover:border-holo-mint/50 transition-colors opacity-70 hover:opacity-100">
                   <Upload className="h-4 w-4" />
-                  {project.logo_url ? 'Zmień logo' : 'Wgraj logo'}
+                  {assets.some(a => a.type === 'logo') || project.logo_url ? 'Zmień logo' : 'Wgraj logo'}
                   <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={async (e) => {
                     const file = e.target.files?.[0];
                     if (!file || !id) return;
