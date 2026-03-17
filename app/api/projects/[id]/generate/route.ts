@@ -143,20 +143,15 @@ async function applyLogoOverlay(
     const brightness = await getTopLeftBrightness(geminiImageBuffer, width, height);
     const isDark = brightness < 128;
 
-    const onlyOneVariant = brandAssets.filter(a => a.type === 'logo').length === 1;
-    const needsBackground = onlyOneVariant && !isDark;
+    // addLogoBackground disabled — SVG compositing causes black rectangle artifacts
+    // when sharp/libvips lacks SVG support in the deployment environment
 
-    let baseImage = geminiImageBuffer;
-    if (needsBackground) {
-      baseImage = await addLogoBackground(geminiImageBuffer, logoX, logoY, logoWidth, logoH, false);
-    }
-
-    const finalImage = await sharp(baseImage)
+    const finalImage = await sharp(geminiImageBuffer)
       .composite([{ input: logoResized, top: logoY, left: logoX }])
       .png()
       .toBuffer();
 
-    console.log(`Logo overlay applied: pos=${logoPosition}, variant=${logoAsset.variant || 'default'}, brightness: ${brightness.toFixed(0)}, needsBg: ${needsBackground}`);
+    console.log(`Logo overlay applied: pos=${logoPosition}, variant=${logoAsset.variant || 'default'}, brightness: ${brightness.toFixed(0)}`);
     return finalImage;
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);
@@ -167,14 +162,24 @@ async function applyLogoOverlay(
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-async function urlToBase64(url: string): Promise<{ data: string; mimeType: string } | null> {
+async function urlToBase64(
+  url: string,
+  forceJpeg = false
+): Promise<{ data: string; mimeType: string } | null> {
   try {
     const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
     if (!res.ok) return null;
-    const buffer = await res.arrayBuffer();
-    const data = Buffer.from(buffer).toString('base64');
-    const mimeType = res.headers.get('content-type') || 'image/png';
-    return { data, mimeType: mimeType.split(';')[0] };
+    const raw = await res.arrayBuffer();
+    const rawBuffer = Buffer.from(raw);
+    const contentType = (res.headers.get('content-type') || 'image/png').split(';')[0];
+
+    // Gemini does not support image/webp — convert to JPEG via sharp
+    if (forceJpeg || contentType === 'image/webp') {
+      const jpegBuffer = await sharp(rawBuffer).jpeg({ quality: 90 }).toBuffer();
+      return { data: jpegBuffer.toString('base64'), mimeType: 'image/jpeg' };
+    }
+
+    return { data: rawBuffer.toString('base64'), mimeType: contentType };
   } catch {
     return null;
   }
@@ -227,10 +232,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (!elementOnly) {
     for (const ref of refs) {
       if (ref.url.toLowerCase().endsWith('.svg')) continue;
-      const b64 = await urlToBase64(ref.url);
-      if (b64 && !b64.mimeType.includes('svg')) refParts.push({ inlineData: b64 });
+      // forceJpeg=true: Gemini does not support image/webp — converts all refs to JPEG
+      const b64 = await urlToBase64(ref.url, true);
+      if (b64) refParts.push({ inlineData: b64 });
     }
   }
+  console.log('Sending refs to Gemini:', refParts.length, refParts.map(r => r.inlineData.mimeType));
 
   // Brand elements: include as inline images (max 2, skip large SVGs)
   const brandElements = assetList.filter(a => a.type === 'brand-element').slice(0, 2);
