@@ -300,7 +300,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       : []),
     'RENDER ONLY text listed under "TEXT TO APPEAR ON GRAPHIC" — no other text, captions or labels',
     ...(emptyZone
-      ? [`[LOGO ZONE — ${emptyZone}]: Render this area as a clean, uninterrupted continuation of the main background — solid fill, no shapes, no text, no gradients, no decorative elements. This zone must be pixel-perfect background so a logo PNG can be composited cleanly in post-processing.`]
+      ? [`[LOGO ZONE — ${emptyZone}]: This area must be a seamless, natural continuation of the surrounding background — apply the same style, texture, grain and gradients as the rest of the background, but place NO concrete objects, graphic elements, decorative shapes or text here. The zone must remain visually empty of content while being technically identical to the surrounding background, so a logo PNG can be composited cleanly in post-processing. Do NOT draw any rectangle, box, border or flat color block here.`]
       : ['No logo required — you may use the full canvas freely']),
   ];
 
