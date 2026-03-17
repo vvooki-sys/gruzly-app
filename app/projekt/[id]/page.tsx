@@ -172,6 +172,9 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
   const [format, setFormat] = useState('fb_post');
   const [mode, setMode] = useState<'precise' | 'fast'>('precise');
   const [creativity, setCreativity] = useState(2);
+  const [useCompositor, setUseCompositor] = useState(false);
+  const [compositorLayout, setCompositorLayout] = useState<'classic' | 'centered' | 'minimal' | 'bold'>('classic');
+  const [compositorCta, setCompositorCta] = useState('');
   const [generating, setGenerating] = useState(false);
   const [selectedGeneration, setSelectedGeneration] = useState<Generation | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
@@ -348,7 +351,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
       const res = await fetch(`/api/projects/${id}/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ headline, subtext, brief, format, mode, creativity, photoUrl: photoUrl || undefined, photoMode }),
+        body: JSON.stringify({ headline, subtext, brief, format, mode, creativity, photoUrl: photoUrl || undefined, photoMode, useCompositor, compositorLayout, compositorCta }),
       });
       const data = await res.json();
       if (data.imageUrls && data.imageUrls.length > 0) {
@@ -1387,6 +1390,53 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
                     className="w-full h-2 rounded-full appearance-none cursor-pointer bg-teal-mid accent-holo-mint"
                   />
                   <p className="text-xs text-zinc-500 mt-1">{CREATIVITY_LABELS[creativity].desc}</p>
+                </div>
+
+                {/* Compositor toggle */}
+                <div className="rounded-xl border border-teal-deep/10 dark:border-holo-mint/10 bg-white dark:bg-teal-mid p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-bold text-zinc-200">Compositor (2-etapowy)</p>
+                      <p className="text-xs text-zinc-500">Ilustracja AI + tekst pixel-perfect</p>
+                    </div>
+                    <button
+                      onClick={() => setUseCompositor(v => !v)}
+                      className={`relative w-10 h-5 rounded-full transition-colors ${useCompositor ? 'bg-holo-mint' : 'bg-teal-deep/30'}`}
+                    >
+                      <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all ${useCompositor ? 'left-5' : 'left-0.5'}`} />
+                    </button>
+                  </div>
+
+                  {useCompositor && (
+                    <div className="space-y-3 pt-1 border-t border-holo-mint/10">
+                      {/* Layout preset */}
+                      <div>
+                        <p className="text-xs text-zinc-400 mb-2">Styl layoutu</p>
+                        <div className="grid grid-cols-4 gap-1.5">
+                          {(['classic', 'centered', 'minimal', 'bold'] as const).map(preset => (
+                            <button
+                              key={preset}
+                              onClick={() => setCompositorLayout(preset)}
+                              className={`py-1.5 rounded-lg text-xs font-semibold capitalize transition-colors ${compositorLayout === preset ? 'bg-holo-mint text-teal-deep' : 'bg-teal-deep/20 text-zinc-400 hover:text-zinc-200'}`}
+                            >
+                              {preset}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      {/* CTA text */}
+                      <div>
+                        <label className="text-xs text-zinc-400 block mb-1">Tekst CTA (opcjonalnie)</label>
+                        <input
+                          type="text"
+                          value={compositorCta}
+                          onChange={e => setCompositorCta(e.target.value)}
+                          placeholder="np. Dowiedz się więcej"
+                          className="w-full bg-teal-deep/20 border border-teal-deep/20 rounded-lg px-3 py-2 text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-holo-mint/40"
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Generate CTA */}

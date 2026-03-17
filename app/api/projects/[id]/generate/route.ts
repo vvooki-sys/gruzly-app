@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { neon } from '@neondatabase/serverless';
 import { put } from '@vercel/blob';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { ImageResponse } from 'next/og';
+import { buildCompositeElement, COMPOSITOR_FORMAT_SIZES, type LayoutPreset, type BrandColors } from '@/lib/compositor';
 
 export const maxDuration = 30;
 
@@ -48,6 +50,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     elementOnly = false,
     photoUrl = '',
     photoMode = 'none',
+    useCompositor = false,
+    compositorLayout = 'classic',
+    compositorCta = '',
   } = await req.json();
 
   if (!headline || !format) {
@@ -287,6 +292,15 @@ OUTPUT: One abstract illustration — shapes, gradients, organic forms, textures
 Follow the three-layer instruction hierarchy below. Higher layers override lower ones.
 ${layer1}${layer2}${layer3}${creativityBlock}${closing}`;
 
+  // ── TWO-STAGE PIPELINE (useCompositor) ───────────────────────────────────
+  if (useCompositor && !elementOnly && (photoMode === 'none' || !photoUrl)) {
+    return await generateWithCompositor({
+      req, id, project, assetList, headline, subtext, brief, format, creativity,
+      compositorLayout: compositorLayout as LayoutPreset,
+      compositorCta,
+    });
+  }
+
   // ── Generate via Gemini ──────────────────────────────────────────────────
   const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_KEY!);
   const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-image-preview' });
@@ -343,4 +357,200 @@ ${layer1}${layer2}${layer3}${creativityBlock}${closing}`;
   `;
 
   return NextResponse.json({ generation, imageUrls, prompt: textPrompt });
+}
+
+// ── Two-stage pipeline helper ─────────────────────────────────────────────────
+async function generateWithCompositor({
+  req, id, project, assetList, headline, subtext, brief, format, creativity,
+  compositorLayout, compositorCta,
+}: {
+  req: NextRequest;
+  id: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  project: Record<string, any>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  assetList: Array<{ type: string; url: string; filename: string; variant?: string; description?: string; mime_type?: string }>;
+  headline: string;
+  subtext: string;
+  brief: string;
+  format: string;
+  creativity: number;
+  compositorLayout: LayoutPreset;
+  compositorCta: string;
+}): Promise<NextResponse> {
+  const projectId = parseInt(id);
+  const [width, height] = COMPOSITOR_FORMAT_SIZES[format] || [1080, 1080];
+
+  // Extract brand colors for compositor (prefer brand_scan_data, then brand_sections hex)
+  type BsdType = { primaryColor?: string; secondaryColor?: string; accentColor?: string };
+  const bsd: BsdType | null = project.brand_scan_data || null;
+  let brandColors: BrandColors = {
+    primary: bsd?.primaryColor || '',
+    secondary: bsd?.secondaryColor || '',
+    accent: bsd?.accentColor || '',
+  };
+
+  // Fallback: extract hex colors from brand_sections
+  if (!brandColors.primary) {
+    type Sec = { content: string };
+    const secs: Sec[] = project.brand_sections || [];
+    const hexes: string[] = [];
+    for (const s of secs) {
+      const matches = s.content?.match(/#[0-9A-Fa-f]{6}/g) || [];
+      hexes.push(...matches);
+    }
+    if (hexes[0]) brandColors = { primary: hexes[0], secondary: hexes[1], accent: hexes[2] };
+  }
+
+  // ── Stage 1: Build illustration-only Gemini prompt ───────────────────────
+  const FORMAT_LABELS: Record<string, string> = {
+    fb_post: '1080x1080px square',
+    ln_post: '1200x628px landscape',
+    story:   '1080x1920px vertical',
+    banner:  '1200x400px wide banner',
+  };
+
+  const CREATIVITY_BLOCKS_ILL: Record<number, string> = {
+    1: 'Clean, minimal composition.',
+    2: 'Add subtle decorative elements that complement the brand style.',
+    3: 'Visually rich composition with layered graphic elements and full brand palette.',
+    4: 'Editorial complexity — layered shapes, depth, bold composition.',
+    5: 'Maximum visual richness. Cinematic, immersive, every detail intentional.',
+  };
+
+  // Collect brand DNA context for illustration prompt
+  type BrandSec = { title: string; content: string; order: number };
+  const brandSections: BrandSec[] = project.brand_sections || [];
+  const brandContext = brandSections.length > 0
+    ? brandSections.sort((a, b) => a.order - b.order).map(s => `[${s.title.toUpperCase()}]\n${s.content}`).join('\n\n')
+    : project.brand_analysis || [
+        project.style_description && `Visual style: ${project.style_description}`,
+        project.color_palette && `Colors: ${project.color_palette}`,
+      ].filter(Boolean).join('\n') || '';
+
+  const illustrationPrompt = `You are creating a background illustration for a social media graphic.
+
+ABSOLUTE RULES — these override everything:
+1. DO NOT include any text, words, letters, numbers, or typography
+2. DO NOT include any logos, brand marks, or wordmarks
+3. DO NOT include any UI elements, buttons, frames, or borders
+4. Leave the bottom 35% of the image relatively simple/uncluttered — text will be overlaid there
+5. Leave the top 15% relatively clean — logo will be placed there
+6. DO NOT include any human faces or recognizable people
+
+BRAND CONTEXT:
+${brandContext || `Visual style: professional, modern`}
+${brandColors.primary ? `Primary color: ${brandColors.primary}` : ''}
+${brandColors.secondary ? `Secondary color: ${brandColors.secondary}` : ''}
+${brandColors.accent ? `Accent color: ${brandColors.accent}` : ''}
+
+FORMAT: ${FORMAT_LABELS[format] || '1080x1080px'} — fill this exact canvas
+
+VISUAL BRIEF: ${brief || headline}
+
+RICHNESS: ${CREATIVITY_BLOCKS_ILL[creativity] || CREATIVITY_BLOCKS_ILL[2]}
+
+OUTPUT: A single background illustration. Pure visual — no text, no logo. The illustration should create atmosphere and brand identity through color, shape, and composition only.`;
+
+  // ── Stage 1: Generate illustration via Gemini ─────────────────────────────
+  // For illustration mode: only include brand elements (no logo — handled by compositor)
+  const illParts: Array<{ inlineData: { data: string; mimeType: string } } | { text: string }> = [];
+
+  const brandElements = assetList.filter(a => a.type === 'brand-element').slice(0, 2);
+  for (const el of brandElements) {
+    if (el.url.toLowerCase().endsWith('.svg')) continue;
+    const b64 = await urlToBase64(el.url);
+    if (b64 && !b64.mimeType.includes('svg')) illParts.push({ inlineData: b64 });
+  }
+  illParts.push({ text: illustrationPrompt });
+
+  let illustrationUrl = '';
+  try {
+    const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_KEY!);
+    const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-image-preview' });
+
+    const result = await model.generateContent({
+      contents: [{ role: 'user', parts: illParts }],
+      generationConfig: { responseModalities: ['TEXT', 'IMAGE'] } as object,
+    });
+
+    const candidate = result.response.candidates?.[0];
+    if (candidate) {
+      for (const part of candidate.content.parts) {
+        const p = part as { inlineData?: { data: string; mimeType: string }; text?: string };
+        if (p.inlineData) {
+          const buffer = Buffer.from(p.inlineData.data, 'base64');
+          const ext = p.inlineData.mimeType === 'image/png' ? 'png' : 'jpg';
+          const blob = await put(`gruzly/${id}/ill-${Date.now()}.${ext}`, buffer, {
+            access: 'public',
+            contentType: p.inlineData.mimeType,
+          });
+          illustrationUrl = blob.url;
+          break;
+        }
+      }
+    }
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error('Illustration generation error:', msg);
+    return NextResponse.json({ error: 'Generation error: ' + msg.substring(0, 200) }, { status: 500 });
+  }
+
+  if (!illustrationUrl) {
+    return NextResponse.json({ error: 'Illustration generation failed — no image in response' }, { status: 500 });
+  }
+
+  // ── Stage 2: Composite text + logo via Satori ─────────────────────────────
+  const logoAssets = assetList.filter(a => a.type === 'logo');
+  const logoAsset = logoAssets.find(a => a.variant === 'default') || logoAssets[0];
+  // Skip SVG logos — Satori can't render SVG src
+  const logoUrl = logoAsset && !logoAsset.url.toLowerCase().endsWith('.svg') ? logoAsset.url : '';
+
+  const compositeEl = buildCompositeElement({
+    illustrationUrl,
+    headline,
+    subtext,
+    ctaText: compositorCta,
+    logoUrl,
+    format,
+    layoutPreset: compositorLayout,
+    brandColors,
+    width,
+    height,
+  });
+
+  let finalImageUrl = '';
+  try {
+    const imageResponse = new ImageResponse(compositeEl, { width, height });
+    const arrayBuffer = await imageResponse.arrayBuffer();
+    const finalBlob = await put(`gruzly/${id}/compose-${Date.now()}.png`, arrayBuffer, {
+      access: 'public',
+      contentType: 'image/png',
+    });
+    finalImageUrl = finalBlob.url;
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error('Compositor error:', msg);
+    // Fallback: return the raw illustration if compositor fails
+    finalImageUrl = illustrationUrl;
+  }
+
+  const combinedBrief = [headline, subtext].filter(Boolean).join(' | ');
+  const dbFormat = `${format}:c${creativity}:compose:${compositorLayout}`;
+  const promptMeta = JSON.stringify({ illustrationUrl, layoutPreset: compositorLayout, brandColors });
+
+  await getDb()`ALTER TABLE generations ADD COLUMN IF NOT EXISTS parent_id INTEGER REFERENCES generations(id)`.catch(() => {});
+
+  const [generation] = await getDb()`
+    INSERT INTO generations (project_id, brief, format, prompt, image_urls, status)
+    VALUES (${projectId}, ${combinedBrief}, ${dbFormat}, ${promptMeta}, ${JSON.stringify([finalImageUrl])}, 'done')
+    RETURNING *
+  `;
+
+  return NextResponse.json({
+    generation,
+    imageUrls: [finalImageUrl],
+    illustrationUrl,
+    compositorLayout,
+  });
 }
