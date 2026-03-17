@@ -103,6 +103,16 @@ YOUR TASK:
    - Be in the same language as the client brief
    - Feel like it was written by a human who understands the brand
 
+   COPY LENGTH RULES — these are non-negotiable:
+   - "headline": MAX 8 words. Punchy, memorable, works as a standalone statement on a graphic.
+   - "subtext": MAX 15 words / 1 short sentence. This is a GRAPHIC CAPTION, not post body copy.
+     It must complement the headline, not explain or expand it into a paragraph.
+     Think tagline, not description. If you can't say it in 15 words — cut it.
+   - "cta": MAX 4 words. A button label, not a sentence.
+
+   The full post copy (LinkedIn post body, Facebook post description) belongs OUTSIDE the graphic.
+   The graphic carries only: headline + one short supporting line + CTA.
+
 Return ONLY valid JSON, no markdown, no explanation:
 {
   "concept": "...",

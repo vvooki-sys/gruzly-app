@@ -163,12 +163,43 @@ async function applyLogoOverlay(
     const logoY = logoPosition.includes('bottom') ? height - logoH - margin : margin;
 
     const brightness = await getTopLeftBrightness(geminiImageBuffer, width, height);
-    const isDark = brightness < 128;
 
-    // addLogoBackground disabled — SVG compositing causes black rectangle artifacts
-    // when sharp/libvips lacks SVG support in the deployment environment
+    // Sharp fix: patch logo zone with sampled adjacent background color
+    // This eliminates the "dark rectangle" artifact Gemini renders in the logo zone
+    const zoneW = Math.round(width * 0.25);
+    const zoneH = Math.round(height * 0.20);
+    const zoneLeft = logoPosition.includes('right') ? width - zoneW : 0;
+    const zoneTop = logoPosition.includes('bottom') ? height - zoneH : 0;
+    const isRight = logoPosition.includes('right');
+    const isBottom = logoPosition.includes('bottom');
+    const sampleSize = Math.round(Math.min(width, height) * 0.06);
+    const sampleLeft = isRight
+      ? Math.max(0, zoneLeft - sampleSize)
+      : Math.min(width - sampleSize - 1, zoneW + 4);
+    const sampleTop = isBottom
+      ? Math.max(0, zoneTop - sampleSize)
+      : Math.min(height - sampleSize - 1, zoneH + 4);
 
-    const finalImage = await sharp(geminiImageBuffer)
+    let patchedBuffer = geminiImageBuffer;
+    try {
+      const sampleBuf = await sharp(geminiImageBuffer)
+        .extract({ left: sampleLeft, top: sampleTop, width: sampleSize, height: sampleSize })
+        .resize(1, 1, { fit: 'fill' })
+        .raw()
+        .toBuffer();
+      const [r, g, b] = [sampleBuf[0], sampleBuf[1], sampleBuf[2]];
+      const fill = await sharp({
+        create: { width: zoneW, height: zoneH, channels: 3, background: { r, g, b } },
+      }).png().toBuffer();
+      patchedBuffer = await sharp(geminiImageBuffer)
+        .composite([{ input: fill, left: zoneLeft, top: zoneTop }])
+        .toBuffer();
+      console.log(`Logo zone patched: rgb(${r},${g},${b}) sampled from (${sampleLeft},${sampleTop})`);
+    } catch (e) {
+      console.log('Logo zone patch failed, skipping:', e);
+    }
+
+    const finalImage = await sharp(patchedBuffer)
       .composite([{ input: logoResized, top: logoY, left: logoX }])
       .png()
       .toBuffer();
