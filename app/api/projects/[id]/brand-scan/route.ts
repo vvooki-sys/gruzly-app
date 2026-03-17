@@ -639,6 +639,27 @@ Return ONLY a valid JSON object (no markdown, no explanation):
             } else {
               console.log('FB Graph API error:', graphRes.status, await graphRes.text().catch(() => ''));
             }
+
+            // Fetch last 8 posts with images
+            const postsRes = await fetch(
+              `https://graph.facebook.com/v19.0/${pageSlug}/posts?fields=full_picture,message&limit=8&access_token=${token}`,
+              { signal: AbortSignal.timeout(8000) }
+            );
+            if (postsRes.ok) {
+              const postsData = await postsRes.json() as { data?: Array<{ full_picture?: string; message?: string }> };
+              const posts = postsData?.data || [];
+              console.log(`FB Graph posts: ${posts.length} fetched`);
+              for (const post of posts) {
+                if (post.full_picture && !collectedImages.includes(post.full_picture)) {
+                  collectedImages.push(post.full_picture);
+                }
+                if (post.message && post.message.length > 20) {
+                  collectedPosts.push(post.message.substring(0, 500));
+                }
+              }
+            } else {
+              console.log('FB Graph posts error:', postsRes.status, await postsRes.text().catch(() => ''));
+            }
           }
         } catch (e) {
           console.error('FB Graph API (authenticated) failed:', e);
