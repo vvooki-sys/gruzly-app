@@ -1857,7 +1857,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
 
         {/* ── TAB: ASSETS ──────────────────────────────────────────────────────── */}
         {tab === 'assets' && (
-          <div className="max-w-2xl space-y-6">
+          <div className="w-full space-y-6">
             <div className="flex items-center justify-between gap-3">
               <h2 className="font-black text-base">Biblioteka assetów</h2>
               <button
@@ -2040,7 +2040,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
 
         {/* ── TAB: BRAND SETTINGS ──────────────────────────────────────────────── */}
         {tab === 'settings' && (
-          <div className="max-w-xl space-y-5">
+          <div className="w-full space-y-5">
             <h2 className="font-black text-base">Kontekst marki</h2>
 
             {/* ANALIZA MARKI — trigger */}
