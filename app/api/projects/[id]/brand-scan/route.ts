@@ -181,6 +181,19 @@ function isDefaultSocialIcon(imgUrl: string): boolean {
   );
 }
 
+// HEAD-checks an image URL: must be > 5 KB and not a known placeholder asset
+async function isValidBrandImage(imageUrl: string): Promise<boolean> {
+  try {
+    if (isDefaultSocialIcon(imageUrl)) return false;
+    const res = await fetch(imageUrl, { method: 'HEAD', signal: AbortSignal.timeout(3000) });
+    const contentLength = parseInt(res.headers.get('content-length') || '0');
+    if (contentLength > 0 && contentLength < 5000) return false;
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
 function extractFBPostTexts(fbHtml: string): string[] {
   const texts: string[] = [];
   // og:description often contains page description
@@ -489,10 +502,20 @@ Return ONLY a valid JSON object (no markdown, no explanation):
           if (fbHtml) {
             const posts = extractFBPostTexts(fbHtml);
             collectedPosts.push(...posts);
-            const images = extractFBPostImages(fbHtml, socialLinks.facebook!);
-            console.log('FB og:image candidates:', images);
-            for (const img of images) {
-              if (!isDefaultSocialIcon(img)) collectedImages.push(img);
+
+            // Extract cover photo from embedded JSON: cover_photo.photo.image.uri
+            const coverMatch = fbHtml.match(/"cover_photo":\{"photo":\{"image":\{"uri":"([^"]+)"/);
+            if (coverMatch) {
+              const fbCoverUrl = coverMatch[1].replace(/\\\//g, '/').replace(/&amp;/g, '&');
+              console.log('FB cover photo:', fbCoverUrl);
+              if (!isDefaultSocialIcon(fbCoverUrl)) collectedImages.push(fbCoverUrl);
+            }
+
+            // og:image (profile picture / page preview) as additional reference
+            const fbOgImage = extractOgImageFromHtml(fbHtml, socialLinks.facebook!);
+            console.log('FB og:image:', fbOgImage || '(none)');
+            if (fbOgImage && !isDefaultSocialIcon(fbOgImage) && !collectedImages.includes(fbOgImage)) {
+              collectedImages.push(fbOgImage);
             }
           }
         } catch {
@@ -529,6 +552,29 @@ Return ONLY a valid JSON object (no markdown, no explanation):
           }
         } catch {
           // IG blocked — skip silently
+        }
+      })()
+    );
+  }
+
+  // LinkedIn og:image as reference
+  if (socialLinks.linkedin) {
+    socialScanPromises.push(
+      (async () => {
+        try {
+          const liHtml = await fetch(socialLinks.linkedin!, {
+            headers: { 'User-Agent': 'Mozilla/5.0 (compatible; Googlebot/2.1)' },
+            signal: AbortSignal.timeout(5000),
+          }).then(r => r.ok ? r.text() : '');
+          if (liHtml) {
+            const liOgImage = extractOgImageFromHtml(liHtml, socialLinks.linkedin!);
+            console.log('LinkedIn og:image:', liOgImage || '(none)');
+            if (liOgImage && !isDefaultSocialIcon(liOgImage) && !collectedImages.includes(liOgImage)) {
+              collectedImages.push(liOgImage);
+            }
+          }
+        } catch {
+          // LinkedIn blocked — skip silently
         }
       })()
     );
@@ -733,10 +779,18 @@ ${collectedPosts.map((p, i) => `[${i + 1}] ${p}`).join('\n')}`;
   if (faviconUrl && faviconUrl !== logoUrl) {
     assetPromises.push(downloadAndSaveAsset(projectId, faviconUrl, 'logo', 'icon', 'Auto-downloaded icon/favicon from website scan'));
   }
-  for (const imgUrl of collectedImages.slice(0, 3)) {
+  for (const imgUrl of collectedImages.slice(0, 5)) {
     // Use last 40 chars of URL as unique key — avoids dedup blocking all images with same generic description
     const urlKey = imgUrl.replace(/[?#].*$/, '').slice(-40);
     assetPromises.push(downloadAndSaveAsset(projectId, imgUrl, 'reference', 'social', `Social media image: ${urlKey}`));
+  }
+
+  // Product images from main site HTML — /cars/, /products/, /gallery/, /portfolio/ paths
+  const productImageMatches = [...html.matchAll(/src=["']\s*(https?:\/\/[^"']*\/(?:cars|products|gallery|portfolio|photos)[^"']*\.(?:webp|jpg|jpeg|png))["']/gi)];
+  const productImages = productImageMatches.map(m => m[1].trim()).filter((u, i, arr) => arr.indexOf(u) === i).slice(0, 3);
+  for (const imgUrl of productImages) {
+    const urlKey = imgUrl.replace(/[?#].*$/, '').slice(-40);
+    assetPromises.push(downloadAndSaveAsset(projectId, imgUrl, 'reference', 'product', `Product image: ${urlKey}`));
   }
 
   await Promise.allSettled(assetPromises);
