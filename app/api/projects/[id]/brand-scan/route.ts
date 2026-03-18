@@ -694,13 +694,57 @@ ${collectedPosts.map((p, i) => `[${i + 1}] ${p}`).join('\n')}`;
     }
   }
 
+  // ── Stage 2b: Generate Voice & Tone guide from real posts ────────────────
+  let generatedTov = '';
+  if (collectedPosts.length > 0 || socialMediaAnalysis) {
+    try {
+      const genAI2 = new GoogleGenerativeAI(process.env.GOOGLE_AI_KEY!);
+      const tovModel = genAI2.getGenerativeModel({ model: 'gemini-2.5-flash' });
+
+      const postsBlock = collectedPosts.length > 0
+        ? `REAL POSTS FROM THIS BRAND'S SOCIAL MEDIA:\n${collectedPosts.slice(0, 12).map((p, i) => `[${i + 1}] ${p}`).join('\n')}`
+        : '';
+
+      const analysisBlock = socialMediaAnalysis
+        ? `STRUCTURED ANALYSIS:\n- Tone: ${socialMediaAnalysis.tone || ''}\n- Language style: ${socialMediaAnalysis.languageStyle || ''}\n- Common topics: ${(socialMediaAnalysis.commonTopics || []).join(', ')}\n- CTA style: ${socialMediaAnalysis.ctaStyle || ''}`
+        : '';
+
+      const tovPrompt = `You are building a Voice & Tone guide for a copywriter AI. Analyze this brand's real communication data.
+
+${postsBlock}
+
+${analysisBlock}
+
+Based ONLY on the evidence above — not on generic assumptions — write a practical Voice & Tone guide that a copywriter can immediately apply.
+
+Write the guide in the SAME LANGUAGE as the posts above.
+
+Format exactly as follows (keep the bold labels):
+**VOICE:** 1-2 sentences describing the brand's communication character. Use concrete traits, not labels like "professional" or "friendly".
+
+**RULES:** 4-5 specific writing rules derived from the actual posts. Be evidence-based: "their posts use short paragraphs and direct questions" not "write concisely".
+
+**AVOID:** 3-4 specific phrases, patterns or registers this brand clearly does NOT use. Base on contrast with the actual posts.
+
+**EMOJI:** How this brand uses emoji (or doesn't) based on the post evidence.
+
+**EXAMPLE:** Write 1 short sentence in this brand's authentic voice on a neutral topic (e.g. announcing a new project).`;
+
+      const tovResult = await tovModel.generateContent({ contents: [{ role: 'user', parts: [{ text: tovPrompt }] }] });
+      generatedTov = tovResult.response.text().trim();
+      console.log('Voice & Tone guide generated:', generatedTov.length, 'chars');
+    } catch (e) {
+      console.log('ToV guide generation failed, skipping:', e);
+    }
+  }
+
   // ── Stage 3: Build brandDna ──────────────────────────────────────────────
   const brandDna: BrandDna = {
     primaryColor: (geminiResult.PRIMARY_COLOR as string) || extractedColors[0] || '',
     secondaryColor: (geminiResult.SECONDARY_COLOR as string) || extractedColors[1] || '',
     accentColor: (geminiResult.ACCENT_COLOR as string) || extractedColors[2] || '',
     visualStyle: (geminiResult.VISUAL_STYLE as string) || '',
-    toneOfVoice: (geminiResult.TONE_OF_VOICE as string) || '',
+    toneOfVoice: generatedTov || (geminiResult.TONE_OF_VOICE as string) || '',
     brandKeywords: (geminiResult.BRAND_KEYWORDS as string[]) || [],
     industry: (geminiResult.INDUSTRY as string) || '',
     fonts,
@@ -834,6 +878,11 @@ ${collectedPosts.map((p, i) => `[${i + 1}] ${p}`).join('\n')}`;
         updated_at = NOW()
     WHERE id = ${projectId}
   `;
+
+  // Save generated Voice & Tone guide (separate query to avoid overwriting manual edits when guide not generated)
+  if (generatedTov) {
+    await getDb()`UPDATE projects SET tone_of_voice = ${generatedTov} WHERE id = ${projectId}`;
+  }
 
   // ── Stage 4: Auto-download assets (after DB save — don't block response) ─
   const assetPromises: Promise<boolean>[] = [];
