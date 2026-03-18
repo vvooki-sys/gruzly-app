@@ -278,15 +278,20 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     || logoAssets.find(a => a.variant === 'default')
     || logoAssets[0];
 
-  // Reference images: sent as inlineData for visual style extraction
-  // Featured refs sent LAST (Gemini weights recency) with explicit style-match instruction
+  // Reference images: sent as inlineData ONLY when a user photo is provided.
+  // In Creative Mode (no photo), sending refs risks Gemini extracting faces/people
+  // from reference photos and using them as the central graphic element (asset leakage bug).
+  // Without a photo, rely on text-based style description instead.
+  const hasUserPhoto = !!(photoUrl && photoMode !== 'none');
+
   const allRefs = assetList.filter(a => a.type === 'reference').slice(0, 5);
   const featuredRefs = allRefs.filter(a => a.is_featured);
   const regularRefs = allRefs.filter(a => !a.is_featured);
-  const sortedRefs = [...regularRefs, ...featuredRefs]; // featured last = stronger signal
 
   const refParts: Array<{ inlineData: { data: string; mimeType: string } } | { text: string }> = [];
-  if (!elementOnly) {
+  if (!elementOnly && hasUserPhoto) {
+    // Only send ref inlineData when user has provided a photo — safe context, no face leakage risk
+    refParts.push({ text: '⚠️ STYLE REFERENCES ONLY — These images show color palette, composition style and mood. DO NOT reproduce any face, person, or photographic content from them into the output.' });
     // Regular refs — extract style only
     for (const ref of regularRefs) {
       if (ref.url.toLowerCase().endsWith('.svg')) continue;
@@ -303,7 +308,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       }
     }
   }
-  console.log('Sending refs to Gemini:', sortedRefs.length, `(${featuredRefs.length} featured)`);
+  const imageRefCount = refParts.filter(p => 'inlineData' in p).length;
+  console.log(`Sending refs to Gemini: ${imageRefCount} (${featuredRefs.length} featured, hasUserPhoto=${hasUserPhoto})`);
 
   // Brand elements: include as inline images (max 2, skip large SVGs)
   const brandElements = assetList.filter(a => a.type === 'brand-element').slice(0, 2);
@@ -337,10 +343,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   // Asset usage rules — always present (protects against content leakage from reference images)
   const assetUsageRules = [
-    'Reference images show color palette, composition style and mood ONLY — do NOT copy faces, people, objects or scenes from them',
-    'DO NOT reproduce any identifiable person from any reference image',
+    'CRITICAL — ASSET LEAKAGE PREVENTION: Reference images are provided ONLY as visual style inspiration. DO NOT reproduce, copy, or extract any faces, people, identifiable persons, specific objects, products, or photographic scenes from reference images into the generated graphic. References provide: color palette, composition style, typography approach, mood/atmosphere ONLY.',
+    'DO NOT use any person\'s face or likeness from any reference image under any circumstances',
     ...((!photoUrl || photoMode === 'none') && !elementOnly
-      ? ['NO PHOTO PROVIDED: create a purely illustrative/abstract central element — shapes, gradients, icons, brand colors — absolutely no faces or human photography']
+      ? ['NO PHOTO PROVIDED — ABSOLUTE RULE: The central element MUST be abstract or illustrative only — geometric shapes, gradients, icons, brand graphic elements, typographic compositions. NO faces, NO people, NO photographic human content, NO scenes copied from references. Ignore any photographic content in reference images completely.']
       : []),
     'RENDER ONLY text listed under "TEXT TO APPEAR ON GRAPHIC" — no other text, captions or labels',
     ...(emptyZone
@@ -360,7 +366,6 @@ ${sep}
 ${allLayer1Rules.map((r, i) => `${i + 1}. ${r}`).join('\n')}
 `;
 
-  const imageRefCount = refParts.filter(p => 'inlineData' in p).length;
   const refNote = !elementOnly && imageRefCount > 0
     ? `\n- Style reference images (${imageRefCount} provided${featuredRefs.length > 0 ? `, ${featuredRefs.length} marked as PRIORITY STYLE TARGET` : ''}): extract color palette, mood and visual style — do NOT copy faces, people, objects or scenes`
     : '';
