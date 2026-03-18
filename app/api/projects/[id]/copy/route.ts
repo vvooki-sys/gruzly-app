@@ -54,6 +54,45 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const tov = project.tone_of_voice || 'Professional, creative, impactful. Stay true to the brand identity.';
 
+  // Voice Card injection block — overrides generic ToV when present
+  type VoiceCard = {
+    voice_summary?: string; archetype?: string;
+    golden_rules?: string[]; taboos?: string[];
+    sentence_style?: { structure?: string };
+    emoji_usage?: { emoji_rules?: string };
+    person_address?: { self_reference?: string; audience_address?: string };
+    vocabulary?: { forbidden_words?: string[]; signature_phrases?: string[] };
+    example_good?: string[]; example_bad?: string[];
+  };
+  const vc: VoiceCard | null = project.voice_card || null;
+  const voiceCardBlock = vc ? `
+════════════════════════════════════════
+BRAND VOICE CARD (highest priority — overrides all generic tone instructions)
+════════════════════════════════════════
+Archetype: ${vc.archetype || ''}
+Voice: ${vc.voice_summary || ''}
+
+Golden Rules (non-negotiable):
+${(vc.golden_rules || []).map((r, i) => `${i + 1}. ${r}`).join('\n')}
+
+Style:
+- Sentences: ${vc.sentence_style?.structure || ''}
+- Emoji: ${vc.emoji_usage?.emoji_rules || ''}
+- Self-reference: ${vc.person_address?.self_reference || ''}
+- Audience address: ${vc.person_address?.audience_address || ''}
+${vc.vocabulary?.forbidden_words?.length ? `- Forbidden words: ${vc.vocabulary.forbidden_words.join(', ')}` : ''}
+${vc.vocabulary?.signature_phrases?.length ? `- Signature phrases: ${vc.vocabulary.signature_phrases.join(', ')}` : ''}
+
+TABOOS — the brand NEVER does these:
+${(vc.taboos || []).map(t => `• ${t}`).join('\n')}
+
+The brand SOUNDS LIKE THIS (style reference):
+${(vc.example_good || []).map(e => `→ "${e}"`).join('\n')}
+
+The brand NEVER SOUNDS LIKE THIS (anti-reference):
+${(vc.example_bad || []).map(e => `✗ "${e}"`).join('\n')}
+════════════════════════════════════════` : '';
+
   const formatMap: Record<string, string> = {
     facebook: 'Facebook post (engaging, 1-3 short paragraphs, emoji OK, clear CTA)',
     linkedin: 'LinkedIn post (professional tone, insight-driven, no excessive emoji)',
@@ -98,7 +137,7 @@ ${brandDna}
 
 TONE OF VOICE:
 ${tov}
-
+${voiceCardBlock}
 CLIENT BRIEF:
 ${briefText || '[No brief provided — generate based on brand identity]'}
 

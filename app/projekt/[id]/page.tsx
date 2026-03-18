@@ -62,6 +62,29 @@ interface BrandScanData {
   scannedAt: string;
 }
 
+interface VoiceCard {
+  brand_name?: string;
+  voice_summary?: string;
+  archetype?: string;
+  dimensions?: {
+    formality?: { score: number; description: string };
+    warmth?: { score: number; description: string };
+    humor?: { score: number; description: string };
+    authority?: { score: number; description: string };
+    directness?: { score: number; description: string };
+  };
+  sentence_style?: { avg_length?: string; structure?: string; rhythm?: string; fragments_ok?: boolean; questions_frequency?: string };
+  vocabulary?: { signature_phrases?: string[]; power_words?: string[]; forbidden_words?: string[]; jargon_level?: string; english_mixing?: string };
+  emoji_usage?: { frequency?: string; function?: string; preferred_emoji?: string[]; emoji_rules?: string };
+  person_address?: { self_reference?: string; audience_address?: string; name_usage?: string };
+  structure_patterns?: { opening_style?: string; closing_style?: string; paragraph_density?: string; emphasis_tools?: string[] };
+  persuasion?: { primary_method?: string; qualifier_usage?: string; directness_level?: string };
+  taboos?: string[];
+  golden_rules?: string[];
+  example_good?: string[];
+  example_bad?: string[];
+}
+
 interface Project {
   brand_analysis?: string | null;
   brand_rules?: string | null;
@@ -70,6 +93,7 @@ interface Project {
   scanned_url?: string | null;
   logo_position?: string | null;
   has_fb_token?: boolean;
+  voice_card?: VoiceCard | null;
   id: number;
   name: string;
   client_name: string | null;
@@ -490,6 +514,13 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
   const [savingTov, setSavingTov] = useState(false);
   const [generatingTov, setGeneratingTov] = useState(false);
 
+  // Voice Card state
+  const [voiceCard, setVoiceCard] = useState<VoiceCard | null>(null);
+  const [voiceSamples, setVoiceSamples] = useState('');
+  const [analyzingVoice, setAnalyzingVoice] = useState(false);
+  const [voiceCardEditMode, setVoiceCardEditMode] = useState(false);
+  const [voiceCardEditJson, setVoiceCardEditJson] = useState('');
+
   // Brand Scan state
   const [brandScanUrl, setBrandScanUrl] = useState('');
   const [brandScanLoading, setBrandScanLoading] = useState(false);
@@ -535,6 +566,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
             if (d.project.brand_scan_data.communicationPattern) setCommunicationPattern(d.project.brand_scan_data.communicationPattern);
           }
           if (d.project.scanned_url) setBrandScanUrl(d.project.scanned_url);
+          if (d.project.voice_card) setVoiceCard(d.project.voice_card);
           setLoading(false);
         });
       fetch(`/api/projects/${p.id}/templates`)
@@ -1358,6 +1390,59 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
       setAssets(prev => [...prev, asset]);
       showToast('Dodano do referencji ✓');
     }
+  };
+
+  const analyzeVoice = async () => {
+    if (!id || !voiceSamples.trim()) return;
+    setAnalyzingVoice(true);
+    try {
+      const samples = voiceSamples.split('\n---\n').map(s => s.trim()).filter(Boolean);
+      if (samples.length < 3) {
+        alert('Wklej minimum 3 próbki tekstów rozdzielone linią ---');
+        return;
+      }
+      const res = await fetch(`/api/projects/${id}/voice-card`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ samples }),
+      });
+      const data = await res.json();
+      if (data.voiceCard) {
+        setVoiceCard(data.voiceCard);
+        showToast('Voice Card wygenerowana ✓');
+      } else {
+        alert('Błąd analizy: ' + (data.error || 'Spróbuj ponownie'));
+      }
+    } catch {
+      alert('Błąd połączenia');
+    } finally {
+      setAnalyzingVoice(false);
+    }
+  };
+
+  const saveVoiceCardEdit = async () => {
+    if (!id) return;
+    try {
+      const parsed = JSON.parse(voiceCardEditJson);
+      await fetch(`/api/projects/${id}/voice-card`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ voiceCard: parsed }),
+      });
+      setVoiceCard(parsed);
+      setVoiceCardEditMode(false);
+      showToast('Voice Card zapisana ✓');
+    } catch {
+      alert('Nieprawidłowy JSON');
+    }
+  };
+
+  const deleteVoiceCard = async () => {
+    if (!id || !confirm('Usunąć Voice Card?')) return;
+    await fetch(`/api/projects/${id}/voice-card`, { method: 'DELETE' });
+    setVoiceCard(null);
+    setVoiceSamples('');
+    showToast('Voice Card usunięta');
   };
 
   const toggleFeaturedRef = async (assetId: number) => {
@@ -3011,6 +3096,182 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
                 onBlur={e => saveTov(e.target.value)}
               />
               {savingTov && <p className="text-xs opacity-30">Zapisuję...</p>}
+            </div>
+
+            {/* VOICE CARD */}
+            <div className="rounded-2xl border border-teal-deep/15 dark:border-holo-mint/15 bg-white dark:bg-teal-mid p-4 space-y-4">
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <p className="text-sm font-bold flex items-center gap-2">
+                    Voice Card
+                    {voiceCard && <span className="text-xs font-normal px-2 py-0.5 rounded-full bg-holo-mint/20 text-holo-mint">Aktywna</span>}
+                  </p>
+                  <p className="text-xs opacity-40 mt-0.5">Profil głosu marki — wstrzykiwany automatycznie do każdego generowania copy</p>
+                </div>
+                {voiceCard && (
+                  <div className="flex gap-1.5 shrink-0">
+                    <button onClick={() => { setVoiceCardEditMode(v => !v); setVoiceCardEditJson(JSON.stringify(voiceCard, null, 2)); }}
+                      className="h-7 px-2.5 rounded-full border border-teal-deep/15 dark:border-holo-mint/15 text-xs font-semibold opacity-60 hover:opacity-100 transition-opacity">
+                      {voiceCardEditMode ? 'Anuluj' : 'Edytuj JSON'}
+                    </button>
+                    <button onClick={deleteVoiceCard}
+                      className="h-7 px-2.5 rounded-full border border-red-500/20 text-red-400 text-xs font-semibold opacity-60 hover:opacity-100 transition-opacity">
+                      Usuń
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Edit JSON mode */}
+              {voiceCardEditMode && (
+                <div className="space-y-2">
+                  <textarea
+                    className="w-full bg-offwhite dark:bg-teal-deep border border-holo-mint/20 rounded-xl px-3 py-2 text-xs font-mono resize-none outline-none focus:border-holo-mint transition-colors"
+                    rows={16}
+                    value={voiceCardEditJson}
+                    onChange={e => setVoiceCardEditJson(e.target.value)}
+                  />
+                  <button onClick={saveVoiceCardEdit}
+                    className="h-9 px-4 rounded-full holo-gradient text-teal-deep text-xs font-bold hover:opacity-90 transition-opacity">
+                    Zapisz zmiany
+                  </button>
+                </div>
+              )}
+
+              {/* Voice Card display */}
+              {voiceCard && !voiceCardEditMode && (
+                <div className="space-y-4">
+                  {/* Header */}
+                  <div className="space-y-1">
+                    {voiceCard.archetype && <p className="text-sm font-black text-holo-mint">{voiceCard.archetype}</p>}
+                    {voiceCard.voice_summary && <p className="text-sm opacity-70">{voiceCard.voice_summary}</p>}
+                  </div>
+
+                  {/* Dimensions */}
+                  {voiceCard.dimensions && (
+                    <div className="space-y-2">
+                      <p className="text-xs font-bold opacity-30 uppercase tracking-wide">Wymiary głosu</p>
+                      {(['formality', 'warmth', 'humor', 'authority', 'directness'] as const).map(dim => {
+                        const d = voiceCard.dimensions?.[dim];
+                        if (!d) return null;
+                        const labels: Record<string, string> = { formality: 'Formalność', warmth: 'Ciepło', humor: 'Humor', authority: 'Autorytet', directness: 'Bezpośredniość' };
+                        return (
+                          <div key={dim} className="space-y-0.5">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs w-28 opacity-50">{labels[dim]}</span>
+                              <div className="flex-1 h-1.5 bg-teal-deep/10 dark:bg-teal-deep/40 rounded-full overflow-hidden">
+                                <div className="h-full bg-holo-mint rounded-full transition-all" style={{ width: `${(d.score / 10) * 100}%` }} />
+                              </div>
+                              <span className="text-xs font-mono opacity-40 w-6 text-right">{d.score}</span>
+                            </div>
+                            {d.description && <p className="text-xs opacity-40 pl-30 ml-[7.5rem]">{d.description}</p>}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* Golden Rules */}
+                  {voiceCard.golden_rules && voiceCard.golden_rules.length > 0 && (
+                    <div className="space-y-1.5">
+                      <p className="text-xs font-bold opacity-30 uppercase tracking-wide">Złote reguły</p>
+                      {voiceCard.golden_rules.map((r, i) => (
+                        <div key={i} className="flex gap-2 text-xs">
+                          <span className="text-holo-mint font-bold shrink-0">{i + 1}.</span>
+                          <span className="opacity-70">{r}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Taboos */}
+                  {voiceCard.taboos && voiceCard.taboos.length > 0 && (
+                    <div className="space-y-1.5">
+                      <p className="text-xs font-bold opacity-30 uppercase tracking-wide">Tabu</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {voiceCard.taboos.map((t, i) => (
+                          <span key={i} className="text-xs px-2 py-0.5 rounded-full bg-red-500/10 text-red-400 border border-red-500/20">{t}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Vocabulary */}
+                  {(voiceCard.vocabulary?.signature_phrases?.length || voiceCard.vocabulary?.forbidden_words?.length) && (
+                    <div className="grid grid-cols-2 gap-3">
+                      {voiceCard.vocabulary?.signature_phrases?.length && (
+                        <div className="space-y-1">
+                          <p className="text-xs font-bold opacity-30 uppercase tracking-wide">Charakterystyczne</p>
+                          <div className="flex flex-wrap gap-1">
+                            {voiceCard.vocabulary.signature_phrases.slice(0, 6).map((p, i) => (
+                              <span key={i} className="text-xs px-1.5 py-0.5 rounded bg-holo-mint/10 text-holo-mint">"{p}"</span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {voiceCard.vocabulary?.forbidden_words?.length && (
+                        <div className="space-y-1">
+                          <p className="text-xs font-bold opacity-30 uppercase tracking-wide">Zabronione słowa</p>
+                          <div className="flex flex-wrap gap-1">
+                            {voiceCard.vocabulary.forbidden_words.slice(0, 6).map((w, i) => (
+                              <span key={i} className="text-xs px-1.5 py-0.5 rounded bg-red-500/10 text-red-400 line-through">{w}</span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Examples */}
+                  {(voiceCard.example_good?.length || voiceCard.example_bad?.length) && (
+                    <div className="space-y-2">
+                      {voiceCard.example_good?.slice(0, 2).map((e, i) => (
+                        <div key={i} className="text-xs px-3 py-2 rounded-xl bg-green-500/5 border border-green-500/20 text-green-400">✓ "{e}"</div>
+                      ))}
+                      {voiceCard.example_bad?.slice(0, 2).map((e, i) => (
+                        <div key={i} className="text-xs px-3 py-2 rounded-xl bg-red-500/5 border border-red-500/20 text-red-400 line-through">✗ "{e}"</div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Regenerate */}
+                  <button onClick={() => setVoiceCard(null)}
+                    className="text-xs opacity-40 hover:opacity-80 transition-opacity underline">
+                    Wgraj nowe próbki i wygeneruj ponownie
+                  </button>
+                </div>
+              )}
+
+              {/* Input: no card yet (or regenerating) */}
+              {!voiceCard && (
+                <div className="space-y-3">
+                  <div className="text-xs opacity-50 bg-teal-deep/5 rounded-xl p-3 space-y-1">
+                    <p className="font-bold">Jak to działa:</p>
+                    <p>Wklej 5-20 tekstów marki (posty social, maile, opisy kampanii). Każdy tekst oddziel linią <code className="bg-teal-deep/20 px-1 rounded">---</code></p>
+                    <p>LLM przeanalizuje i wygeneruje profil głosu: archetype, reguły, tabu, słownictwo.</p>
+                  </div>
+                  <textarea
+                    className="w-full bg-offwhite dark:bg-teal-deep text-teal-deep dark:text-offwhite border border-teal-deep/15 dark:border-holo-mint/10 focus:border-holo-mint rounded-xl px-4 py-3 text-sm resize-none outline-none transition-colors font-mono"
+                    rows={10}
+                    placeholder={`Przykładowy post marki z Facebooka\n---\nInny post lub fragment maila\n---\nOpis kampanii lub treść ze strony www\n---\n(minimum 3 próbki, rekomendowane 10+)`}
+                    value={voiceSamples}
+                    onChange={e => setVoiceSamples(e.target.value)}
+                  />
+                  <button
+                    onClick={analyzeVoice}
+                    disabled={analyzingVoice || voiceSamples.split('\n---\n').filter(s => s.trim()).length < 3}
+                    className="w-full h-10 rounded-full holo-gradient text-teal-deep font-black disabled:opacity-40 hover:opacity-90 transition-opacity flex items-center justify-center gap-2 text-sm"
+                  >
+                    {analyzingVoice
+                      ? <><Loader2 className="h-4 w-4 animate-spin" /> Analizuję głos marki...</>
+                      : <><Wand2 className="h-4 w-4" /> Analizuj głos marki</>
+                    }
+                  </button>
+                  {voiceSamples.split('\n---\n').filter(s => s.trim()).length > 0 && (
+                    <p className="text-xs opacity-40 text-center">{voiceSamples.split('\n---\n').filter(s => s.trim()).length} próbek · min. 3 wymagane</p>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* ZASADY OBOWIĄZKOWE */}

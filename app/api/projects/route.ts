@@ -36,6 +36,7 @@ export async function GET() {
   await getDb()`ALTER TABLE brand_assets ADD COLUMN IF NOT EXISTS is_featured BOOLEAN DEFAULT FALSE`.catch(() => {});
   await getDb()`ALTER TABLE generations ADD COLUMN IF NOT EXISTS qa_score INTEGER`.catch(() => {});
   await getDb()`ALTER TABLE generations ADD COLUMN IF NOT EXISTS qa_issues JSONB DEFAULT '[]'::jsonb`.catch(() => {});
+  await getDb()`ALTER TABLE projects ADD COLUMN IF NOT EXISTS voice_card JSONB`.catch(() => {});
 
   const rows = await getDb()`
     SELECT p.*,
