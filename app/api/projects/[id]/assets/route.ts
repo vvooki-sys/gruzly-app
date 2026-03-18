@@ -101,6 +101,25 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   return NextResponse.json(asset, { status: 201 });
 }
 
+// PATCH /api/projects/[id]/assets?assetId=X — toggle is_featured
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const { searchParams } = new URL(req.url);
+  const assetId = searchParams.get('assetId');
+
+  if (!assetId) return NextResponse.json({ error: 'assetId required' }, { status: 400 });
+
+  const [asset] = await getDb()`
+    UPDATE brand_assets
+    SET is_featured = NOT COALESCE(is_featured, false)
+    WHERE id = ${parseInt(assetId)} AND project_id = ${parseInt(id)}
+    RETURNING *
+  `;
+
+  if (!asset) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  return NextResponse.json(asset);
+}
+
 // DELETE /api/projects/[id]/assets?assetId=X
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

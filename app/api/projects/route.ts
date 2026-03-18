@@ -33,6 +33,9 @@ export async function GET() {
   await getDb()`ALTER TABLE projects ADD COLUMN IF NOT EXISTS scanned_url TEXT`.catch(() => {});
   await getDb()`ALTER TABLE projects ADD COLUMN IF NOT EXISTS logo_position TEXT DEFAULT 'top-left'`.catch(() => {});
   await getDb()`ALTER TABLE projects ADD COLUMN IF NOT EXISTS fb_token TEXT`.catch(() => {});
+  await getDb()`ALTER TABLE brand_assets ADD COLUMN IF NOT EXISTS is_featured BOOLEAN DEFAULT FALSE`.catch(() => {});
+  await getDb()`ALTER TABLE generations ADD COLUMN IF NOT EXISTS qa_score INTEGER`.catch(() => {});
+  await getDb()`ALTER TABLE generations ADD COLUMN IF NOT EXISTS qa_issues JSONB DEFAULT '[]'::jsonb`.catch(() => {});
 
   const rows = await getDb()`
     SELECT p.*,

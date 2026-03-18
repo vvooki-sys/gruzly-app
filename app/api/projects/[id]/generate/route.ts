@@ -29,7 +29,7 @@ const CREATIVITY_BLOCKS: Record<number, string> = {
 
 // ── Logo compositor ───────────────────────────────────────────────────────────
 
-type AssetRow = { type: string; url: string; filename: string; variant?: string; description?: string; mime_type?: string };
+type AssetRow = { type: string; url: string; filename: string; variant?: string; description?: string; mime_type?: string; is_featured?: boolean };
 
 async function getTopLeftBrightness(imageBuffer: Buffer, width: number, height: number): Promise<number> {
   try {
@@ -278,19 +278,32 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     || logoAssets.find(a => a.variant === 'default')
     || logoAssets[0];
 
-  // Reference images: sent as inlineData for visual style extraction (max 3, skip SVG)
-  // Guardrail in prompt: extract color/mood only, do NOT copy faces/objects/scenes
-  const refs = assetList.filter(a => a.type === 'reference').slice(0, 5);
-  const refParts: Array<{ inlineData: { data: string; mimeType: string } }> = [];
+  // Reference images: sent as inlineData for visual style extraction
+  // Featured refs sent LAST (Gemini weights recency) with explicit style-match instruction
+  const allRefs = assetList.filter(a => a.type === 'reference').slice(0, 5);
+  const featuredRefs = allRefs.filter(a => a.is_featured);
+  const regularRefs = allRefs.filter(a => !a.is_featured);
+  const sortedRefs = [...regularRefs, ...featuredRefs]; // featured last = stronger signal
+
+  const refParts: Array<{ inlineData: { data: string; mimeType: string } } | { text: string }> = [];
   if (!elementOnly) {
-    for (const ref of refs) {
+    // Regular refs — extract style only
+    for (const ref of regularRefs) {
       if (ref.url.toLowerCase().endsWith('.svg')) continue;
-      // forceJpeg=true: Gemini does not support image/webp — converts all refs to JPEG
       const b64 = await urlToBase64(ref.url, true);
       if (b64) refParts.push({ inlineData: b64 });
     }
+    // Featured refs — match this exact style
+    if (featuredRefs.length > 0) {
+      refParts.push({ text: 'PRIORITY STYLE TARGET — match this exact visual aesthetic, color palette and mood as closely as possible in your output:' });
+      for (const ref of featuredRefs) {
+        if (ref.url.toLowerCase().endsWith('.svg')) continue;
+        const b64 = await urlToBase64(ref.url, true);
+        if (b64) refParts.push({ inlineData: b64 });
+      }
+    }
   }
-  console.log('Sending refs to Gemini:', refParts.length, refParts.map(r => r.inlineData.mimeType));
+  console.log('Sending refs to Gemini:', sortedRefs.length, `(${featuredRefs.length} featured)`);
 
   // Brand elements: include as inline images (max 2, skip large SVGs)
   const brandElements = assetList.filter(a => a.type === 'brand-element').slice(0, 2);
@@ -347,7 +360,10 @@ ${sep}
 ${allLayer1Rules.map((r, i) => `${i + 1}. ${r}`).join('\n')}
 `;
 
-  const refNote = !elementOnly && refParts.length > 0 ? `\n- Style reference images (${refParts.length}): EXTRACT color palette, mood and visual style ONLY — do NOT copy faces, people, objects, scenes or compositions from them` : '';
+  const imageRefCount = refParts.filter(p => 'inlineData' in p).length;
+  const refNote = !elementOnly && imageRefCount > 0
+    ? `\n- Style reference images (${imageRefCount} provided${featuredRefs.length > 0 ? `, ${featuredRefs.length} marked as PRIORITY STYLE TARGET` : ''}): extract color palette, mood and visual style — do NOT copy faces, people, objects or scenes`
+    : '';
   const elNote = !elementOnly && brandElements.length > 0 ? `\n- Brand graphic elements: use these decorative/brand elements in the composition` : '';
   const photoNote = photoUrl && photoMode !== 'none' && !elementOnly ? '\n- PHOTO PROVIDED: place this as the central/hero image, compose brand elements around it' : '';
   const allParts = [...refParts, ...imageParts];
@@ -364,8 +380,8 @@ ${allLayer1Rules.map((r, i) => `${i + 1}. ${r}`).join('\n')}
     availableAssets.push(`- Brand element "${el.filename}"${el.description ? ` — ${el.description}` : ''}: ${el.url}`);
   });
   // Refs sent as inlineData — note their count and guardrail in prompt
-  if (!elementOnly && refParts.length > 0) {
-    availableAssets.push(`- Style reference images (${refParts.length} provided as inline images): extract color palette, mood and visual style — do NOT copy faces, people, objects or scenes`);
+  if (!elementOnly && imageRefCount > 0) {
+    availableAssets.push(`- Style reference images (${imageRefCount} inline${featuredRefs.length > 0 ? `, ${featuredRefs.length} as PRIORITY STYLE TARGET` : ''}): extract style — do NOT copy faces, people, objects or scenes`);
   }
   const photoAssets = assetList.filter(a => a.type === 'photo');
   photoAssets.forEach(p => {
@@ -525,10 +541,11 @@ ${layer1}${layer2}${layer3}${creativityBlock}${closing}`;
   const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-image-preview' });
 
   const imageUrls: string[] = [];
+  const finalBuffers: Buffer[] = [];
 
   try {
     const parts: Array<{ inlineData: { data: string; mimeType: string } } | { text: string }> = [
-      ...refParts,   // style references first
+      ...refParts,   // style references (featured last = stronger signal)
       ...imageParts, // brand elements + photo
       { text: textPrompt },
     ];
@@ -547,6 +564,7 @@ ${layer1}${layer2}${layer3}${creativityBlock}${closing}`;
         if (p.inlineData) {
           const rawBuffer = Buffer.from(p.inlineData.data, 'base64');
           const finalBuffer = await applyLogoOverlay(rawBuffer, assetList, format, logoPosition);
+          finalBuffers.push(finalBuffer);
           const filename = `gruzly/${id}/${Date.now()}.png`;
           const blob = await put(filename, finalBuffer, {
             access: 'public',
@@ -566,13 +584,52 @@ ${layer1}${layer2}${layer3}${creativityBlock}${closing}`;
     return NextResponse.json({ error: 'Image generation failed — no image in response' }, { status: 500 });
   }
 
+  // ── Brand QA check ───────────────────────────────────────────────────────
+  let qaScore: number | null = null;
+  let qaIssues: string[] = [];
+  if (finalBuffers[0]) {
+    try {
+      const qaModel = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+      const brandSummary = project.brand_rules
+        ? project.brand_rules.split('\n').filter((r: string) => r.trim()).slice(0, 6).join('. ')
+        : `Professional brand: ${project.name}`;
+
+      const qaPrompt = `You are a brand quality checker. Analyze this graphic.
+Brand: ${project.name}
+Guidelines: ${brandSummary}
+Return ONLY valid JSON — no markdown, no explanation:
+{"score": <1-10>, "issues": ["issue1", "issue2"], "passed": <boolean>}
+Score: 10=perfect, 8-9=great, 7=good, 5-6=minor issues, <5=problems. passed=true if score>=7.
+Issues: max 3 items, specific and actionable. Empty array [] if none.
+Check: visual quality, composition, brand consistency, text legibility, professionalism.`;
+
+      const qaResult = await qaModel.generateContent({
+        contents: [{ role: 'user', parts: [
+          { inlineData: { data: finalBuffers[0].toString('base64'), mimeType: 'image/png' } },
+          { text: qaPrompt },
+        ]}],
+      });
+      const qaText = qaResult.response.candidates?.[0]?.content?.parts
+        ?.filter((p: { text?: string }) => p.text)
+        ?.map((p: { text?: string }) => p.text)
+        ?.join('') || '';
+      const qaCleaned = qaText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+      const qa = JSON.parse(qaCleaned);
+      qaScore = typeof qa.score === 'number' ? qa.score : null;
+      qaIssues = Array.isArray(qa.issues) ? qa.issues : [];
+      console.log(`QA score: ${qaScore}/10, issues: ${qaIssues.length}`);
+    } catch (e) {
+      console.log('QA check failed, skipping:', e);
+    }
+  }
+
   const formatWithCreativity = `${format.replace(/:c\d$/, '')}:c${creativity}`;
   const dbFormat = mode === 'fast' ? `${formatWithCreativity}:fast` : formatWithCreativity;
   const combinedBrief = [headline, subtext].filter(Boolean).join(' | ');
 
   const [generation] = await getDb()`
-    INSERT INTO generations (project_id, brief, format, prompt, image_urls, status)
-    VALUES (${parseInt(id)}, ${combinedBrief}, ${dbFormat}, ${textPrompt}, ${JSON.stringify(imageUrls)}, 'done')
+    INSERT INTO generations (project_id, brief, format, prompt, image_urls, status, qa_score, qa_issues)
+    VALUES (${parseInt(id)}, ${combinedBrief}, ${dbFormat}, ${textPrompt}, ${JSON.stringify(imageUrls)}, 'done', ${qaScore}, ${JSON.stringify(qaIssues)})
     RETURNING *
   `;
 

@@ -100,6 +100,8 @@ interface Generation {
   prompt: string;
   status: string;
   created_at: string;
+  qa_score?: number | null;
+  qa_issues?: string[] | null;
 }
 
 interface Asset {
@@ -110,6 +112,7 @@ interface Asset {
   variant?: string;
   description?: string;
   mime_type?: string;
+  is_featured?: boolean;
   created_at: string;
 }
 
@@ -1357,6 +1360,14 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
     }
   };
 
+  const toggleFeaturedRef = async (assetId: number) => {
+    const res = await fetch(`/api/projects/${id}/assets?assetId=${assetId}`, { method: 'PATCH' });
+    if (res.ok) {
+      const updated = await res.json();
+      setAssets(prev => prev.map(a => a.id === assetId ? { ...a, is_featured: updated.is_featured } : a));
+    }
+  };
+
   const deleteGeneration = async (genId: number) => {
     if (!confirm('Usunąć tę grafikę z historii?')) return;
     setDeletingId(genId);
@@ -1498,6 +1509,22 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
                         const urls: string[] = JSON.parse(selectedGeneration.image_urls || '[]');
                         return urls.map((u, i) => <img key={i} src={u} alt="Grafika" className="w-full" />);
                       })()}
+
+                      {/* QA Badge */}
+                      {selectedGeneration.qa_score != null && (
+                        <div className={`mx-3 mt-2 px-3 py-2 rounded-xl text-xs flex items-start gap-2 ${
+                          selectedGeneration.qa_score >= 8 ? 'bg-green-500/10 border border-green-500/20 text-green-400'
+                          : selectedGeneration.qa_score >= 7 ? 'bg-yellow-500/10 border border-yellow-500/20 text-yellow-400'
+                          : 'bg-red-500/10 border border-red-500/20 text-red-400'
+                        }`}>
+                          <span className="font-black shrink-0">
+                            {selectedGeneration.qa_score >= 8 ? '✓' : selectedGeneration.qa_score >= 7 ? '⚠' : '✗'} Brand {selectedGeneration.qa_score}/10
+                          </span>
+                          {selectedGeneration.qa_issues && selectedGeneration.qa_issues.length > 0 && (
+                            <span className="opacity-70">{selectedGeneration.qa_issues.join(' · ')}</span>
+                          )}
+                        </div>
+                      )}
 
                       {/* Actions */}
                       <div className="p-3 flex items-center gap-2 border-t border-teal-deep/10 dark:border-holo-mint/10">
@@ -1939,6 +1966,20 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
                         const urls: string[] = JSON.parse(selectedGeneration.image_urls || '[]');
                         return urls.map((u, i) => <img key={i} src={u} alt="Grafika" className="w-full" />);
                       })()}
+                      {selectedGeneration.qa_score != null && (
+                        <div className={`mx-3 mt-2 px-3 py-2 rounded-xl text-xs flex items-start gap-2 ${
+                          selectedGeneration.qa_score >= 8 ? 'bg-green-500/10 border border-green-500/20 text-green-400'
+                          : selectedGeneration.qa_score >= 7 ? 'bg-yellow-500/10 border border-yellow-500/20 text-yellow-400'
+                          : 'bg-red-500/10 border border-red-500/20 text-red-400'
+                        }`}>
+                          <span className="font-black shrink-0">
+                            {selectedGeneration.qa_score >= 8 ? '✓' : selectedGeneration.qa_score >= 7 ? '⚠' : '✗'} Brand {selectedGeneration.qa_score}/10
+                          </span>
+                          {selectedGeneration.qa_issues && selectedGeneration.qa_issues.length > 0 && (
+                            <span className="opacity-70">{selectedGeneration.qa_issues.join(' · ')}</span>
+                          )}
+                        </div>
+                      )}
                       <div className="p-3 flex items-center gap-2 border-t border-teal-deep/10 dark:border-holo-mint/10">
                         <button
                           onClick={() => {
@@ -2435,8 +2476,16 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
                       <p className="text-xs opacity-40 mb-2">Referencje ({refs.length}/5)</p>
                       <div className="grid grid-cols-5 gap-1.5">
                         {refs.map(a => (
-                          <div key={a.id} className="relative aspect-square rounded-lg overflow-hidden border border-teal-deep/10 dark:border-holo-mint/10 group">
+                          <div key={a.id} className={`relative aspect-square rounded-lg overflow-hidden border group ${a.is_featured ? 'border-holo-mint' : 'border-teal-deep/10 dark:border-holo-mint/10'}`}>
                             <img src={a.url} className="w-full h-full object-cover" alt={a.filename} />
+                            {/* Star / featured toggle */}
+                            <button
+                              title={a.is_featured ? 'Usuń priorytet' : 'Ustaw jako priorytet stylu'}
+                              onClick={() => toggleFeaturedRef(a.id)}
+                              className={`absolute top-1 left-1 w-5 h-5 rounded-full flex items-center justify-center transition-all ${a.is_featured ? 'bg-holo-mint text-teal-deep opacity-100' : 'bg-black/40 text-white opacity-0 group-hover:opacity-100'}`}
+                            >
+                              <span className="text-[9px] leading-none">{a.is_featured ? '★' : '☆'}</span>
+                            </button>
                             <button className="absolute top-1 right-1 w-5 h-5 rounded-full bg-red-500/80 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity"
                               onClick={() => { fetch(`/api/projects/${id}/assets?assetId=${a.id}`, { method: 'DELETE' }).then(() => setAssets(prev => prev.filter(x => x.id !== a.id))); }}>
                               <X className="h-2.5 w-2.5" />
