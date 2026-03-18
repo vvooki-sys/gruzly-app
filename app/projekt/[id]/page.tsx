@@ -508,7 +508,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
   const [copyBrief, setCopyBrief] = useState('');
   const [copyFormat, setCopyFormat] = useState('ogólny');
   const [generatingCopy, setGeneratingCopy] = useState(false);
-  const [copyResults, setCopyResults] = useState<Array<{ headline: string; subtext: string; cta?: string; rationale?: string }>>([]);
+  const [copyResults, setCopyResults] = useState<Array<{ headline: string; subtext: string; cta?: string; post_copy?: string; rationale?: string }>>([]);
   const [copyConcept, setCopyConcept] = useState('');
   const [copyCreativeBrief, setCopyCreativeBrief] = useState('');
 
@@ -3227,15 +3227,37 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
                   {copyResults.map((r, i) => (
                     <div
                       key={i}
-                      className="bg-white dark:bg-teal-mid border border-teal-deep/10 dark:border-holo-mint/10 rounded-xl p-4 space-y-2"
+                      className="bg-white dark:bg-teal-mid border border-teal-deep/10 dark:border-holo-mint/10 rounded-xl p-4 space-y-3"
                     >
-                      <div className="flex items-center gap-2 mb-1">
+                      <div className="flex items-center gap-2">
                         <span className="text-xs font-bold bg-teal-deep/10 dark:bg-teal-deep px-2 py-0.5 rounded-full">Wariant {i + 1}</span>
+                        {r.rationale && <span className="text-xs opacity-30 italic">{r.rationale}</span>}
                       </div>
-                      <p className="font-mono text-sm font-semibold">{r.headline}</p>
-                      {r.subtext && <p className="text-sm opacity-60">{r.subtext}</p>}
-                      {r.cta && <p className="text-xs text-holo-mint font-medium">CTA: {r.cta}</p>}
-                      {r.rationale && <p className="text-xs opacity-40 italic border-t border-teal-deep/10 dark:border-holo-mint/10 pt-2 mt-1">{r.rationale}</p>}
+
+                      {/* Graphic text */}
+                      <div className="space-y-1 border-l-2 border-holo-mint/30 pl-3">
+                        <p className="text-xs font-bold opacity-30 uppercase tracking-wide">Na grafikę</p>
+                        <p className="font-mono text-sm font-semibold">{r.headline}</p>
+                        {r.subtext && <p className="text-sm opacity-60">{r.subtext}</p>}
+                        {r.cta && <p className="text-xs text-holo-mint font-medium mt-1">{r.cta}</p>}
+                      </div>
+
+                      {/* Post copy */}
+                      {r.post_copy && (
+                        <div className="space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <p className="text-xs font-bold opacity-30 uppercase tracking-wide">Treść posta</p>
+                            <button
+                              onClick={() => navigator.clipboard.writeText(r.post_copy || '')}
+                              className="text-xs opacity-40 hover:opacity-80 transition-opacity"
+                            >
+                              Kopiuj
+                            </button>
+                          </div>
+                          <p className="text-sm opacity-70 leading-relaxed whitespace-pre-line">{r.post_copy}</p>
+                        </div>
+                      )}
+
                       <button
                         onClick={() => useCopyInGenerator(r, copyCreativeBrief)}
                         className="w-full h-8 bg-teal-deep/5 dark:bg-teal-deep hover:bg-holo-mint/20 hover:border-holo-mint border border-teal-deep/10 dark:border-holo-mint/10 rounded-full text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors"

@@ -63,26 +63,35 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   };
   const formatDesc = formatMap[format] || formatMap['general'];
 
-  const copyPrompt = `[ROLE]
-Act as an Elite Conversion Copywriter & Brand Strategist with 30 years of experience in Direct Response methodology (Schwartz, Ogilvy) and modern digital storytelling. Your goal is not to write text — it is to engineer neurochemical reactions in the reader.
+  const copyPrompt = `[STEP 1 — BRIEF TYPE DETECTION]
+Before writing anything, classify the client brief as ONE of:
+- MARKETING: product/service promotion, campaign, offer, external audience, lead gen, awareness
+- HUMAN VOICE: team/employee communication, holiday wishes, birthday, anniversary, celebration, thank-you, internal culture moment, any message directed at your own people
 
-[CORE COMPETENCIES]
-Cognitive Psychology: Leverage cognitive biases (social proof, scarcity, authority) ethically but ruthlessly effectively.
-Information Architecture: Apply the inverted pyramid principle and micro-copy that guides the reader's eye directly to the CTA.
-ToV Adaptation: Perfectly replicate the brand's Tone of Voice based on Brand DNA analysis, eliminating generic adjectives and corporate speak.
+This classification is mandatory and overrides all other instructions.
 
-[OPERATIONAL CONSTRAINTS]
-Zero AI-isms: Never use phrases like "in today's world", "key", "comprehensive", "continuously". Write with substance, not adjectives.
-Rhythm: Apply "The Music of Copy" technique — mix short, punchy sentences with longer, flowing phrases to maintain high engagement.
-Concrete over vague: Instead of "we offer innovative solutions", write "we cut your workload by 40% through AI automation".
+════════════════════════════════════════
+MARKETING MODE
+════════════════════════════════════════
+Framework: P-A-S (Problem → Agitation → Solution) or A-I-D-A.
+Voice: Direct Response — concrete specifics, zero corporate adjectives.
+Banned words: "comprehensive", "innovative", "leverage", "key", "synergy", "in today's world".
 
-[STRATEGIC FRAMEWORK]
-Every piece of copy must follow P-A-S (Problem-Agitation-Solution) or A-I-D-A structure, unless the creative brief specifies otherwise.
+════════════════════════════════════════
+HUMAN VOICE MODE
+════════════════════════════════════════
+Drop all marketing frameworks. You are a person writing to people they actually like.
 
-[FINAL OUTPUT SPECIFICATION]
-Deliver publication-ready content that sounds written by a human for a human, maintaining the highest level of expertise and substance.
+Rules — violating these ruins the output:
+- Write how humans talk: short sentences, natural rhythm, direct
+- If the brief mentions a specific element (animal, symbol, metaphor) — USE IT. Do not replace it with something "more sophisticated".
+- Humor: use it when the brief has playful energy. Earned humor, not puns.
+- Emoji: 1-2 max, only where they add warmth or act as punctuation. Not decoration.
+- "cta" field: closing sentiment, not a button label. "Wesołych Świąt!" is valid. "Kliknij tutaj!" is not.
+- Sign-off: brand name only. Never "Brand Team", "Brand Communication", or any corporate suffix.
+- Forbidden phrases: "zasłużona odnowa", "doceniamy waszą pasję", "słodka regeneracja", "wiosenna nadzieja", anything that sounds like an HR newsletter.
 
-Your job is not just to write copy — you CONCEIVE the idea and direct the visual.
+════════════════════════════════════════
 
 BRAND IDENTITY:
 ${brandDna}
@@ -95,54 +104,33 @@ ${briefText || '[No brief provided — generate based on brand identity]'}
 
 FORMAT: ${formatDesc}
 
-YOUR TASK:
+════════════════════════════════════════
+YOUR OUTPUT:
 
-1. CONCEPT — Define a single creative idea that drives this communication.
-   What's the hook? What emotion does it trigger? (1-2 sentences)
+1. CONCEPT — The single idea. What emotion does it create? (1-2 sentences, English OK)
 
-2. CREATIVE BRIEF — Describe the emotional/conceptual direction for this graphic.
-   Focus ONLY on:
-   - The mood, atmosphere, feeling the image should evoke
-   - The visual story or metaphor (what scene, what moment, what emotion)
-   - What to avoid in terms of tone or associations
-   (2-4 sentences max)
+2. CREATIVE BRIEF — For the graphic designer. Mood and visual metaphor ONLY.
+   2-4 sentences. NO logo instructions, NO hex colors, NO layout rules, NO composition directions.
 
-   STRICT RULES — these will BREAK the output if violated:
-   - NO logo placement, NO "logo in corner", NO brand mark instructions
-   - NO hex color codes, NO specific brand colors, NO background color specs
-   - NO layout instructions (no "place X in Y corner", no composition rules)
-   - NO branding or technical design guidance of any kind
-   Brand identity, colors, logo placement are handled separately by the design system.
-   The brief is ONLY about mood, concept, and emotional direction.
-
-3. COPY VARIANTS — Write 3 variants. Each variant must:
-   - Match the concept
-   - Respect the tone of voice
-   - Be in the same language as the client brief
-   - Feel like it was written by a human who understands the brand
-
-   COPY LENGTH RULES — these are non-negotiable:
-   - "headline": MAX 8 words. Punchy, memorable, works as a standalone statement on a graphic.
-   - "subtext": MAX 15 words / 1 short sentence. This is a GRAPHIC CAPTION, not post body copy.
-     It must complement the headline, not explain or expand it into a paragraph.
-     Think tagline, not description. If you can't say it in 15 words — cut it.
-   - "cta": MAX 4 words. A button label, not a sentence.
-
-   The full post copy (LinkedIn post body, Facebook post description) belongs OUTSIDE the graphic.
-   The graphic carries only: headline + one short supporting line + CTA.
+3. THREE VARIANTS. For each:
+   - "headline": MAX 8 words. Standalone statement. Works on a graphic without context.
+   - "subtext": MAX 15 words. Graphic caption — one thought, not a paragraph. Complements headline, doesn't explain it.
+   - "cta": MAX 4 words. MARKETING=button label. HUMAN VOICE=closing sentiment.
+   - "post_copy": The actual social media post body (3-6 sentences). Lives OUTSIDE the graphic. Write as if the brand manager typed it right now — in the brand's real voice, matching the mode (marketing or human). Include emoji if appropriate for the brand.
+   - "rationale": MAX 8 words. Single key creative decision. Nothing else.
 
 Return ONLY valid JSON, no markdown, no explanation:
 {
   "concept": "...",
   "creative_brief": "...",
   "variants": [
-    { "headline": "...", "subtext": "...", "cta": "...", "rationale": "..." },
-    { "headline": "...", "subtext": "...", "cta": "...", "rationale": "..." },
-    { "headline": "...", "subtext": "...", "cta": "...", "rationale": "..." }
+    { "headline": "...", "subtext": "...", "cta": "...", "post_copy": "...", "rationale": "..." },
+    { "headline": "...", "subtext": "...", "cta": "...", "post_copy": "...", "rationale": "..." },
+    { "headline": "...", "subtext": "...", "cta": "...", "post_copy": "...", "rationale": "..." }
   ]
 }
 
-Write copy in the same language as the client brief. These instructions are in English — that is fine, keep them as internal guidance only.`;
+Write ALL copy in the same language as the client brief. These instructions are in English — internal guidance only.`;
 
   const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_KEY!);
   const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
