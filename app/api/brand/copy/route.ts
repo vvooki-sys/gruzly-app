@@ -53,6 +53,15 @@ ${vc.vocabulary?.signature_phrases?.length ? `Firmowe frazy: ${vc.vocabulary.sig
 TABU — marka NIGDY tego nie robi:
 ${(vc.taboos || []).map(t => `• ${t}`).join('\n')}
 
+Zakazane wzorce (nie tylko dosłowne frazy — także ich warianty):
+• "to nie jest zwykłe [cokolwiek]"
+• "zasłużyliście / pozwólcie sobie / pora na chwilę dla siebie" — protekcjonalny ton
+• "to coś więcej niż [jedzenie/kawa/posiłek]"
+• "prawdziwa uczta dla podniebienia"
+• "wyjątkowa kompozycja smaków"
+• "odkryj / poznaj nowy wymiar [czegokolwiek]"
+Jeśli zdanie brzmi jak z folderu każdej restauracji — przepisz je.
+
 Marka BRZMI TAK (wzorzec):
 ${(vc.example_good || []).map(e => `→ "${e}"`).join('\n')}
 
@@ -62,19 +71,19 @@ ${(vc.example_bad || []).map(e => `✗ "${e}"`).join('\n')}` : '';
   // ── 3. PLATFORM RULES (tekst + format kadru dla briefa fotograficznego) ──
   const platformData: Record<string, { rule: string; photoFormat: string }> = {
     facebook: {
-      rule: `Facebook | 80-150 słów | 1-3 krótkie akapity | CTA z bezpośrednim linkiem lub zachętą do komentarza/wiadomości — NIGDY "link w bio"`,
+      rule: `Facebook | TWARDY LIMIT: 80-150 słów (policz przed zwróceniem — jeśli >150, skróć) | 1-3 krótkie akapity | CTA z bezpośrednim linkiem lub zachętą do komentarza/wiadomości — NIGDY "link w bio"`,
       photoFormat: `Kadr: 1200×630 px (landscape 1.91:1) lub 1080×1080 (kwadrat). Oba formaty działają na FB.`,
     },
     linkedin: {
-      rule: `LinkedIn | 100-200 słów | profesjonalny ale ludzki ton | storytelling mile widziany | emoji z umiarem | CTA: zachęta do komentarza, udostępnienia lub przejścia na stronę`,
+      rule: `LinkedIn | TWARDY LIMIT: 100-200 słów (policz przed zwróceniem — jeśli >200, skróć) | profesjonalny ale ludzki ton | storytelling mile widziany | emoji z umiarem | CTA: zachęta do komentarza, udostępnienia lub przejścia na stronę`,
       photoFormat: `Kadr: 1200×627 px (landscape 1.91:1) — optymalny dla LinkedIn feed.`,
     },
     instagram: {
-      rule: `Instagram | 50-120 słów + hashtagi | chwytliwy pierwszy wiersz (hook) | 5-10 trafnych hashtagów na końcu | CTA: "link w bio", "napisz DM" lub "zapisz post"`,
+      rule: `Instagram | TWARDY LIMIT: 50-120 słów + hashtagi (policz przed zwróceniem — jeśli >120, skróć) | chwytliwy pierwszy wiersz (hook) | 5-10 trafnych hashtagów na końcu | CTA: "link w bio", "napisz DM" lub "zapisz post"`,
       photoFormat: `Kadr: 1080×1350 px (portrait 4:5) — optymalny dla IG feed, zajmuje maksimum ekranu.`,
     },
     general: {
-      rule: `Social media | 80-150 słów | ton dopasowany do marki | CTA dopasowane do kontekstu`,
+      rule: `Social media | TWARDY LIMIT: 80-150 słów (policz przed zwróceniem — jeśli >150, skróć) | ton dopasowany do marki | CTA dopasowane do kontekstu`,
       photoFormat: `Kadr: 1080×1080 px (kwadrat) — uniwersalny format.`,
     },
   };
@@ -83,8 +92,16 @@ ${(vc.example_bad || []).map(e => `✗ "${e}"`).join('\n')}` : '';
   // ── 4. VISUAL BRIEF INSTRUCTIONS (z formatem kadru per platforma) ──
   const visualBriefInstructions: Record<string, string> = {
     graphic: `Brief dla grafika (3-5 zdań): nastrój, wizualna metafora, typ ilustracji (abstrakcyjna/ikonograficzna/typograficzna/kolażowa), atmosfera. BEZ logo, BEZ hex kolorów, BEZ layoutu. ${platform.photoFormat}`,
-    photo: `Brief dla fotografa (3-5 zdań): typ zdjęcia (packshot/lifestyle/flatlay/portret), kadrowanie, oświetlenie i mood, stylizacja/props/tło. BEZ logo, BEZ kolorów marki. Na zdjęciu NIE będzie tekstu. ${platform.photoFormat}`,
-    photo_text: `Brief dla fotografa pod tekst (3-5 zdań): typ zdjęcia, kadrowanie z przestrzenią na nałożenie tekstu (jasna/ciemna strefa, bokeh, negatywna przestrzeń), oświetlenie, stylizacja. Wskaż gdzie powinien być tekst. ${platform.photoFormat}`,
+    photo: `Brief dla fotografa (3-5 zdań): typ zdjęcia, kadrowanie, oświetlenie i mood, stylizacja/props/tło. BEZ logo, BEZ kolorów marki. Na zdjęciu NIE będzie tekstu. ${platform.photoFormat}
+
+WAŻNE: Każdy z 3 briefów MUSI mieć INNY typ ujęcia. Rozkład:
+- Brief 1: flatlay (widok z góry)
+- Brief 2: detail/makro (tekstura, zbliżenie na danie, ręce łamiące chleb)
+- Brief 3: lifestyle z kontekstem (wnętrze, ludzie, sytuacja przy stole)
+NIE powtarzaj tego samego schematu (drewniany stół + serwetka + światło z okna) we wszystkich trzech.`,
+    photo_text: `Brief dla fotografa pod tekst (3-5 zdań): typ zdjęcia, kadrowanie z przestrzenią na nałożenie tekstu (jasna/ciemna strefa, bokeh, negatywna przestrzeń), oświetlenie, stylizacja. Wskaż gdzie powinien być tekst. ${platform.photoFormat}
+
+WAŻNE: Każdy z 3 briefów MUSI mieć INNY typ ujęcia i inną strefę na tekst. NIE powtarzaj tego samego schematu we wszystkich trzech.`,
   };
   const visualBriefInstruction = visualBriefInstructions[visualType] || visualBriefInstructions['graphic'];
 
@@ -92,8 +109,8 @@ ${(vc.example_bad || []).map(e => `✗ "${e}"`).join('\n')}` : '';
   const hasTextOnVisual = visualType !== 'photo';
 
   const variantFields = hasTextOnVisual
-    ? `"post_copy", "visual_brief", "headline" (maks. 8 słów — tekst na ${visualType === 'photo_text' ? 'zdjęcie' : 'grafikę'}), "subtext" (maks. 15 słów — uzupełnia nagłówek), "cta" (maks. 4 słowa), "rationale" (maks. 10 słów — dlaczego zadziała)`
-    : `"post_copy", "visual_brief", "rationale" (maks. 10 słów — dlaczego zadziała)`;
+    ? `"post_copy", "visual_brief", "headline" (maks. 8 słów — tekst na ${visualType === 'photo_text' ? 'zdjęcie' : 'grafikę'}), "subtext" (maks. 15 słów — uzupełnia nagłówek), "cta" (maks. 4 słowa), "rationale"`
+    : `"post_copy", "visual_brief", "rationale"`;
 
   const jsonExample = hasTextOnVisual
     ? `{ "post_copy": "...", "visual_brief": "...", "headline": "...", "subtext": "...", "cta": "...", "rationale": "..." }`
@@ -130,28 +147,41 @@ ZADANIE
 ════════════════════════════════════════
 ${briefText || '[Brak zadania — generuj na podstawie tożsamości marki]'}
 
+OPIS PRODUKTU JEST ŹRÓDŁEM PRAWDY. Nie dodawaj cech, których nie ma w opisie (kolory, smaki, tekstury). Jeśli nie wiesz, jak coś wygląda/smakuje — opisz tylko to, co podano wyżej. Nie wymyślaj.
+
 Platforma: ${platform.rule}
 Wizual: ${{ graphic: 'Grafika z tekstem', photo: 'Czyste zdjęcie (bez tekstu)', photo_text: 'Zdjęcie z nałożonym tekstem' }[visualType] || 'Grafika'}
 ${vc ? `
 WAŻNE — elementy głosu marki obowiązkowe w KAŻDYM wariancie post_copy:
-${(vc.golden_rules || []).map((r, i) => `${i + 1}. ${r}`).join('\n')}
-Jeśli złota zasada mówi o konkretnym emoji, frazie lub zwrocie — MUSI pojawić się w treści posta, nie tylko w nagłówku.` : ''}
+${(vc.golden_rules || []).map((r, i) => {
+    // Zmiana 7: precyzuj umiejscowienie emoji-sygnatury
+    const rule = r.replace(
+      /[Zz]awsze używ[a-ząćęłńóśźż]+ przynajmniej jednego żółtego serca \(💛\)/,
+      'Dokładnie jedno 💛 w treści posta (nie w nagłówku, nie dwa razy). Umieść je w zdaniu, które mówi o emocji lub komforcie — tam ma największą siłę'
+    );
+    return `${i + 1}. ${rule}`;
+  }).join('\n')}` : ''}
 
 ════════════════════════════════════════
 OUTPUT — 3 WARIANTY (każdy INNY w hooku i podejściu)
 ════════════════════════════════════════
 Wariant 1: hook zmysłowy — otwórz obrazem, zapachem, smakiem. Krótki, punchline.
 Wariant 2: hook nostalgiczny/storytelling — odwołaj się do wspomnienia, tradycji, emocji. Dłuższy.
-Wariant 3: hook pytanie/interakcja — zacznij od pytania do odbiorcy, prowokuj komentarz.
+Wariant 3: hook pytanie/interakcja — zacznij od KONKRETNEGO pytania, na które łatwo odpowiedzieć (wybór A vs B, dokończ zdanie, podziel się jednym wspomnieniem). Unikaj pytań tak szerokich, że nie dają impulsu do odpowiedzi.
+Dobrze: "Pasta jajeczna czy śledź — co musi być na Waszym stole?"
+Źle: "Jak lubicie świętować Wielkanoc?"
 
 Każdy wariant zawiera: ${variantFields}
 
 "post_copy" — gotowy tekst posta. Napisz go tak, jakby brand manager wpisał go właśnie teraz.
 "visual_brief" — ${visualBriefInstruction}
+"rationale" — maks. 10 słów. Napisz MECHANIZM DZIAŁANIA na odbiorcę, nie opis wariantu.
+Dobrze: "Konkretne składniki budzą apetyt, CTA domyka rezerwację"
+Źle: "Zmysłowy obraz dania zamienia się w emocjonalny spokój"
 
 Zwróć WYŁĄCZNIE poprawny JSON:
 {
-  "concept": "Jedna emocja, jedno zdanie. Nie łącz dwóch uczuć.",
+  "concept": "Jedna emocja + jeden konkretny detal dania lub kontekstu, który wyróżnia TO danie od każdego innego. Musi być niereużywalny — jeśli pasuje do dowolnej restauracji, jest za ogólny. Jedno zdanie.",
   "variants": [
     ${jsonExample},
     ${jsonExample},
