@@ -5,7 +5,7 @@ import {
   Wand2, Loader2, Sun, Moon, PenLine,
   Layers, Settings,
 } from 'lucide-react';
-import type { Project, BrandAsset, Generation } from '@/lib/types';
+import type { Project, BrandAsset, Generation, CopyGeneration } from '@/lib/types';
 import Generator from '@/app/components/generator/Generator';
 import Copywriter from '@/app/components/copywriter/Copywriter';
 import AssetManager from '@/app/components/assets/AssetManager';
@@ -16,6 +16,7 @@ export default function BrandEditor() {
   const [project, setProject] = useState<Project | null>(null);
   const [assets, setAssets] = useState<BrandAsset[]>([]);
   const [generations, setGenerations] = useState<Generation[]>([]);
+  const [copyGenerations, setCopyGenerations] = useState<CopyGeneration[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState('generate');
   const [showWizard, setShowWizard] = useState(false);
@@ -30,6 +31,7 @@ export default function BrandEditor() {
         setProject(d.project);
         setAssets(d.assets || []);
         setGenerations(d.generations || []);
+        setCopyGenerations(d.copyGenerations || []);
         // Show wizard if brand base is empty (no sections, no brand_scan_data)
         const sections = d.project?.brand_sections;
         const hasSections = Array.isArray(sections) && sections.length > 0;
@@ -56,6 +58,7 @@ export default function BrandEditor() {
     setProject(d.project);
     setAssets(d.assets || []);
     setGenerations(d.generations || []);
+    setCopyGenerations(d.copyGenerations || []);
   };
 
   if (loading) return (
@@ -175,6 +178,8 @@ export default function BrandEditor() {
         {tab === 'copy' && (
           <Copywriter
             project={project}
+            copyGenerations={copyGenerations}
+            onCopyGenerationsUpdate={setCopyGenerations}
             showToast={showToast}
             onUseCopy={(data) => {
               setTab('generate');

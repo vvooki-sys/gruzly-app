@@ -11,8 +11,9 @@ export async function GET() {
 
   const assets = await getDb()`SELECT * FROM brand_assets WHERE project_id = ${projectId} ORDER BY created_at ASC`;
   const generations = await getDb()`SELECT * FROM generations WHERE project_id = ${projectId} ORDER BY created_at DESC`;
+  const copyGenerations = await getDb()`SELECT * FROM copy_generations WHERE project_id = ${projectId} ORDER BY created_at DESC`;
 
-  return NextResponse.json({ project, assets, generations });
+  return NextResponse.json({ project, assets, generations, copyGenerations });
 }
 
 export async function PATCH(req: NextRequest) {

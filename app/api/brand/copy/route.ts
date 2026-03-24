@@ -6,56 +6,15 @@ import Anthropic from '@anthropic-ai/sdk';
 
 export const maxDuration = 60;
 
-export async function POST(req: NextRequest) {
-  const projectId = BRAND_ID;
-  const formData = await req.formData();
-
-  const file = formData.get('file') as File | null;
-  const text = formData.get('text') as string | null;
-  const format = formData.get('format') as string || 'general';
-  const visualType = formData.get('visualType') as string || 'graphic'; // 'graphic' | 'photo' | 'photo_text'
-
-  if (!file && !text) {
-    return NextResponse.json({ error: 'file or text required' }, { status: 400 });
-  }
-
-  const [project] = await getDb()`SELECT * FROM projects WHERE id = ${projectId}`;
-  if (!project) return NextResponse.json({ error: 'Not found' }, { status: 404 });
-
-  // Prepare brief text
-  let briefText = text || '';
-  let filePart: { inlineData: { data: string; mimeType: string } } | null = null;
-
-  if (file) {
-    const buffer = await file.arrayBuffer();
-    const base64 = Buffer.from(buffer).toString('base64');
-    const mimeType = file.type;
-
-    if (mimeType === 'application/pdf' || mimeType.includes('pdf')) {
-      filePart = { inlineData: { data: base64, mimeType: 'application/pdf' } };
-    } else if (mimeType === 'text/plain') {
-      briefText = Buffer.from(buffer).toString('utf-8');
-    } else {
-      try {
-        const mammoth = await import('mammoth');
-        const result = await mammoth.extractRawText({ buffer: Buffer.from(buffer) });
-        briefText = result.value;
-      } catch {
-        briefText = '[DOCX content could not be parsed]';
-      }
-    }
-  }
-
-  // Brand DNA
+function buildCopyPrompt(project: Record<string, unknown>, briefText: string, format: string, visualType: string) {
   type BrandSec = { title: string; content: string; order: number };
-  const brandSections: BrandSec[] = project.brand_sections || [];
+  const brandSections: BrandSec[] = (project.brand_sections as BrandSec[]) || [];
   const brandDna = brandSections.length > 0
     ? [...brandSections].sort((a, b) => a.order - b.order).map(s => `[${s.title.toUpperCase()}]\n${s.content}`).join('\n\n')
-    : (project.brand_analysis || `Brand: ${project.name}`);
+    : ((project.brand_analysis as string) || `Brand: ${project.name}`);
 
-  const tov = project.tone_of_voice || 'Professional, creative, impactful. Stay true to the brand identity.';
+  const tov = (project.tone_of_voice as string) || 'Professional, creative, impactful. Stay true to the brand identity.';
 
-  // Voice Card injection block — overrides generic ToV when present
   type VoiceCard = {
     voice_summary?: string; archetype?: string;
     golden_rules?: string[]; taboos?: string[];
@@ -65,7 +24,7 @@ export async function POST(req: NextRequest) {
     vocabulary?: { forbidden_words?: string[]; signature_phrases?: string[] };
     example_good?: string[]; example_bad?: string[];
   };
-  const vc: VoiceCard | null = project.voice_card || null;
+  const vc: VoiceCard | null = (project.voice_card as VoiceCard) || null;
   const voiceCardBlock = vc ? `
 ════════════════════════════════════════
 KARTA GŁOSU MARKI (najwyższy priorytet — nadpisuje wszystkie ogólne instrukcje tonalne)
@@ -140,7 +99,7 @@ ${(vc.example_bad || []).map(e => `✗ "${e}"`).join('\n')}
   };
   const visualBriefInstruction = visualBriefInstructions[visualType] || visualBriefInstructions['graphic'];
 
-  const copyPrompt = `Jesteś doświadczonym copywriterem i strategiem komunikacji. Tworzysz treści w głosie marki.
+  return `Jesteś doświadczonym copywriterem i strategiem komunikacji. Tworzysz treści w głosie marki.
 
 ════════════════════════════════════════
 KROK 1 — WYKRYJ TYP KOMUNIKACJI
@@ -208,7 +167,58 @@ Zwróć WYŁĄCZNIE poprawny JSON:
 }
 
 Pisz CAŁY tekst po polsku.`;
+}
 
+export async function POST(req: NextRequest) {
+  const projectId = BRAND_ID;
+  const formData = await req.formData();
+
+  const file = formData.get('file') as File | null;
+  const text = formData.get('text') as string | null;
+  const format = formData.get('format') as string || 'general';
+  const visualType = formData.get('visualType') as string || 'graphic';
+  const mode = formData.get('mode') as string || 'generate'; // 'preview' | 'generate'
+  const customPrompt = formData.get('customPrompt') as string | null;
+
+  if (!file && !text && !customPrompt) {
+    return NextResponse.json({ error: 'file or text required' }, { status: 400 });
+  }
+
+  const [project] = await getDb()`SELECT * FROM projects WHERE id = ${projectId}`;
+  if (!project) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+
+  // Prepare brief text
+  let briefText = text || '';
+  let filePart: { inlineData: { data: string; mimeType: string } } | null = null;
+
+  if (file) {
+    const buffer = await file.arrayBuffer();
+    const base64 = Buffer.from(buffer).toString('base64');
+    const mimeType = file.type;
+
+    if (mimeType === 'application/pdf' || mimeType.includes('pdf')) {
+      filePart = { inlineData: { data: base64, mimeType: 'application/pdf' } };
+    } else if (mimeType === 'text/plain') {
+      briefText = Buffer.from(buffer).toString('utf-8');
+    } else {
+      try {
+        const mammoth = await import('mammoth');
+        const result = await mammoth.extractRawText({ buffer: Buffer.from(buffer) });
+        briefText = result.value;
+      } catch {
+        briefText = '[DOCX content could not be parsed]';
+      }
+    }
+  }
+
+  const copyPrompt = customPrompt || buildCopyPrompt(project, briefText, format, visualType);
+
+  // Preview mode — just return the prompt
+  if (mode === 'preview') {
+    return NextResponse.json({ prompt: copyPrompt });
+  }
+
+  // Generate mode — call Claude and save to DB
   const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
   try {
@@ -239,10 +249,21 @@ Pisz CAŁY tekst po polsku.`;
     const cleaned = responseText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
     const parsed = JSON.parse(cleaned);
 
+    const variants = parsed.variants || [];
+    const concept = parsed.concept || '';
+
+    // Save to DB
+    const [saved] = await getDb()`
+      INSERT INTO copy_generations (project_id, task, format, visual_type, prompt, concept, variants)
+      VALUES (${projectId}, ${text || ''}, ${format}, ${visualType}, ${copyPrompt}, ${concept}, ${JSON.stringify(variants)}::jsonb)
+      RETURNING *
+    `;
+
     return NextResponse.json({
-      results: parsed.variants || [],
-      concept: parsed.concept || '',
+      results: variants,
+      concept,
       visualType,
+      generation: saved,
     });
 
   } catch (e: unknown) {
@@ -250,4 +271,38 @@ Pisz CAŁY tekst po polsku.`;
     console.error('Copy generation error:', msg);
     return NextResponse.json({ error: 'Copy generation failed: ' + msg.substring(0, 200) }, { status: 500 });
   }
+}
+
+// Select variant or delete
+export async function PATCH(req: NextRequest) {
+  const body = await req.json();
+  const { generationId, selectedVariant } = body;
+
+  if (!generationId || selectedVariant === undefined) {
+    return NextResponse.json({ error: 'generationId and selectedVariant required' }, { status: 400 });
+  }
+
+  await getDb()`
+    UPDATE copy_generations
+    SET selected_variant = ${selectedVariant}
+    WHERE id = ${generationId} AND project_id = ${BRAND_ID}
+  `;
+
+  return NextResponse.json({ ok: true });
+}
+
+export async function DELETE(req: NextRequest) {
+  const { searchParams } = new URL(req.url);
+  const generationId = searchParams.get('generationId');
+
+  if (!generationId) {
+    return NextResponse.json({ error: 'generationId required' }, { status: 400 });
+  }
+
+  await getDb()`
+    DELETE FROM copy_generations
+    WHERE id = ${parseInt(generationId)} AND project_id = ${BRAND_ID}
+  `;
+
+  return NextResponse.json({ ok: true });
 }

@@ -91,6 +91,27 @@ export interface Generation {
   created_at: string;
 }
 
+export interface CopyGeneration {
+  id: number;
+  task: string;
+  format: string;
+  visual_type: string;
+  prompt: string;
+  concept: string;
+  variants: CopyVariant[];
+  selected_variant: number | null;
+  created_at: string;
+}
+
+export interface CopyVariant {
+  post_copy: string;
+  visual_brief: string;
+  headline: string;
+  subtext: string;
+  cta?: string;
+  rationale?: string;
+}
+
 export interface BrandAsset {
   id: number;
   type: string;

@@ -33,6 +33,22 @@ export async function GET() {
   await getDb()`ALTER TABLE brand_assets ADD COLUMN IF NOT EXISTS is_featured BOOLEAN DEFAULT FALSE`.catch(() => {});
   await getDb()`ALTER TABLE projects ADD COLUMN IF NOT EXISTS voice_card JSONB`.catch(() => {});
 
+  // Copy generations table
+  await getDb()`
+    CREATE TABLE IF NOT EXISTS copy_generations (
+      id SERIAL PRIMARY KEY,
+      project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+      task TEXT,
+      format TEXT,
+      visual_type TEXT,
+      prompt TEXT,
+      concept TEXT,
+      variants JSONB DEFAULT '[]'::jsonb,
+      selected_variant INTEGER,
+      created_at TIMESTAMP DEFAULT NOW()
+    )
+  `.catch(() => {});
+
   // Auto-seed the single brand row
   await getDb()`INSERT INTO projects (id, name) VALUES (${BRAND_ID}, 'Moja Marka') ON CONFLICT (id) DO NOTHING`.catch(() => {});
 
