@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { Loader2, Upload, Wand2, X } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { Loader2, Upload, Wand2, Camera } from 'lucide-react';
 import { mergeBrandSections } from '@/lib/brand-sections';
 import type { Project, BrandAsset, BrandSection, VoiceCard } from '@/lib/types';
 
@@ -95,29 +95,22 @@ export default function BrandSettings({
   const [voiceCardEditMode, setVoiceCardEditMode] = useState(false);
   const [voiceCardEditJson, setVoiceCardEditJson] = useState('');
 
-  // --- Project meta edit state ---
-  const [editProjectOpen, setEditProjectOpen] = useState(false);
-  const [editName, setEditName] = useState('');
-  const [editClientName, setEditClientName] = useState('');
-  const [editDescription, setEditDescription] = useState('');
-  const [editLogoPosition, setEditLogoPosition] = useState('top-left');
+  // --- Project meta state (inline editing) ---
+  const [editName, setEditName] = useState(project.name);
+  const [editClientName, setEditClientName] = useState(project.client_name || '');
+  const [editDescription, setEditDescription] = useState(project.description || '');
+  const [editLogoPosition, setEditLogoPosition] = useState(project.logo_position || 'top-left');
   const [savingProject, setSavingProject] = useState(false);
+  const [uploadingIcon, setUploadingIcon] = useState(false);
+  const iconInputRef = useRef<HTMLInputElement>(null);
 
   /* ══════════════════════ Handlers ══════════════════════ */
-
-  const openEditProject = () => {
-    setEditName(project.name);
-    setEditClientName(project.client_name || '');
-    setEditDescription(project.description || '');
-    setEditLogoPosition(project.logo_position || 'top-left');
-    setEditProjectOpen(true);
-  };
 
   const saveProjectMeta = async () => {
     if (!editName.trim()) return;
     setSavingProject(true);
     try {
-      await fetch(`/api/brand`, {
+      const res = await fetch('/api/brand', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -127,17 +120,38 @@ export default function BrandSettings({
           logoPosition: editLogoPosition,
         }),
       });
-      onProjectUpdate({
-        ...project,
-        name: editName.trim(),
-        client_name: editClientName || null,
-        description: editDescription || null,
-        logo_position: editLogoPosition,
-      });
-      setEditProjectOpen(false);
-      showToast('Projekt zapisany ✓');
+      if (res.ok) {
+        onProjectUpdate({
+          ...project,
+          name: editName.trim(),
+          client_name: editClientName || null,
+          description: editDescription || null,
+          logo_position: editLogoPosition,
+        });
+        showToast('Zapisano');
+      }
     } finally {
       setSavingProject(false);
+    }
+  };
+
+  const uploadIcon = async (file: File) => {
+    setUploadingIcon(true);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('type', 'logo');
+      fd.append('variant', 'icon');
+      fd.append('name', 'Ikonka projektu');
+      const res = await fetch('/api/brand/assets', { method: 'POST', body: fd });
+      if (res.ok) {
+        const asset = await res.json();
+        onAssetsUpdate([...assets.filter(a => !(a.type === 'logo' && a.variant === 'icon')), asset]);
+        onProjectUpdate({ ...project, logo_url: asset.url });
+        showToast('Ikonka zapisana');
+      }
+    } finally {
+      setUploadingIcon(false);
     }
   };
 
@@ -271,13 +285,101 @@ export default function BrandSettings({
   return (
     <div className="space-y-5">
 
-      {/* ── Edit project button ── */}
-      <button
-        onClick={openEditProject}
-        className="w-full h-10 rounded-full border border-teal-deep/15 dark:border-holo-mint/15 text-sm font-semibold flex items-center justify-center gap-2 opacity-60 hover:opacity-100 hover:border-holo-mint/50 transition-all"
-      >
-        Ustawienia projektu
-      </button>
+      {/* ── Brand Identity ── */}
+      <div className="rounded-2xl border border-teal-deep/10 dark:border-holo-mint/10 bg-white dark:bg-teal-mid p-5 space-y-4">
+        <p className="text-xs font-bold opacity-30 uppercase tracking-wide">Identyfikacja marki</p>
+
+        {/* Icon + Name row */}
+        <div className="flex items-start gap-4">
+          {/* Icon upload */}
+          <div className="shrink-0">
+            <input
+              ref={iconInputRef}
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/svg+xml"
+              className="hidden"
+              onChange={e => { const f = e.target.files?.[0]; if (f) uploadIcon(f); e.target.value = ''; }}
+            />
+            <button
+              onClick={() => iconInputRef.current?.click()}
+              disabled={uploadingIcon}
+              className="relative w-16 h-16 rounded-2xl border-2 border-dashed border-teal-deep/20 dark:border-holo-mint/20 hover:border-holo-mint/60 transition-all flex items-center justify-center overflow-hidden group"
+            >
+              {uploadingIcon ? (
+                <Loader2 className="h-5 w-5 animate-spin opacity-40" />
+              ) : project.logo_url ? (
+                <>
+                  <img src={project.logo_url} alt={project.name} className="w-12 h-12 object-contain" />
+                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl">
+                    <Camera className="h-4 w-4 text-white" />
+                  </div>
+                </>
+              ) : (
+                <div className="flex flex-col items-center gap-0.5 opacity-30 group-hover:opacity-60 transition-opacity">
+                  <Camera className="h-5 w-5" />
+                  <span className="text-[9px] font-bold">Ikonka</span>
+                </div>
+              )}
+            </button>
+          </div>
+
+          {/* Name + Client */}
+          <div className="flex-1 space-y-2">
+            <div>
+              <label className="text-xs font-semibold opacity-50 uppercase tracking-wide block mb-1">Nazwa marki *</label>
+              <input
+                type="text"
+                className="w-full bg-offwhite dark:bg-teal-deep rounded-xl px-3 py-2 text-sm font-bold border border-teal-deep/15 dark:border-holo-mint/10 focus:border-holo-mint outline-none transition-colors"
+                value={editName}
+                onChange={e => setEditName(e.target.value)}
+                onBlur={saveProjectMeta}
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold opacity-50 uppercase tracking-wide block mb-1">Klient</label>
+              <input
+                type="text"
+                className="w-full bg-offwhite dark:bg-teal-deep rounded-xl px-3 py-2 text-sm border border-teal-deep/15 dark:border-holo-mint/10 focus:border-holo-mint outline-none transition-colors"
+                placeholder="Opcjonalnie"
+                value={editClientName}
+                onChange={e => setEditClientName(e.target.value)}
+                onBlur={saveProjectMeta}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Description */}
+        <div>
+          <label className="text-xs font-semibold opacity-50 uppercase tracking-wide block mb-1">Opis projektu</label>
+          <textarea
+            className="w-full bg-offwhite dark:bg-teal-deep rounded-xl px-3 py-2 text-sm border border-teal-deep/15 dark:border-holo-mint/10 focus:border-holo-mint outline-none transition-colors resize-none"
+            rows={2}
+            placeholder="Krótki opis, cel projektu, notatki..."
+            value={editDescription}
+            onChange={e => setEditDescription(e.target.value)}
+            onBlur={saveProjectMeta}
+          />
+        </div>
+
+        {/* Logo position */}
+        <div>
+          <label className="text-xs font-semibold opacity-50 uppercase tracking-wide block mb-1">Pozycja logo na grafikach</label>
+          <select
+            className="w-full bg-offwhite dark:bg-teal-deep rounded-xl px-3 py-2 text-sm border border-teal-deep/15 dark:border-holo-mint/10 focus:border-holo-mint outline-none transition-colors"
+            value={editLogoPosition}
+            onChange={e => { setEditLogoPosition(e.target.value); setTimeout(saveProjectMeta, 0); }}
+          >
+            <option value="top-left">↖ Lewy górny</option>
+            <option value="top-right">↗ Prawy górny</option>
+            <option value="bottom-left">↙ Lewy dolny</option>
+            <option value="bottom-right">↘ Prawy dolny</option>
+            <option value="none">✕ Bez logo</option>
+          </select>
+        </div>
+
+        {savingProject && <p className="text-xs text-holo-mint font-bold">Zapisuję...</p>}
+      </div>
 
       {/* ── Brand Sections ── */}
       {brandSections.length > 0 && (() => {
@@ -663,88 +765,6 @@ export default function BrandSettings({
         )}
       </div>
 
-      {/* ── Edit Project Modal ── */}
-      {editProjectOpen && (
-        <div className="fixed inset-0 bg-teal-deep/60 dark:bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-teal-mid border border-teal-deep/15 dark:border-holo-mint/15 rounded-2xl w-full max-w-md shadow-2xl">
-
-            {/* Header */}
-            <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-teal-deep/10 dark:border-holo-mint/10">
-              <h2 className="text-base font-black">Ustawienia projektu</h2>
-              <button onClick={() => setEditProjectOpen(false)} className="w-8 h-8 rounded-full flex items-center justify-center opacity-40 hover:opacity-100 hover:bg-teal-deep/10 transition-all">
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
-            {/* Fields */}
-            <div className="px-6 py-4 space-y-4">
-              <div>
-                <label className="text-xs font-semibold opacity-50 uppercase tracking-wide block mb-1.5">Nazwa projektu *</label>
-                <input
-                  type="text"
-                  className="w-full bg-offwhite dark:bg-teal-deep rounded-xl px-3 py-2.5 text-sm border border-teal-deep/15 dark:border-holo-mint/10 focus:border-holo-mint outline-none transition-colors"
-                  value={editName}
-                  onChange={e => setEditName(e.target.value)}
-                  autoFocus
-                />
-              </div>
-              <div>
-                <label className="text-xs font-semibold opacity-50 uppercase tracking-wide block mb-1.5">Klient</label>
-                <input
-                  type="text"
-                  className="w-full bg-offwhite dark:bg-teal-deep rounded-xl px-3 py-2.5 text-sm border border-teal-deep/15 dark:border-holo-mint/10 focus:border-holo-mint outline-none transition-colors"
-                  placeholder="Opcjonalnie"
-                  value={editClientName}
-                  onChange={e => setEditClientName(e.target.value)}
-                />
-              </div>
-              <div>
-                <label className="text-xs font-semibold opacity-50 uppercase tracking-wide block mb-1.5">Opis projektu</label>
-                <textarea
-                  className="w-full bg-offwhite dark:bg-teal-deep rounded-xl px-3 py-2.5 text-sm border border-teal-deep/15 dark:border-holo-mint/10 focus:border-holo-mint outline-none transition-colors resize-none"
-                  rows={3}
-                  placeholder="Krótki opis, cel projektu, notatki..."
-                  value={editDescription}
-                  onChange={e => setEditDescription(e.target.value)}
-                />
-              </div>
-              <div>
-                <label className="text-xs font-semibold opacity-50 uppercase tracking-wide block mb-1.5">Pozycja logo</label>
-                <select
-                  className="w-full bg-offwhite dark:bg-teal-deep rounded-xl px-3 py-2.5 text-sm border border-teal-deep/15 dark:border-holo-mint/10 focus:border-holo-mint outline-none transition-colors"
-                  value={editLogoPosition}
-                  onChange={e => setEditLogoPosition(e.target.value)}
-                >
-                  <option value="top-left">↖ Lewy górny</option>
-                  <option value="top-right">↗ Prawy górny</option>
-                  <option value="bottom-left">↙ Lewy dolny</option>
-                  <option value="bottom-right">↘ Prawy dolny</option>
-                  <option value="none">✕ Bez logo</option>
-                </select>
-              </div>
-            </div>
-
-            {/* Actions */}
-            <div className="px-6 pb-5">
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setEditProjectOpen(false)}
-                  className="flex-1 h-10 rounded-full border border-teal-deep/15 dark:border-holo-mint/15 text-sm font-semibold opacity-50 hover:opacity-100 transition-opacity"
-                >
-                  Anuluj
-                </button>
-                <button
-                  onClick={saveProjectMeta}
-                  disabled={savingProject || !editName.trim()}
-                  className="flex-1 h-10 rounded-full holo-gradient text-teal-deep text-sm font-bold disabled:opacity-40 hover:opacity-90 transition-opacity"
-                >
-                  {savingProject ? 'Zapisuję...' : 'Zapisz'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
