@@ -3,13 +3,12 @@
 import { useState, useEffect } from 'react';
 import {
   Wand2, Loader2, Sun, Moon, PenLine,
-  Layers, Settings, Target,
+  Layers, Settings,
 } from 'lucide-react';
 import type { Project, BrandAsset, Generation } from '@/lib/types';
 import Generator from '@/app/components/generator/Generator';
 import Copywriter from '@/app/components/copywriter/Copywriter';
 import AssetManager from '@/app/components/assets/AssetManager';
-import BrandScanner from '@/app/components/brand-scanner/BrandScanner';
 import BrandSettings from '@/app/components/settings/BrandSettings';
 import SetupWizard from '@/app/components/setup-wizard/SetupWizard';
 
@@ -134,13 +133,6 @@ export default function BrandEditor() {
             <span className="hidden sm:inline">Assety</span>
           </button>
           <button
-            onClick={() => setTab('brand-scan')}
-            className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 ${tab === 'brand-scan' ? 'holo-gradient text-teal-deep shadow-sm' : 'opacity-50 hover:opacity-80'}`}
-          >
-            <Target className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Brand Scan</span>
-          </button>
-          <button
             onClick={() => setTab('settings')}
             className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 ${tab === 'settings' ? 'holo-gradient text-teal-deep shadow-sm' : 'opacity-50 hover:opacity-80'}`}
           >
@@ -193,16 +185,6 @@ export default function BrandEditor() {
           <AssetManager
             project={project}
             assets={assets}
-            onAssetsUpdate={setAssets}
-            showToast={showToast}
-            refreshData={refreshData}
-          />
-        )}
-        {tab === 'brand-scan' && (
-          <BrandScanner
-            project={project}
-            assets={assets}
-            onProjectUpdate={p => setProject(p)}
             onAssetsUpdate={setAssets}
             showToast={showToast}
             refreshData={refreshData}

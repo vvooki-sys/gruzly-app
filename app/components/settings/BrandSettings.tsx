@@ -60,13 +60,8 @@ export default function BrandSettings({
 
   // --- Brand sections state ---
   const [brandSections, setBrandSections] = useState<BrandSection[]>(() => {
-    // Attempt to parse from project.brand_analysis if present
-    try {
-      if (project.brand_analysis) {
-        const parsed = JSON.parse(project.brand_analysis);
-        if (Array.isArray(parsed)) return parsed;
-      }
-    } catch { /* ignore */ }
+    const sections = (project as unknown as Record<string, unknown>).brand_sections;
+    if (Array.isArray(sections)) return sections as BrandSection[];
     return [];
   });
   const [editingSectionId, setEditingSectionId] = useState<string | null>(null);
@@ -532,12 +527,6 @@ export default function BrandSettings({
                 ))}
               </div>
             )}
-
-            {/* Regenerate */}
-            <button onClick={() => setVoiceCard(null)}
-              className="text-xs opacity-40 hover:opacity-80 transition-opacity underline">
-              Wgraj nowe próbki i wygeneruj ponownie
-            </button>
           </div>
         )}
 
