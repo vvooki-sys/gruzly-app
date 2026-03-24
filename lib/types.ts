@@ -60,6 +60,7 @@ export interface Project {
   scanned_url?: string | null;
   logo_position?: string | null;
   voice_card?: VoiceCard | null;
+  industry_rules?: IndustryRules | null;
   id: number;
   name: string;
   client_name: string | null;
@@ -79,6 +80,14 @@ export interface PrecisionTemplate {
   height?: number;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   layout: Record<string, any>;
+}
+
+export interface IndustryRules {
+  banned_cliches: string[];
+  banned_marketing_words: string[];
+  photo_brief_types: string[];
+  language_notes: string;
+  generated_at: string;
 }
 
 export interface Generation {

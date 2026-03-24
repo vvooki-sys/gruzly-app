@@ -8,10 +8,12 @@ export const maxDuration = 60;
 
 function buildCopyPrompt(project: Record<string, unknown>, briefText: string, format: string, visualType: string) {
 
-  // ── 1. BRAND IDENTITY (sekcje z bazy marki, bez tonu — ton idzie z Voice Card) ──
+  // ══════════════════════════════════════════════════════════════
+  // WARSTWA 2 — MARKA (z Settings, brand_sections, Voice Card)
+  // ══════════════════════════════════════════════════════════════
+
   type BrandSec = { title: string; content: string; order: number; id?: string };
   const brandSections: BrandSec[] = (project.brand_sections as BrandSec[]) || [];
-  // Filtruj sekcje tonalne — te idą wyłącznie z Voice Card
   const tonalIds = ['ton_glosu'];
   const identitySections = brandSections
     .filter(s => !tonalIds.includes(s.id || ''))
@@ -21,7 +23,6 @@ function buildCopyPrompt(project: Record<string, unknown>, briefText: string, fo
     ? identitySections.map(s => `[${s.title.toUpperCase()}]\n${s.content}`).join('\n\n')
     : ((project.brand_analysis as string) || `Marka: ${project.name}`);
 
-  // ── 2. VOICE CARD (jedyne źródło tonu — bez duplikacji) ──
   type VoiceCard = {
     voice_summary?: string; archetype?: string;
     golden_rules?: string[]; taboos?: string[];
@@ -53,59 +54,93 @@ ${vc.vocabulary?.signature_phrases?.length ? `Firmowe frazy: ${vc.vocabulary.sig
 TABU — marka NIGDY tego nie robi:
 ${(vc.taboos || []).map(t => `• ${t}`).join('\n')}
 
-Zakazane wzorce (nie tylko dosłowne frazy — także ich warianty):
-• "to nie jest zwykłe [cokolwiek]"
-• "zasłużyliście / pozwólcie sobie / pora na chwilę dla siebie" — protekcjonalny ton
-• "to coś więcej niż [jedzenie/kawa/posiłek]"
-• "prawdziwa uczta dla podniebienia"
-• "wyjątkowa kompozycja smaków"
-• "odkryj / poznaj nowy wymiar [czegokolwiek]"
-Jeśli zdanie brzmi jak z folderu każdej restauracji — przepisz je.
-
 Marka BRZMI TAK (wzorzec):
 ${(vc.example_good || []).map(e => `→ "${e}"`).join('\n')}
 
 Marka NIGDY TAK NIE BRZMI (anty-wzorzec):
 ${(vc.example_bad || []).map(e => `✗ "${e}"`).join('\n')}` : '';
 
-  // ── 3. PLATFORM RULES (tekst + format kadru dla briefa fotograficznego) ──
+  // ══════════════════════════════════════════════════════════════
+  // WARSTWA 3 — BRANŻOWA (z industry_rules, generowana jednorazowo)
+  // ══════════════════════════════════════════════════════════════
+
+  type IR = { banned_cliches?: string[]; banned_marketing_words?: string[]; photo_brief_types?: string[]; language_notes?: string };
+  const ir: IR | null = (project.industry_rules as IR) || null;
+
+  // Zakazane wzorce: uniwersalne + branżowe
+  const universalBanned = [
+    '"to nie jest zwykłe [cokolwiek]"',
+    '"zasłużyliście / pozwólcie sobie / pora na chwilę dla siebie" — protekcjonalny ton',
+    '"odkryj / poznaj nowy wymiar [czegokolwiek]"',
+  ];
+  const industryBanned = ir?.banned_cliches?.map(c => `"${c}"`) || [];
+  const allBannedPatterns = [...universalBanned, ...industryBanned];
+  const clicheSentinel = ir ? 'Jeśli zdanie brzmi jak z folderu każdej firmy w tej branży — przepisz je.' : 'Jeśli zdanie brzmi jak z broszury reklamowej — przepisz je.';
+
+  const bannedMarketingWords = ir?.banned_marketing_words?.length
+    ? `- Zakazane w tej branży: ${ir.banned_marketing_words.join(', ')}`
+    : '';
+
+  const industryRulesBlock = ir ? `
+════════════════════════════════════════
+REGUŁY BRANŻOWE
+════════════════════════════════════════
+Zakazane wzorce (nie tylko dosłowne frazy — także ich warianty):
+${allBannedPatterns.map(p => `• ${p}`).join('\n')}
+${clicheSentinel}
+
+${bannedMarketingWords}
+
+Specyfika języka: ${ir.language_notes || ''}` : `
+Zakazane wzorce (uniwersalne):
+${universalBanned.map(p => `• ${p}`).join('\n')}
+${clicheSentinel}`;
+
+  // Typy ujęć foto: z industry_rules lub generyczne
+  const photoTypes = ir?.photo_brief_types?.length
+    ? ir.photo_brief_types.join(', ')
+    : 'hero shot produktu/usługi, detail/makro, lifestyle z kontekstem';
+
+  // ══════════════════════════════════════════════════════════════
+  // WARSTWA 1 — UNIWERSALNA (stała struktura)
+  // ══════════════════════════════════════════════════════════════
+
   const platformData: Record<string, { rule: string; photoFormat: string }> = {
     facebook: {
       rule: `Facebook | TWARDY LIMIT: 80-150 słów (policz przed zwróceniem — jeśli >150 skróć, jeśli <80 rozbuduj) | 1-3 krótkie akapity | CTA z bezpośrednim linkiem lub zachętą do komentarza/wiadomości — NIGDY "link w bio"`,
-      photoFormat: `Kadr: 1200×630 px (landscape 1.91:1) lub 1080×1080 (kwadrat). Oba formaty działają na FB.`,
+      photoFormat: `Kadr: 1200×630 px (landscape 1.91:1) lub 1080×1080 (kwadrat).`,
     },
     linkedin: {
       rule: `LinkedIn | TWARDY LIMIT: 100-200 słów (policz przed zwróceniem — jeśli >200 skróć, jeśli <100 rozbuduj) | profesjonalny ale ludzki ton | storytelling mile widziany | emoji z umiarem | CTA: zachęta do komentarza, udostępnienia lub przejścia na stronę`,
-      photoFormat: `Kadr: 1200×627 px (landscape 1.91:1) — optymalny dla LinkedIn feed.`,
+      photoFormat: `Kadr: 1200×627 px (landscape 1.91:1).`,
     },
     instagram: {
       rule: `Instagram | TWARDY LIMIT: 50-120 słów + hashtagi (policz przed zwróceniem — jeśli >120 skróć, jeśli <50 rozbuduj) | chwytliwy pierwszy wiersz (hook) | 5-10 trafnych hashtagów na końcu | CTA: "link w bio", "napisz DM" lub "zapisz post"`,
-      photoFormat: `Kadr: 1080×1350 px (portrait 4:5) — optymalny dla IG feed, zajmuje maksimum ekranu.`,
+      photoFormat: `Kadr: 1080×1350 px (portrait 4:5).`,
     },
     general: {
       rule: `Social media | TWARDY LIMIT: 80-150 słów (policz przed zwróceniem — jeśli >150 skróć, jeśli <80 rozbuduj) | ton dopasowany do marki | CTA dopasowane do kontekstu`,
-      photoFormat: `Kadr: 1080×1080 px (kwadrat) — uniwersalny format.`,
+      photoFormat: `Kadr: 1080×1080 px (kwadrat).`,
     },
   };
   const platform = platformData[format] || platformData['general'];
 
-  // ── 4. VISUAL BRIEF INSTRUCTIONS (z formatem kadru per platforma) ──
+  // Visual brief — z dynamicznymi typami ujęć
+  const photoDiversityInstruction = `
+WAŻNE: Każdy z 3 briefów MUSI mieć INNY typ ujęcia.
+Dostępne typy ujęć: ${photoTypes}.
+Wybierz 3 RÓŻNE z powyższej listy. NIE powtarzaj tego samego schematu we wszystkich trzech.`;
+
   const visualBriefInstructions: Record<string, string> = {
     graphic: `Brief dla grafika (3-5 zdań): nastrój, wizualna metafora, typ ilustracji (abstrakcyjna/ikonograficzna/typograficzna/kolażowa), atmosfera. BEZ logo, BEZ hex kolorów, BEZ layoutu. ${platform.photoFormat}`,
     photo: `Brief dla fotografa (3-5 zdań): typ zdjęcia, kadrowanie, oświetlenie i mood, stylizacja/props/tło. BEZ logo, BEZ kolorów marki. Na zdjęciu NIE będzie tekstu. ${platform.photoFormat}
-
-WAŻNE: Każdy z 3 briefów MUSI mieć INNY typ ujęcia. Rozkład:
-- Brief 1: flatlay (widok z góry)
-- Brief 2: detail/makro (tekstura, zbliżenie na danie, ręce łamiące chleb)
-- Brief 3: lifestyle z kontekstem (wnętrze, ludzie, sytuacja przy stole)
-NIE powtarzaj tego samego schematu (drewniany stół + serwetka + światło z okna) we wszystkich trzech.`,
+${photoDiversityInstruction}`,
     photo_text: `Brief dla fotografa pod tekst (3-5 zdań): typ zdjęcia, kadrowanie z przestrzenią na nałożenie tekstu (jasna/ciemna strefa, bokeh, negatywna przestrzeń), oświetlenie, stylizacja. Wskaż gdzie powinien być tekst. ${platform.photoFormat}
-
-WAŻNE: Każdy z 3 briefów MUSI mieć INNY typ ujęcia i inną strefę na tekst. NIE powtarzaj tego samego schematu we wszystkich trzech.`,
+${photoDiversityInstruction}`,
   };
   const visualBriefInstruction = visualBriefInstructions[visualType] || visualBriefInstructions['graphic'];
 
-  // ── 5. OUTPUT SCHEMA (warunkowy — photo nie ma headline/subtext/cta) ──
+  // Output schema
   const hasTextOnVisual = visualType !== 'photo';
 
   const variantFields = hasTextOnVisual
@@ -116,7 +151,10 @@ WAŻNE: Każdy z 3 briefów MUSI mieć INNY typ ujęcia i inną strefę na tekst
     ? `{ "post_copy": "...", "visual_brief": "...", "headline": "...", "subtext": "...", "cta": "...", "rationale": "..." }`
     : `{ "post_copy": "...", "visual_brief": "...", "rationale": "..." }`;
 
-  // ── BUILD PROMPT ──
+  // ══════════════════════════════════════════════════════════════
+  // ASSEMBLER — łączenie 3 warstw w finalny prompt
+  // ══════════════════════════════════════════════════════════════
+
   return `Jesteś copywriterem marki ${project.name}. Piszesz treści gotowe do publikacji — w głosie marki, bez sztuczności.
 
 ════════════════════════════════════════
@@ -124,6 +162,7 @@ TOŻSAMOŚĆ MARKI
 ════════════════════════════════════════
 ${brandIdentity}
 ${voiceBlock}
+${industryRulesBlock}
 
 ════════════════════════════════════════
 ZASADY PISANIA
@@ -132,9 +171,10 @@ Wykryj typ zadania i dopasuj podejście:
 
 MARKETING (promocja, oferta, produkt, kampania):
 - Zdanie 1: nazwij problem lub pragnienie odbiorcy
-- Zdanie 2-3: pokaż rozwiązanie — zmysłowo, konkretnie
+- Zdanie 2-3: pokaż rozwiązanie konkretnie, w języku branży
 - Zdanie końcowe: CTA
 - Zakazane: "kompleksowy", "innowacyjny", "kluczowy", "synergia", "w dzisiejszym świecie"
+${bannedMarketingWords}
 
 LUDZKI GŁOS (życzenia, podziękowania, kultura firmy, celebracja):
 - Pisz jak człowiek do człowieka — bez frameworków
@@ -147,14 +187,13 @@ ZADANIE
 ════════════════════════════════════════
 ${briefText || '[Brak zadania — generuj na podstawie tożsamości marki]'}
 
-OPIS PRODUKTU JEST ŹRÓDŁEM PRAWDY — zarówno w post_copy, jak i w visual_brief. Nie dodawaj cech, których nie ma w opisie (kolory, smaki, tekstury, temperatura podania). Nie wymyślaj.
+OPIS PRODUKTU/USŁUGI JEST ŹRÓDŁEM PRAWDY — zarówno w post_copy, jak i w visual_brief. Nie dodawaj cech, których nie ma w opisie (kolory, smaki, tekstury, temperatura podania). Nie wymyślaj.
 
 Platforma: ${platform.rule}
 Wizual: ${{ graphic: 'Grafika z tekstem', photo: 'Czyste zdjęcie (bez tekstu)', photo_text: 'Zdjęcie z nałożonym tekstem' }[visualType] || 'Grafika'}
 ${vc ? `
 WAŻNE — elementy głosu marki obowiązkowe w KAŻDYM wariancie post_copy:
 ${(vc.golden_rules || []).map((r, i) => {
-    // Zmiana 7: precyzuj umiejscowienie emoji-sygnatury
     const rule = r.replace(
       /[Zz]awsze używ[a-ząćęłńóśźż]+ przynajmniej jednego żółtego serca \(💛\)/,
       'Dokładnie jedno 💛 w treści posta (nie w nagłówku, nie dwa razy). Umieść je w zdaniu, które mówi o emocji lub komforcie — tam ma największą siłę'
@@ -165,23 +204,21 @@ ${(vc.golden_rules || []).map((r, i) => {
 ════════════════════════════════════════
 OUTPUT — 3 WARIANTY (każdy INNY w hooku i podejściu)
 ════════════════════════════════════════
-Wariant 1: hook zmysłowy — otwórz obrazem, zapachem, smakiem. Krótki, punchline.
+Wariant 1: hook zmysłowy — otwórz obrazem, doznaniem zmysłowym pasującym do branży. Krótki, punchline.
 Wariant 2: hook nostalgiczny/storytelling — odwołaj się do wspomnienia, tradycji, emocji. Dłuższy.
 Wariant 3: hook pytanie/interakcja — zacznij od KONKRETNEGO pytania, na które łatwo odpowiedzieć (wybór A vs B, dokończ zdanie, podziel się jednym wspomnieniem). Unikaj pytań tak szerokich, że nie dają impulsu do odpowiedzi.
-Dobrze: "Pasta jajeczna czy śledź — co musi być na Waszym stole?"
-Źle: "Jak lubicie świętować Wielkanoc?"
 
 Każdy wariant zawiera: ${variantFields}
 
 "post_copy" — gotowy tekst posta. Napisz go tak, jakby brand manager wpisał go właśnie teraz.
 "visual_brief" — ${visualBriefInstruction}
 "rationale" — maks. 10 słów. Napisz MECHANIZM DZIAŁANIA na odbiorcę, nie opis wariantu.
-Dobrze: "Konkretne składniki budzą apetyt, CTA domyka rezerwację"
-Źle: "Zmysłowy obraz dania zamienia się w emocjonalny spokój"
+Dobrze: "Konkretny benefit budzi zaufanie, CTA domyka konwersję"
+Źle: "Zmysłowy obraz zamienia się w emocjonalny spokój"
 
 Zwróć WYŁĄCZNIE poprawny JSON:
 {
-  "concept": "Maks. 15 słów. Jedna emocja + jeden konkretny detal TEGO dania. Jeśli pasuje do dowolnej restauracji, jest za ogólny.",
+  "concept": "Maks. 15 słów. Jedna emocja + jeden konkretny detal TEGO produktu/usługi. Jeśli pasuje do dowolnej firmy z tej branży, jest za ogólny.",
   "variants": [
     ${jsonExample},
     ${jsonExample},

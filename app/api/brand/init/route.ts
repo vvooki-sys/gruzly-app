@@ -32,6 +32,7 @@ export async function GET() {
   await getDb()`ALTER TABLE projects ADD COLUMN IF NOT EXISTS logo_position TEXT DEFAULT 'top-left'`.catch(() => {});
   await getDb()`ALTER TABLE brand_assets ADD COLUMN IF NOT EXISTS is_featured BOOLEAN DEFAULT FALSE`.catch(() => {});
   await getDb()`ALTER TABLE projects ADD COLUMN IF NOT EXISTS voice_card JSONB`.catch(() => {});
+  await getDb()`ALTER TABLE projects ADD COLUMN IF NOT EXISTS industry_rules JSONB`.catch(() => {});
 
   // Copy generations table
   await getDb()`

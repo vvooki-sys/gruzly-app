@@ -3,7 +3,7 @@
 import { useState, useRef } from 'react';
 import { Loader2, Wand2, Camera } from 'lucide-react';
 import { mergeBrandSections } from '@/lib/brand-sections';
-import type { Project, BrandAsset, BrandSection, VoiceCard } from '@/lib/types';
+import type { Project, BrandAsset, BrandSection, VoiceCard, IndustryRules } from '@/lib/types';
 
 /* ─── Source badges ─── */
 
@@ -73,6 +73,12 @@ export default function BrandSettings({
   const [analyzingVoice, setAnalyzingVoice] = useState(false);
   const [voiceCardEditMode, setVoiceCardEditMode] = useState(false);
   const [voiceCardEditJson, setVoiceCardEditJson] = useState('');
+
+  // --- Industry rules state ---
+  const [industryRules, setIndustryRules] = useState<IndustryRules | null>(project.industry_rules || null);
+  const [generatingRules, setGeneratingRules] = useState(false);
+  const [rulesEditMode, setRulesEditMode] = useState(false);
+  const [rulesEditJson, setRulesEditJson] = useState('');
 
   // --- Project meta state (inline editing) ---
   const [editName, setEditName] = useState(project.name);
@@ -218,6 +224,49 @@ export default function BrandSettings({
     setVoiceCard(null);
     setVoiceSamples('');
     showToast('Voice Card usunięta');
+  };
+
+  /* ── Industry rules handlers ── */
+
+  const generateIndustryRules = async () => {
+    setGeneratingRules(true);
+    try {
+      const res = await fetch('/api/brand/industry-rules', { method: 'POST' });
+      const data = await res.json();
+      if (data.industryRules) {
+        setIndustryRules(data.industryRules);
+        showToast('Reguły branżowe wygenerowane ✓');
+      } else {
+        showToast('Błąd: ' + (data.error || 'Spróbuj ponownie'));
+      }
+    } catch {
+      showToast('Błąd połączenia');
+    } finally {
+      setGeneratingRules(false);
+    }
+  };
+
+  const saveIndustryRulesEdit = async () => {
+    try {
+      const parsed = JSON.parse(rulesEditJson);
+      await fetch('/api/brand/industry-rules', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ industryRules: parsed }),
+      });
+      setIndustryRules(parsed);
+      setRulesEditMode(false);
+      showToast('Reguły branżowe zapisane ✓');
+    } catch {
+      showToast('Nieprawidłowy JSON');
+    }
+  };
+
+  const deleteIndustryRules = async () => {
+    if (!confirm('Usunąć reguły branżowe?')) return;
+    await fetch('/api/brand/industry-rules', { method: 'DELETE' });
+    setIndustryRules(null);
+    showToast('Reguły branżowe usunięte');
   };
 
   /* ══════════════════════ JSX ══════════════════════ */
@@ -541,6 +590,133 @@ export default function BrandSettings({
             </button>
             {voiceSamples.split('\n---\n').filter(s => s.trim()).length > 0 && (
               <p className="text-xs opacity-40 text-center">{voiceSamples.split('\n---\n').filter(s => s.trim()).length} próbek · min. 3 wymagane</p>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* ── Industry Rules ── */}
+      <div className="rounded-2xl border border-teal-deep/15 dark:border-holo-mint/15 bg-white dark:bg-teal-mid p-4 space-y-4">
+        <div className="flex items-center justify-between gap-2">
+          <div>
+            <p className="text-sm font-bold flex items-center gap-2">
+              Reguły branżowe
+              {industryRules && <span className="text-xs font-normal px-2 py-0.5 rounded-full bg-holo-mint/20 text-holo-mint">Aktywne</span>}
+            </p>
+            <p className="text-xs opacity-40 mt-0.5">Klisze branżowe, typy ujęć foto, specyfika języka — generowane per branża</p>
+          </div>
+          {industryRules && (
+            <div className="flex gap-1.5 shrink-0">
+              <button onClick={() => { setRulesEditMode(v => !v); setRulesEditJson(JSON.stringify(industryRules, null, 2)); }}
+                className="h-7 px-2.5 rounded-full border border-teal-deep/15 dark:border-holo-mint/15 text-xs font-semibold opacity-60 hover:opacity-100 transition-opacity">
+                {rulesEditMode ? 'Anuluj' : 'Edytuj JSON'}
+              </button>
+              <button onClick={generateIndustryRules} disabled={generatingRules}
+                className="h-7 px-2.5 rounded-full border border-teal-deep/15 dark:border-holo-mint/15 text-xs font-semibold opacity-60 hover:opacity-100 transition-opacity">
+                {generatingRules ? 'Generuję...' : 'Regeneruj'}
+              </button>
+              <button onClick={deleteIndustryRules}
+                className="h-7 px-2.5 rounded-full border border-red-500/20 text-red-400 text-xs font-semibold opacity-60 hover:opacity-100 transition-opacity">
+                Usuń
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Edit JSON mode */}
+        {rulesEditMode && (
+          <div className="space-y-2">
+            <textarea
+              className="w-full bg-offwhite dark:bg-teal-deep border border-holo-mint/20 rounded-xl px-3 py-2 text-xs font-mono resize-none outline-none focus:border-holo-mint transition-colors"
+              rows={16}
+              value={rulesEditJson}
+              onChange={e => setRulesEditJson(e.target.value)}
+            />
+            <button onClick={saveIndustryRulesEdit}
+              className="h-9 px-4 rounded-full holo-gradient text-teal-deep text-xs font-bold hover:opacity-90 transition-opacity">
+              Zapisz zmiany
+            </button>
+          </div>
+        )}
+
+        {/* Display */}
+        {industryRules && !rulesEditMode && (
+          <div className="space-y-4">
+            {/* Banned cliches */}
+            {industryRules.banned_cliches?.length > 0 && (
+              <div className="space-y-1.5">
+                <p className="text-xs font-bold opacity-30 uppercase tracking-wide">Zakazane klisze branżowe</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {industryRules.banned_cliches.map((c, i) => (
+                    <span key={i} className="text-xs px-2 py-0.5 rounded-full bg-red-500/10 text-red-400 border border-red-500/20">{c}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Banned marketing words */}
+            {industryRules.banned_marketing_words?.length > 0 && (
+              <div className="space-y-1.5">
+                <p className="text-xs font-bold opacity-30 uppercase tracking-wide">Zakazane słowa marketingowe</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {industryRules.banned_marketing_words.map((w, i) => (
+                    <span key={i} className="text-xs px-1.5 py-0.5 rounded bg-red-500/10 text-red-400 line-through">{w}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Photo brief types */}
+            {industryRules.photo_brief_types?.length > 0 && (
+              <div className="space-y-1.5">
+                <p className="text-xs font-bold opacity-30 uppercase tracking-wide">Typy ujęć fotograficznych</p>
+                <div className="space-y-1">
+                  {industryRules.photo_brief_types.map((t, i) => (
+                    <div key={i} className="flex gap-2 text-xs">
+                      <span className="text-holo-mint font-bold shrink-0">📷</span>
+                      <span className="opacity-70">{t}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Language notes */}
+            {industryRules.language_notes && (
+              <div className="space-y-1.5">
+                <p className="text-xs font-bold opacity-30 uppercase tracking-wide">Specyfika języka</p>
+                <p className="text-xs opacity-60 leading-relaxed">{industryRules.language_notes}</p>
+              </div>
+            )}
+
+            {/* Generated date */}
+            {industryRules.generated_at && (
+              <p className="text-xs opacity-20">Wygenerowano: {new Date(industryRules.generated_at).toLocaleDateString('pl-PL')}</p>
+            )}
+          </div>
+        )}
+
+        {/* No rules yet */}
+        {!industryRules && (
+          <div className="space-y-3">
+            <div className="text-xs opacity-50 bg-teal-deep/5 rounded-xl p-3 space-y-1">
+              <p className="font-bold">Jak to działa:</p>
+              <p>System analizuje branżę marki i generuje reguły copywriterskie: klisze do unikania, typy ujęć fotograficznych, specyfikę języka.</p>
+              <p>Reguły są wstrzykiwane automatycznie do każdego generowania copy.</p>
+            </div>
+            {project.brand_scan_data ? (
+              <button
+                onClick={generateIndustryRules}
+                disabled={generatingRules}
+                className="w-full h-10 rounded-full holo-gradient text-teal-deep font-black disabled:opacity-40 hover:opacity-90 transition-opacity flex items-center justify-center gap-2 text-sm"
+              >
+                {generatingRules
+                  ? <><Loader2 className="h-4 w-4 animate-spin" /> Generuję reguły branżowe...</>
+                  : <><Wand2 className="h-4 w-4" /> Generuj reguły branżowe</>
+                }
+              </button>
+            ) : (
+              <p className="text-xs opacity-30 text-center py-2">Najpierw wykonaj skan marki (Analiza marki), aby wygenerować reguły branżowe.</p>
             )}
           </div>
         )}
