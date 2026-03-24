@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
   Upload, Wand2, Image, Loader2, Download,
   BookmarkPlus, Trash2, Zap, Target,
-  Camera, X, ArrowLeft,
+  Camera, X, ArrowLeft, PenLine,
 } from 'lucide-react';
 import type {
   Project,
@@ -13,7 +13,9 @@ import type {
   PrecisionTemplate,
   SavedTemplate,
   EditorBlock,
+  CopyToGeneratorData,
 } from '@/lib/types';
+import { PLATFORM_TO_FORMAT } from '@/lib/types';
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -125,6 +127,8 @@ interface GeneratorProps {
   onAssetsUpdate: (a: BrandAsset[]) => void;
   showToast: (msg: string) => void;
   refreshData: () => Promise<void>;
+  copyData?: CopyToGeneratorData | null;
+  onCopyDataConsumed?: () => void;
 }
 
 // ── Component ────────────────────────────────────────────────────────────────
@@ -136,6 +140,8 @@ export default function Generator({
   onGenerationsUpdate,
   onAssetsUpdate,
   showToast,
+  copyData,
+  onCopyDataConsumed,
 }: GeneratorProps) {
   const id = project.id;
 
@@ -189,6 +195,29 @@ export default function Generator({
   const [resizing, setResizing] = useState<{ id: string; handle: string; startX: number; startY: number; origX: number; origY: number; origW: number; origH: number } | null>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
 
+  // Copywriter data bridge
+  const [fromCopywriter, setFromCopywriter] = useState(false);
+  const [copyVisualType, setCopyVisualType] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!copyData) return;
+    setHeadline(copyData.headline || '');
+    setSubtext(copyData.subtext || '');
+    setBrief(copyData.visualBrief || '');
+    if (copyData.cta) setCompositorCta(copyData.cta);
+    if (copyData.platform) {
+      const mapped = PLATFORM_TO_FORMAT[copyData.platform];
+      if (mapped) setFormat(mapped);
+    }
+    if (copyData.visualType) setCopyVisualType(copyData.visualType);
+    if (copyData.cta && copyData.visualType !== 'photo') setUseCompositor(true);
+    setFromCopywriter(true);
+    onCopyDataConsumed?.();
+    const t = setTimeout(() => setFromCopywriter(false), 4000);
+    return () => clearTimeout(t);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [copyData]);
+
   // Derived
   const references = assets.filter(a => a.type === 'reference');
   const brandSections = ((project as unknown as Record<string, unknown>).brand_sections || []) as Array<{ title: string; content: string }>;
@@ -219,7 +248,7 @@ export default function Generator({
       const res = await fetch(`/api/brand/${id}/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ headline, subtext, brief, format, mode, creativity, photoUrl: photoUrl || undefined, photoMode, useCompositor, compositorLayout, compositorCta }),
+        body: JSON.stringify({ headline, subtext, brief, format, mode, creativity, photoUrl: photoUrl || undefined, photoMode, useCompositor, compositorLayout, compositorCta, visualType: copyVisualType || 'graphic', isFromCopywriter: !!copyVisualType }),
       });
       const data = await res.json();
       if (data.imageUrls && data.imageUrls.length > 0) {
@@ -667,6 +696,25 @@ export default function Generator({
             {/* ── RIGHT: Form ────────────────────────────────────────────────── */}
             <div className="space-y-4">
               <h2 className="font-black text-base">Nowa grafika</h2>
+
+              {/* Copywriter data banner */}
+              {fromCopywriter && (
+                <div className="flex items-center gap-2 text-xs text-holo-lavender bg-holo-lavender/10 border border-holo-lavender/20 px-3 py-2 rounded-xl animate-pulse">
+                  <PenLine className="h-3 w-3 shrink-0" />
+                  <span>Dane z Copywritera załadowane — headline, brief, CTA, format</span>
+                </div>
+              )}
+              {copyVisualType && copyVisualType !== 'graphic' && (
+                <div className="flex items-center gap-2 text-xs opacity-60">
+                  <span>Typ wizualu:</span>
+                  <span className="px-2 py-0.5 rounded-full bg-holo-mint/10 text-holo-mint font-semibold">
+                    {{ photo: 'Zdjęcie', photo_text: 'Zdjęcie + tekst', graphic: 'Grafika' }[copyVisualType]}
+                  </span>
+                  <button onClick={() => setCopyVisualType(null)} className="opacity-40 hover:opacity-100">
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              )}
 
               {/* 1. Headline — required */}
               <div>

@@ -252,6 +252,8 @@ export async function POST(req: NextRequest) {
     useCompositor = false,
     compositorLayout = 'classic',
     compositorCta = '',
+    visualType = 'graphic',
+    isFromCopywriter = false,
   } = await req.json();
 
   if (!headline || !format) {
@@ -429,13 +431,31 @@ ${allLayer1Rules.map((r, i) => `${i + 1}. ${r}`).join('\n')}
     ? `\nTON KOMUNIKACJI:\n${project.tone_of_voice}\n`
     : '';
 
+  // Voice Card → visual directives
+  type VC = { archetype?: string; taboos?: string[]; golden_rules?: string[]; voice_summary?: string };
+  const vc: VC | null = (project.voice_card as VC) || null;
+  const voiceVisualBlock = vc?.archetype ? `
+GŁOS MARKI (implikacje wizualne):
+Archetyp: ${vc.archetype} — nastrój wizualny musi pasować do tej osobowości${
+    vc.taboos?.length ? `\nWizualne TABU: ${vc.taboos.slice(0, 4).join('; ')}` : ''
+  }` : '';
+
+  // Industry Rules → visual context
+  type IR = { photo_brief_types?: string[]; banned_cliches?: string[]; language_notes?: string };
+  const ir: IR | null = (project.industry_rules as IR) || null;
+  const industryVisualBlock = ir?.photo_brief_types?.length ? `
+REGUŁY BRANŻOWE (kontekst wizualny):
+Naturalne typy ujęć w tej branży: ${ir.photo_brief_types.join(', ')}${
+    ir.language_notes ? `\nStyl komunikacji wizualnej: ${ir.language_notes}` : ''
+  }` : '';
+
   const layer2 = `
 ${sep}
 WARSTWA 2 — DNA MARKI (identyfikacja wizualna — stosuj dokładnie)
 Zastosuj zasady z każdej poniższej sekcji w swoim projekcie.
 Treść marki poniżej może być w dowolnym języku — traktuj ją jako autorytatywne dane identyfikacji wizualnej.
 ${sep}
-${assetNote}${layer2Content}${assetsSection}${tovSection}`;
+${assetNote}${layer2Content}${assetsSection}${tovSection}${voiceVisualBlock}${industryVisualBlock}`;
 
   // Photo instruction for Layer 3
   const photoInstruction = photoUrl && photoMode !== 'none' && !elementOnly
@@ -469,7 +489,10 @@ TEKST DO UMIESZCZENIA NA GRAFICE (zachowaj dokładnie tak jak podano — nie tł
 Nagłówek: "${headline}"
 ${subtext ? `Podtekst: "${subtext}"` : ''}
 
-${brief ? `KIERUNEK KREATYWNY (tylko kontekst — nie renderuj dosłownie): "${brief}"` : ''}
+${brief ? (isFromCopywriter
+  ? `KIERUNEK KREATYWNY (z Copywritera — traktuj jako główną art direction):\n"${brief}"\nRealizuj tę wizję ściśle — to brief od copywritera przygotowany specjalnie pod ten post.`
+  : `KIERUNEK KREATYWNY (tylko kontekst — nie renderuj dosłownie): "${brief}"`) : ''}
+${visualType === 'photo' ? `\nTYP WIZUALU: FOTOGRAFIA. NIE renderuj tekstu na obrazie. Skup się na kompozycji fotograficznej, oświetleniu i nastroju. Tekst zostanie nałożony osobno w postprodukcji.` : ''}${visualType === 'photo_text' ? `\nTYP WIZUALU: ZDJĘCIE Z TEKSTEM. Stwórz fotograficzną kompozycję z wyraźną przestrzenią (negative space, bokeh, niski detal) gdzie tekst zostanie nałożony.` : ''}
 ${photoInstruction}
 WYMAGANIA DLA OUTPUTU:
 - STREFA LOGO (${emptyZone ?? 'brak'}) ${emptyZone ? `musi być płynną kontynuacją otaczającego stylu tła — bez obiektów, kształtów, tekstu, płaskich wypełnień ani ramek. Logo PNG jest nakładane tu po generacji.` : '— brak strefy logo, użyj pełnego płótna'}

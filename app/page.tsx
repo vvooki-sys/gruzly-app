@@ -5,7 +5,7 @@ import {
   Wand2, Loader2, Sun, Moon, PenLine,
   Layers, Settings,
 } from 'lucide-react';
-import type { Project, BrandAsset, Generation, CopyGeneration } from '@/lib/types';
+import type { Project, BrandAsset, Generation, CopyGeneration, CopyToGeneratorData } from '@/lib/types';
 import Generator from '@/app/components/generator/Generator';
 import Copywriter from '@/app/components/copywriter/Copywriter';
 import AssetManager from '@/app/components/assets/AssetManager';
@@ -22,6 +22,7 @@ export default function BrandEditor() {
   const [showWizard, setShowWizard] = useState(false);
   const [isDark, setIsDark] = useState(true);
   const [toast, setToast] = useState<string | null>(null);
+  const [copyData, setCopyData] = useState<CopyToGeneratorData | null>(null);
 
   useEffect(() => {
     fetch('/api/brand/init')
@@ -173,6 +174,8 @@ export default function BrandEditor() {
             onAssetsUpdate={setAssets}
             showToast={showToast}
             refreshData={refreshData}
+            copyData={copyData}
+            onCopyDataConsumed={() => setCopyData(null)}
           />
         )}
         {tab === 'copy' && (
@@ -182,8 +185,9 @@ export default function BrandEditor() {
             onCopyGenerationsUpdate={setCopyGenerations}
             showToast={showToast}
             onUseCopy={(data) => {
+              setCopyData(data);
               setTab('generate');
-              showToast('Skopiowano do generatora');
+              showToast('Dane z Copywritera załadowane');
             }}
           />
         )}

@@ -100,6 +100,22 @@ export interface IndustryCopyRules {
   }>;
 }
 
+export interface CopyToGeneratorData {
+  headline: string;
+  subtext: string;
+  cta?: string;
+  visualBrief: string;
+  visualType: 'graphic' | 'photo' | 'photo_text';
+  platform: string;
+}
+
+export const PLATFORM_TO_FORMAT: Record<string, string> = {
+  facebook: 'fb_post',
+  instagram: 'fb_post',
+  linkedin: 'ln_post',
+  general: 'fb_post',
+};
+
 export interface Generation {
   id: number;
   brief: string;

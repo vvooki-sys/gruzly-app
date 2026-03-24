@@ -2,14 +2,14 @@
 
 import { useState } from 'react';
 import { Upload, Loader2, PenLine, Wand2, Camera, Image, Check, Copy, Type, Eye, Trash2, ChevronDown, ChevronUp, CheckCircle2 } from 'lucide-react';
-import type { Project, CopyGeneration, CopyVariant } from '@/lib/types';
+import type { Project, CopyGeneration, CopyVariant, CopyToGeneratorData } from '@/lib/types';
 
 interface CopywriterProps {
   project: Project;
   copyGenerations: CopyGeneration[];
   onCopyGenerationsUpdate: (g: CopyGeneration[]) => void;
   showToast: (msg: string) => void;
-  onUseCopy?: (data: { headline: string; subtext: string; brief: string }) => void;
+  onUseCopy?: (data: CopyToGeneratorData) => void;
 }
 
 const inputCls =
@@ -399,7 +399,7 @@ export default function Copywriter({ project, copyGenerations, onCopyGenerations
                         </button>
                       )}
                       <button
-                        onClick={() => onUseCopy?.({ headline: r.headline, subtext: r.subtext, brief: r.visual_brief })}
+                        onClick={() => onUseCopy?.({ headline: r.headline || '', subtext: r.subtext || '', cta: r.cta, visualBrief: r.visual_brief || '', visualType: currentVisualType as 'graphic' | 'photo' | 'photo_text', platform: format })}
                         className="flex-1 h-8 bg-teal-deep/5 dark:bg-teal-deep hover:bg-holo-mint/20 hover:border-holo-mint border border-teal-deep/10 dark:border-holo-mint/10 rounded-full text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors"
                       >
                         <Wand2 className="h-3 w-3" /> Użyj w generatorze
