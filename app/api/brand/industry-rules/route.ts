@@ -33,10 +33,11 @@ Zwróć WYŁĄCZNIE poprawny JSON:
 
 {
   "banned_cliches": [
-    // 6-10 najczęstszych klisz w TEJ branży (wzorce, nie dosłowne frazy — także warianty)
-    // Przykład gastro: "to nie jest zwykłe [cokolwiek]", "uczta dla podniebienia"
+    // MAKS 6-8 pozycji. Wybierz tylko najczęstsze i najbardziej szkodliwe klisze TEJ branży.
+    // Łącz warianty w jedną pozycję: "uczta dla podniebienia / niebo w gębie" to JEDNA pozycja, nie dwie.
+    // NIE duplikuj wzorców, które się pokrywają.
+    // Przykład gastro: "to nie jest zwykłe [cokolwiek]", "uczta dla podniebienia / niebo w gębie"
     // Przykład moto: "Twoje auto zasługuje na [cokolwiek]", "oddaj się w ręce profesjonalistów"
-    // Przykład prawo: "w gąszczu przepisów [cokolwiek]", "kompleksowa obsługa prawna"
   ],
   "banned_marketing_words": [
     // 5-8 konkretnych słów/wyrażeń nadużywanych w TEJ branży
@@ -50,7 +51,7 @@ Zwróć WYŁĄCZNIE poprawny JSON:
     // Przykład moto: "before/after naprawy", "detail pracy mechanika", "hero shot samochodu", "narzędzia/workspace", "klient odbierający auto"
     // Przykład florystyka: "bukiet w kontekście wnętrza", "makro płatków", "flatlay kompozycji", "proces wiązania", "dostawa/unboxing"
   ],
-  "language_notes": "1-3 zdania o specyfice języka w tej branży. Co sprawia, że copy brzmi autentycznie vs sztucznie? Na czym skupić zmysły/emocje? Jakie słownictwo branżowe jest OK, a jakie brzmi jak folder reklamowy?"
+  "language_notes": "Lista 2-4 punktów (każdy zaczyna się od '- '). Każdy punkt to JEDNA konkretna instrukcja: co robić lub czego unikać. Przykład: '- Opisuj doznania KONKRETNIE: tekstura, temperatura, kontrast — nie ogólnikami (pyszne, dobre)'. Nie pisz akapitów."
 }
 
 Pisz CAŁY tekst po polsku. Zwróć TYLKO JSON, bez komentarzy.`;

@@ -77,7 +77,17 @@ ${(vc.example_bad || []).map(e => `✗ "${e}"`).join('\n')}` : '';
     '"tylko świeże i lokalne składniki"',
   ];
   const industryBanned = ir?.banned_cliches?.map(c => `"${c}"`) || [];
-  const allBannedPatterns = [...universalBanned, ...industryBanned];
+  // Dedup: skip industry clichés already covered by universal patterns, cap total at 8
+  const allBannedPatterns = [...universalBanned];
+  for (const ic of industryBanned) {
+    if (allBannedPatterns.length >= 8) break;
+    const icClean = ic.replace(/"/g, '').toLowerCase();
+    const covered = universalBanned.some(ub => {
+      const ubClean = ub.replace(/"/g, '').toLowerCase();
+      return ubClean.includes(icClean) || icClean.includes(ubClean);
+    });
+    if (!covered) allBannedPatterns.push(ic);
+  }
   const clicheSentinel = ir ? 'Jeśli zdanie brzmi jak z folderu każdej firmy w tej branży — przepisz je.' : 'Jeśli zdanie brzmi jak z broszury reklamowej — przepisz je.';
 
   const industryRulesBlock = ir ? `
