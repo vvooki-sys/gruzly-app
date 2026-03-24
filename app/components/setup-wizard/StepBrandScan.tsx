@@ -169,6 +169,8 @@ export default function StepBrandScan({
         const newSections = brandDnaToSections(data.brandDna);
         onSectionsUpdate(newSections, 'scan');
         showToast('Brand DNA zeskanowany ✓');
+        // Auto-generate industry rules in background
+        fetch('/api/brand/industry-rules', { method: 'POST' }).catch(() => {});
       } else if (data.fallback) {
         setScanError('Strona blokuje skanowanie — spróbuj wgrać brandbook');
       } else {
