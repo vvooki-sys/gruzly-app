@@ -19,6 +19,8 @@ CREATE TABLE IF NOT EXISTS projects (
   scanned_url TEXT,
   logo_position TEXT DEFAULT 'top-left',
   voice_card JSONB,
+  industry_rules JSONB,
+  industry_copy_rules JSONB,
   created_at TIMESTAMP DEFAULT NOW(),
   updated_at TIMESTAMP DEFAULT NOW()
 );

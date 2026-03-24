@@ -61,55 +61,83 @@ Marka NIGDY TAK NIE BRZMI (anty-wzorzec):
 ${(vc.example_bad || []).map(e => `✗ "${e}"`).join('\n')}` : '';
 
   // ══════════════════════════════════════════════════════════════
-  // WARSTWA 3 — BRANŻOWA (z industry_rules, generowana jednorazowo)
+  // WARSTWA 3 — BRANŻOWA
+  // Priorytet: industry_copy_rules (ręczne, strukturalne) > industry_rules (auto-gen) > fallback
   // ══════════════════════════════════════════════════════════════
+
+  type ICR = { writing_guideline?: string; banned_words?: string[]; banned_patterns?: Array<{ pattern: string; substitute: string }> };
+  const icr: ICR | null = (project.industry_copy_rules as ICR) || null;
 
   type IR = { banned_cliches?: string[]; banned_marketing_words?: string[]; photo_brief_types?: string[]; language_notes?: string };
   const ir: IR | null = (project.industry_rules as IR) || null;
 
-  // Zakazane wzorce: uniwersalne + branżowe
-  const universalBanned = [
-    '"to nie jest zwykłe [cokolwiek]" → nazwij co KONKRETNIE wyróżnia',
-    '"zasłużyliście / pozwólcie sobie" (protekcjonalny ton) → opisz sytuację użycia',
-    '"uczta dla podniebienia / niebo w gębie / symfonia smaków" → nazwij konkretne doznanie: teksturę, zapach, dźwięk',
-    '"odkryj nowy wymiar / kulinarna podróż" → pokaż zaskakujący detal produktu lub podania',
-    '"smakuje jak u mamy/babci" → przywołaj konkretny moment lub wspomnienie',
-    '"tylko świeże i lokalne składniki" → wymień 1-2 składniki po nazwie',
-  ];
-  const industryBanned = ir?.banned_cliches?.map(c => `"${c}"`) || [];
-  // Dedup: skip industry clichés already covered by universal patterns, cap total at 8
-  const allBannedPatterns = [...universalBanned];
-  for (const ic of industryBanned) {
-    if (allBannedPatterns.length >= 8) break;
-    const icClean = ic.replace(/"/g, '').split('→')[0].trim().toLowerCase();
-    const covered = universalBanned.some(ub => {
-      const ubClean = ub.replace(/"/g, '').split('→')[0].trim().toLowerCase();
-      return ubClean.includes(icClean) || icClean.includes(ubClean);
-    });
-    if (!covered) allBannedPatterns.push(ic);
-  }
-  const clicheSentinel = ir ? 'Jeśli zdanie brzmi jak z folderu każdej firmy w tej branży — przepisz je.' : 'Jeśli zdanie brzmi jak z broszury reklamowej — przepisz je.';
+  // Typy ujęć foto: zawsze z industry_rules (auto-gen) lub generyczne
+  const photoTypes = ir?.photo_brief_types?.length
+    ? ir.photo_brief_types.join(', ')
+    : 'hero shot produktu/usługi, detail/makro, lifestyle z kontekstem';
 
-  const industryRulesBlock = ir ? `
+  let industryRulesBlock: string;
+
+  if (icr) {
+    // ── Structured format: pattern/substitute pairs ──
+    industryRulesBlock = `
+════════════════════════════════════════
+REGUŁY BRANŻOWE
+════════════════════════════════════════
+${icr.banned_patterns?.length ? `Zakazane wzorce + CO ZAMIAST:
+${icr.banned_patterns.map(p => `• "${p.pattern}"\n  → ZAMIAST: ${p.substitute}`).join('\n\n')}
+
+Jeśli zdanie brzmi jak z folderu każdej firmy w tej branży — przepisz je, używając powyższych zamienników.` : ''}
+${icr.banned_words?.length ? `\nZakazane słowa: ${icr.banned_words.join(', ')}` : ''}
+${icr.writing_guideline ? `\nJak pisać w tej branży:\n${icr.writing_guideline}` : ''}`;
+
+  } else if (ir) {
+    // ── Fallback: flat format from auto-generated industry_rules ──
+    const universalBanned = [
+      '"to nie jest zwykłe [cokolwiek]" → nazwij co KONKRETNIE wyróżnia',
+      '"zasłużyliście / pozwólcie sobie" (protekcjonalny ton) → opisz sytuację użycia',
+      '"uczta dla podniebienia / niebo w gębie / symfonia smaków" → nazwij konkretne doznanie: teksturę, zapach, dźwięk',
+      '"odkryj nowy wymiar / kulinarna podróż" → pokaż zaskakujący detal produktu lub podania',
+      '"smakuje jak u mamy/babci" → przywołaj konkretny moment lub wspomnienie',
+      '"tylko świeże i lokalne składniki" → wymień 1-2 składniki po nazwie',
+    ];
+    const industryBanned = ir.banned_cliches?.map(c => `"${c}"`) || [];
+    const allBannedPatterns = [...universalBanned];
+    for (const ic of industryBanned) {
+      if (allBannedPatterns.length >= 8) break;
+      const icClean = ic.replace(/"/g, '').split('→')[0].trim().toLowerCase();
+      const covered = universalBanned.some(ub => {
+        const ubClean = ub.replace(/"/g, '').split('→')[0].trim().toLowerCase();
+        return ubClean.includes(icClean) || icClean.includes(ubClean);
+      });
+      if (!covered) allBannedPatterns.push(ic);
+    }
+
+    industryRulesBlock = `
 ════════════════════════════════════════
 REGUŁY BRANŻOWE
 ════════════════════════════════════════
 Zakazane wzorce (nie tylko dosłowne frazy — także ich warianty):
 ${allBannedPatterns.map(p => `• ${p}`).join('\n')}
-${clicheSentinel}
+Jeśli zdanie brzmi jak z folderu każdej firmy w tej branży — przepisz je.
 
-${ir.banned_marketing_words?.length ? `\nZakazane słowa w tej branży: ${ir.banned_marketing_words.join(', ')}` : ''}
+${ir.banned_marketing_words?.length ? `Zakazane słowa w tej branży: ${ir.banned_marketing_words.join(', ')}` : ''}
 
 Jak pisać w tej branży:
-${ir.language_notes || '- Opisuj konkretnie, bez ogólników'}` : `
-Zakazane wzorce (uniwersalne):
-${universalBanned.map(p => `• ${p}`).join('\n')}
-${clicheSentinel}`;
+${ir.language_notes || '- Opisuj konkretnie, bez ogólników'}`;
 
-  // Typy ujęć foto: z industry_rules lub generyczne
-  const photoTypes = ir?.photo_brief_types?.length
-    ? ir.photo_brief_types.join(', ')
-    : 'hero shot produktu/usługi, detail/makro, lifestyle z kontekstem';
+  } else {
+    // ── No rules: universal fallback ──
+    industryRulesBlock = `
+Zakazane wzorce (uniwersalne):
+• "to nie jest zwykłe [cokolwiek]" → nazwij co KONKRETNIE wyróżnia
+• "zasłużyliście / pozwólcie sobie" → opisz sytuację użycia
+• "uczta dla podniebienia / niebo w gębie" → nazwij konkretne doznanie
+• "odkryj nowy wymiar / kulinarna podróż" → pokaż zaskakujący detal
+• "smakuje jak u mamy/babci" → przywołaj konkretny moment
+• "tylko świeże i lokalne składniki" → wymień składniki po nazwie
+Jeśli zdanie brzmi jak z broszury reklamowej — przepisz je.`;
+  }
 
   // ══════════════════════════════════════════════════════════════
   // WARSTWA 1 — UNIWERSALNA (stała struktura)
@@ -122,7 +150,7 @@ ${clicheSentinel}`;
       wordRanges: ['80-100', '120-150', '90-120'],
     },
     linkedin: {
-      rule: `LinkedIn | Celuj w 130-170 słów (twardy limit: 100-200 — policz przed zwróceniem, koryguj jeśli poza zakresem) | profesjonalny ale ludzki ton | storytelling mile widziany | emoji z umiarem | CTA: zachęta do komentarza, udostępnienia lub przejścia na stronę`,
+      rule: `LinkedIn | Celuj w 130-170 słów (twardy limit: 100-200 — policz przed zwróceniem, koryguj jeśli poza zakresem) | profesjonalny ale ludzki ton | storytelling mile widziany | emoji z umiarem | CTA: zachęta do komentarza, udostępnienia lub przejścia na stronę | Maks. 3 hashtagi na końcu, branżowe`,
       photoFormat: `Kadr: 1200×627 px (landscape 1.91:1).`,
       wordRanges: ['100-130', '160-200', '120-160'],
     },
@@ -132,7 +160,7 @@ ${clicheSentinel}`;
       wordRanges: ['50-70', '90-120', '65-90'],
     },
     general: {
-      rule: `Social media | Celuj w 100-130 słów (twardy limit: 80-150 — policz przed zwróceniem, koryguj jeśli poza zakresem) | ton dopasowany do marki | CTA dopasowane do kontekstu`,
+      rule: `Social media | Celuj w 100-130 słów (twardy limit: 80-150 — policz przed zwróceniem, koryguj jeśli poza zakresem) | ton dopasowany do marki | CTA dopasowane do kontekstu | Bez hashtagów, chyba że platforma tego wymaga`,
       photoFormat: `Kadr: 1080×1080 px (kwadrat).`,
       wordRanges: ['80-100', '120-150', '90-120'],
     },
@@ -204,12 +232,8 @@ OPIS PRODUKTU/USŁUGI JEST ŹRÓDŁEM PRAWDY — zarówno w post_copy, jak i w v
 
 Platforma: ${platform.rule}
 Wizual: ${{ graphic: 'Grafika z tekstem', photo: 'Czyste zdjęcie (bez tekstu)', photo_text: 'Zdjęcie z nałożonym tekstem' }[visualType] || 'Grafika'}
-${vc ? `
-WAŻNE: Zastosuj WSZYSTKIE złote zasady z sekcji GŁOS MARKI w każdym wariancie post_copy.${
-  (vc.golden_rules || []).some(r => /żółt[a-ząćęłńóśźż]* serc|💛/.test(r))
-    ? '\nEmoji 💛: dokładnie jedno w treści posta (nie w nagłówku, nie dwa razy). Umieść w zdaniu o emocji lub komforcie.'
-    : ''
-}` : ''}
+${vc?.golden_rules?.length ? `
+WAŻNE — w KAŻDYM wariancie post_copy zastosuj WSZYSTKIE złote zasady z sekcji GŁOS MARKI powyżej. Jeśli złota zasada mówi o konkretnym emoji, frazie lub zwrocie — MUSI pojawić się w treści posta, nie tylko w nagłówku.` : ''}
 
 ════════════════════════════════════════
 OUTPUT — 3 WARIANTY (każdy INNY w hooku i podejściu)

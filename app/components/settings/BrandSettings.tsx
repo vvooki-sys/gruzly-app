@@ -3,7 +3,7 @@
 import { useState, useRef } from 'react';
 import { Loader2, Wand2, Camera } from 'lucide-react';
 import { mergeBrandSections } from '@/lib/brand-sections';
-import type { Project, BrandAsset, BrandSection, VoiceCard, IndustryRules } from '@/lib/types';
+import type { Project, BrandAsset, BrandSection, VoiceCard, IndustryRules, IndustryCopyRules } from '@/lib/types';
 
 /* ─── Source badges ─── */
 
@@ -79,6 +79,11 @@ export default function BrandSettings({
   const [generatingRules, setGeneratingRules] = useState(false);
   const [rulesEditMode, setRulesEditMode] = useState(false);
   const [rulesEditJson, setRulesEditJson] = useState('');
+
+  // --- Industry copy rules state (structured patterns) ---
+  const [industryCopyRules, setIndustryCopyRules] = useState<IndustryCopyRules | null>(project.industry_copy_rules || null);
+  const [copyRulesEditMode, setCopyRulesEditMode] = useState(false);
+  const [copyRulesEditJson, setCopyRulesEditJson] = useState('');
 
   // --- Project meta state (inline editing) ---
   const [editName, setEditName] = useState(project.name);
@@ -267,6 +272,31 @@ export default function BrandSettings({
     await fetch('/api/brand/industry-rules', { method: 'DELETE' });
     setIndustryRules(null);
     showToast('Reguły branżowe usunięte');
+  };
+
+  /* ── Industry copy rules handlers (structured patterns) ── */
+
+  const saveCopyRulesEdit = async () => {
+    try {
+      const parsed = JSON.parse(copyRulesEditJson);
+      await fetch('/api/brand/industry-copy-rules', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ industryCopyRules: parsed }),
+      });
+      setIndustryCopyRules(parsed);
+      setCopyRulesEditMode(false);
+      showToast('Reguły copywriterskie zapisane ✓');
+    } catch {
+      showToast('Nieprawidłowy JSON');
+    }
+  };
+
+  const deleteCopyRules = async () => {
+    if (!confirm('Usunąć reguły copywriterskie?')) return;
+    await fetch('/api/brand/industry-copy-rules', { method: 'DELETE' });
+    setIndustryCopyRules(null);
+    showToast('Reguły copywriterskie usunięte');
   };
 
   /* ══════════════════════ JSX ══════════════════════ */
@@ -718,6 +748,96 @@ export default function BrandSettings({
             ) : (
               <p className="text-xs opacity-30 text-center py-2">Najpierw wykonaj skan marki (Analiza marki), aby wygenerować reguły branżowe.</p>
             )}
+          </div>
+        )}
+      </div>
+
+      {/* ── Industry Copy Rules (structured patterns) ── */}
+      <div className="rounded-2xl border border-teal-deep/15 dark:border-holo-mint/15 bg-white dark:bg-teal-mid p-4 space-y-4">
+        <div className="flex items-center justify-between gap-2">
+          <div>
+            <p className="text-sm font-bold flex items-center gap-2">
+              Reguły copywriterskie branżowe
+              {industryCopyRules && <span className="text-xs font-normal px-2 py-0.5 rounded-full bg-holo-mint/20 text-holo-mint">Aktywne</span>}
+            </p>
+            <p className="text-xs opacity-40 mt-0.5">Zakazane wzorce z pozytywnymi zamiennikami, zakazane słowa, specyfika języka</p>
+          </div>
+          {industryCopyRules && (
+            <div className="flex gap-1.5 shrink-0">
+              <button onClick={() => { setCopyRulesEditMode(v => !v); setCopyRulesEditJson(JSON.stringify(industryCopyRules, null, 2)); }}
+                className="h-7 px-2.5 rounded-full border border-teal-deep/15 dark:border-holo-mint/15 text-xs font-semibold opacity-60 hover:opacity-100 transition-opacity">
+                {copyRulesEditMode ? 'Anuluj' : 'Edytuj JSON'}
+              </button>
+              <button onClick={deleteCopyRules}
+                className="h-7 px-2.5 rounded-full border border-red-500/20 text-red-400 text-xs font-semibold opacity-60 hover:opacity-100 transition-opacity">
+                Usuń
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Edit JSON mode */}
+        {copyRulesEditMode && (
+          <div className="space-y-2">
+            <textarea
+              className="w-full bg-offwhite dark:bg-teal-deep border border-holo-mint/20 rounded-xl px-3 py-2 text-xs font-mono resize-none outline-none focus:border-holo-mint transition-colors"
+              rows={20}
+              value={copyRulesEditJson}
+              onChange={e => setCopyRulesEditJson(e.target.value)}
+            />
+            <button onClick={saveCopyRulesEdit}
+              className="h-9 px-4 rounded-full holo-gradient text-teal-deep text-xs font-bold hover:opacity-90 transition-opacity">
+              Zapisz zmiany
+            </button>
+          </div>
+        )}
+
+        {/* Display */}
+        {industryCopyRules && !copyRulesEditMode && (
+          <div className="space-y-4">
+            {/* Banned patterns with substitutes */}
+            {industryCopyRules.banned_patterns?.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs font-bold opacity-30 uppercase tracking-wide">Zakazane wzorce → zamienniki</p>
+                <div className="space-y-2">
+                  {industryCopyRules.banned_patterns.map((bp, i) => (
+                    <div key={i} className="rounded-xl bg-teal-deep/5 dark:bg-teal-deep/30 p-2.5 space-y-1">
+                      <p className="text-xs text-red-400 font-medium">✗ &quot;{bp.pattern}&quot;</p>
+                      <p className="text-xs text-holo-mint">→ {bp.substitute}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Banned words */}
+            {industryCopyRules.banned_words?.length > 0 && (
+              <div className="space-y-1.5">
+                <p className="text-xs font-bold opacity-30 uppercase tracking-wide">Zakazane słowa</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {industryCopyRules.banned_words.map((w, i) => (
+                    <span key={i} className="text-xs px-1.5 py-0.5 rounded bg-red-500/10 text-red-400 line-through">{w}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Writing guideline */}
+            {industryCopyRules.writing_guideline && (
+              <div className="space-y-1.5">
+                <p className="text-xs font-bold opacity-30 uppercase tracking-wide">Jak pisać w tej branży</p>
+                <p className="text-xs opacity-60 leading-relaxed">{industryCopyRules.writing_guideline}</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Empty state */}
+        {!industryCopyRules && (
+          <div className="text-xs opacity-50 bg-teal-deep/5 rounded-xl p-3 space-y-1">
+            <p className="font-bold">Czym się różni od &quot;Reguł branżowych&quot;?</p>
+            <p>Reguły branżowe wyżej są auto-generowane (klisze, typy zdjęć). Ta sekcja pozwala ręcznie zdefiniować zakazane wzorce copywriterskie z konkretnymi zamiennikami — lepszą kontrolę nad jakością copy.</p>
+            <p className="mt-2">Wklej JSON przez &quot;Edytuj JSON&quot; lub użyj API <code className="bg-teal-deep/10 px-1 rounded">PATCH /api/brand/industry-copy-rules</code></p>
           </div>
         )}
       </div>

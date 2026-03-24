@@ -61,6 +61,7 @@ export interface Project {
   logo_position?: string | null;
   voice_card?: VoiceCard | null;
   industry_rules?: IndustryRules | null;
+  industry_copy_rules?: IndustryCopyRules | null;
   id: number;
   name: string;
   client_name: string | null;
@@ -88,6 +89,15 @@ export interface IndustryRules {
   photo_brief_types: string[];
   language_notes: string;
   generated_at: string;
+}
+
+export interface IndustryCopyRules {
+  writing_guideline: string;
+  banned_words: string[];
+  banned_patterns: Array<{
+    pattern: string;
+    substitute: string;
+  }>;
 }
 
 export interface Generation {
