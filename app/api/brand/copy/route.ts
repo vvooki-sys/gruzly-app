@@ -71,19 +71,19 @@ ${(vc.example_bad || []).map(e => `✗ "${e}"`).join('\n')}` : '';
   // ── 3. PLATFORM RULES (tekst + format kadru dla briefa fotograficznego) ──
   const platformData: Record<string, { rule: string; photoFormat: string }> = {
     facebook: {
-      rule: `Facebook | TWARDY LIMIT: 80-150 słów (policz przed zwróceniem — jeśli >150, skróć) | 1-3 krótkie akapity | CTA z bezpośrednim linkiem lub zachętą do komentarza/wiadomości — NIGDY "link w bio"`,
+      rule: `Facebook | TWARDY LIMIT: 80-150 słów (policz przed zwróceniem — jeśli >150 skróć, jeśli <80 rozbuduj) | 1-3 krótkie akapity | CTA z bezpośrednim linkiem lub zachętą do komentarza/wiadomości — NIGDY "link w bio"`,
       photoFormat: `Kadr: 1200×630 px (landscape 1.91:1) lub 1080×1080 (kwadrat). Oba formaty działają na FB.`,
     },
     linkedin: {
-      rule: `LinkedIn | TWARDY LIMIT: 100-200 słów (policz przed zwróceniem — jeśli >200, skróć) | profesjonalny ale ludzki ton | storytelling mile widziany | emoji z umiarem | CTA: zachęta do komentarza, udostępnienia lub przejścia na stronę`,
+      rule: `LinkedIn | TWARDY LIMIT: 100-200 słów (policz przed zwróceniem — jeśli >200 skróć, jeśli <100 rozbuduj) | profesjonalny ale ludzki ton | storytelling mile widziany | emoji z umiarem | CTA: zachęta do komentarza, udostępnienia lub przejścia na stronę`,
       photoFormat: `Kadr: 1200×627 px (landscape 1.91:1) — optymalny dla LinkedIn feed.`,
     },
     instagram: {
-      rule: `Instagram | TWARDY LIMIT: 50-120 słów + hashtagi (policz przed zwróceniem — jeśli >120, skróć) | chwytliwy pierwszy wiersz (hook) | 5-10 trafnych hashtagów na końcu | CTA: "link w bio", "napisz DM" lub "zapisz post"`,
+      rule: `Instagram | TWARDY LIMIT: 50-120 słów + hashtagi (policz przed zwróceniem — jeśli >120 skróć, jeśli <50 rozbuduj) | chwytliwy pierwszy wiersz (hook) | 5-10 trafnych hashtagów na końcu | CTA: "link w bio", "napisz DM" lub "zapisz post"`,
       photoFormat: `Kadr: 1080×1350 px (portrait 4:5) — optymalny dla IG feed, zajmuje maksimum ekranu.`,
     },
     general: {
-      rule: `Social media | TWARDY LIMIT: 80-150 słów (policz przed zwróceniem — jeśli >150, skróć) | ton dopasowany do marki | CTA dopasowane do kontekstu`,
+      rule: `Social media | TWARDY LIMIT: 80-150 słów (policz przed zwróceniem — jeśli >150 skróć, jeśli <80 rozbuduj) | ton dopasowany do marki | CTA dopasowane do kontekstu`,
       photoFormat: `Kadr: 1080×1080 px (kwadrat) — uniwersalny format.`,
     },
   };
@@ -147,7 +147,7 @@ ZADANIE
 ════════════════════════════════════════
 ${briefText || '[Brak zadania — generuj na podstawie tożsamości marki]'}
 
-OPIS PRODUKTU JEST ŹRÓDŁEM PRAWDY. Nie dodawaj cech, których nie ma w opisie (kolory, smaki, tekstury). Jeśli nie wiesz, jak coś wygląda/smakuje — opisz tylko to, co podano wyżej. Nie wymyślaj.
+OPIS PRODUKTU JEST ŹRÓDŁEM PRAWDY — zarówno w post_copy, jak i w visual_brief. Nie dodawaj cech, których nie ma w opisie (kolory, smaki, tekstury, temperatura podania). Nie wymyślaj.
 
 Platforma: ${platform.rule}
 Wizual: ${{ graphic: 'Grafika z tekstem', photo: 'Czyste zdjęcie (bez tekstu)', photo_text: 'Zdjęcie z nałożonym tekstem' }[visualType] || 'Grafika'}
@@ -181,7 +181,7 @@ Dobrze: "Konkretne składniki budzą apetyt, CTA domyka rezerwację"
 
 Zwróć WYŁĄCZNIE poprawny JSON:
 {
-  "concept": "Jedna emocja + jeden konkretny detal dania lub kontekstu, który wyróżnia TO danie od każdego innego. Musi być niereużywalny — jeśli pasuje do dowolnej restauracji, jest za ogólny. Jedno zdanie.",
+  "concept": "Maks. 15 słów. Jedna emocja + jeden konkretny detal TEGO dania. Jeśli pasuje do dowolnej restauracji, jest za ogólny.",
   "variants": [
     ${jsonExample},
     ${jsonExample},
