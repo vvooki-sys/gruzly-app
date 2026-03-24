@@ -13,6 +13,7 @@ export async function POST(req: NextRequest) {
   const file = formData.get('file') as File | null;
   const text = formData.get('text') as string | null;
   const format = formData.get('format') as string || 'general';
+  const visualType = formData.get('visualType') as string || 'graphic'; // 'graphic' | 'photo'
 
   if (!file && !text) {
     return NextResponse.json({ error: 'file or text required' }, { status: 400 });
@@ -93,79 +94,107 @@ Marka NIGDY NIE BRZMI TAK (anty-wzorzec):
 ${(vc.example_bad || []).map(e => `✗ "${e}"`).join('\n')}
 ════════════════════════════════════════` : '';
 
-  const formatMap: Record<string, string> = {
-    facebook: 'Post na Facebooka (angażujący, 1-3 krótkie akapity, emoji OK, wyraźne CTA)',
-    linkedin: 'Post na LinkedIn (profesjonalny ton, oparty na insightach, bez nadmiaru emoji)',
-    instagram: 'Opis na Instagram (chwytliwy nagłówek, krótka treść, miejsce na hashtagi na końcu)',
-    general: 'ogólny post w social media (uniwersalny, działa na różnych platformach)',
-    ogólny: 'ogólny post w social media (uniwersalny, działa na różnych platformach)',
+  const formatMap: Record<string, { name: string; copyGuide: string }> = {
+    facebook: {
+      name: 'Facebook',
+      copyGuide: 'Post na FB: 1-3 krótkie akapity, angażujący ton, emoji OK ale z umiarem, wyraźne CTA. Optymalnie 80-150 słów.',
+    },
+    linkedin: {
+      name: 'LinkedIn',
+      copyGuide: 'Post na LinkedIn: profesjonalny ale ludzki ton, oparty na insightach/wartości, bez nadmiaru emoji, storytelling mile widziany. Optymalnie 100-200 słów. Może być dłuższy jeśli treść tego wymaga.',
+    },
+    instagram: {
+      name: 'Instagram',
+      copyGuide: 'Caption na Instagram: chwytliwy pierwszy wiersz (hook), krótka treść, hashtagi na końcu (5-10 trafnych). Optymalnie 50-120 słów + hashtagi.',
+    },
+    general: {
+      name: 'Social media',
+      copyGuide: 'Uniwersalny post social media. Optymalnie 80-150 słów.',
+    },
   };
-  const formatDesc = formatMap[format] || formatMap['general'];
+  const formatInfo = formatMap[format] || formatMap['general'];
 
-  const copyPrompt = `[KROK 1 — WYKRYWANIE TYPU BRIEFU]
-Zanim cokolwiek napiszesz, zaklasyfikuj brief klienta jako JEDEN z:
-- MARKETING: promocja produktu/usługi, kampania, oferta, odbiorcy zewnętrzni, generowanie leadów, budowanie świadomości
-- LUDZKI GŁOS: komunikacja zespołowa/pracownicza, życzenia świąteczne, urodziny, rocznica, celebracja, podziękowania, moment kultury wewnętrznej, każda wiadomość skierowana do własnych ludzi
+  const visualBriefInstruction = visualType === 'photo'
+    ? `BRIEF DLA FOTOGRAFA:
+   Napisz szczegółowy brief fotograficzny (3-5 zdań). Opisz:
+   - Typ zdjęcia (packshot, lifestyle, flatlay, portret, reportaż...)
+   - Kadrowanie i kompozycja
+   - Oświetlenie i mood (naturalne, studyjne, ciepłe, zimne...)
+   - Stylizacja / props / tło
+   - Inspiracja / referencja nastroju
+   BEZ kolorów marki, BEZ logo — to brief na samo zdjęcie.`
+    : `BRIEF DLA GRAFIKA:
+   Napisz brief kreatywny (3-5 zdań). Opisz:
+   - Nastrój i emocja grafiki
+   - Wizualna metafora / motyw przewodni
+   - Typ ilustracji (abstrakcyjna, ikonograficzna, typograficzna, kolażowa...)
+   - Sugerowana atmosfera
+   BEZ instrukcji logo, BEZ kolorów hex, BEZ zasad layoutu — to brief na koncept wizualny.`;
 
-Ta klasyfikacja jest obowiązkowa i nadpisuje wszystkie inne instrukcje.
-
-════════════════════════════════════════
-TRYB MARKETINGOWY
-════════════════════════════════════════
-Framework: P-A-S (Problem → Agitacja → Rozwiązanie) lub A-I-D-A.
-Głos: Direct Response — konkrety, zero korporacyjnych przymiotników.
-Zakazane słowa: "comprehensive", "innovative", "leverage", "key", "synergy", "in today's world", "kompleksowy", "innowacyjny", "kluczowy", "synergia", "w dzisiejszym świecie".
-
-════════════════════════════════════════
-TRYB LUDZKIEGO GŁOSU
-════════════════════════════════════════
-Porzuć wszystkie frameworki marketingowe. Jesteś osobą piszącą do ludzi, których naprawdę lubisz.
-
-Zasady — złamanie ich psuje wynik:
-- Pisz jak ludzie mówią: krótkie zdania, naturalny rytm, bezpośrednio
-- Jeśli brief wspomina konkretny element (zwierzę, symbol, metaforę) — UŻYJ GO. Nie zamieniaj na coś "bardziej wyrafinowanego".
-- Humor: stosuj, gdy brief ma zabawną energię. Naturalny humor, nie kalambury.
-- Emoji: maks. 1-2, tylko tam gdzie dodają ciepła lub działają jak interpunkcja. Nie jako dekoracja.
-- Pole "cta": końcowy sentyment, nie etykieta przycisku. "Wesołych Świąt!" jest OK. "Kliknij tutaj!" nie jest.
-- Podpis: tylko nazwa marki. Nigdy "Zespół Marki", "Dział Komunikacji" ani żaden korporacyjny przyrostek.
-- Zakazane frazy: "zasłużona odnowa", "doceniamy waszą pasję", "słodka regeneracja", "wiosenna nadzieja", cokolwiek brzmiące jak newsletter HR.
+  const copyPrompt = `Jesteś doświadczonym copywriterem i strategiem komunikacji. Tworzysz treści w głosie marki.
 
 ════════════════════════════════════════
+KROK 1 — WYKRYJ TYP KOMUNIKACJI
+════════════════════════════════════════
+Zaklasyfikuj zadanie klienta jako:
+- MARKETING: promocja, kampania, oferta, produkt, lead gen, budowanie świadomości
+- LUDZKI GŁOS: życzenia, podziękowania, kultura firmy, komunikacja wewnętrzna, celebracja
 
+════════════════════════════════════════
+ZASADY PISANIA
+════════════════════════════════════════
+MARKETING:
+- Framework P-A-S (Problem → Agitacja → Rozwiązanie) lub A-I-D-A
+- Konkrety, zero korporacyjnych przymiotników
+- Zakazane: "kompleksowy", "innowacyjny", "kluczowy", "synergia", "w dzisiejszym świecie"
+
+LUDZKI GŁOS:
+- Porzuć frameworki. Pisz jak człowiek do człowieka.
+- Krótkie zdania, naturalny rytm, autentyczność
+- Emoji: maks. 1-2, tam gdzie dodają ciepła
+- Podpis: nazwa marki, nigdy "Zespół...", "Dział..."
+- Zakazane: "zasłużona odnowa", "doceniamy waszą pasję", cokolwiek z newslettera HR
+
+════════════════════════════════════════
 TOŻSAMOŚĆ MARKI:
 ${brandDna}
 
 TON KOMUNIKACJI:
 ${tov}
 ${voiceCardBlock}
-BRIEF KLIENTA:
-${briefText || '[Brak briefu — generuj na podstawie tożsamości marki]'}
-
-FORMAT: ${formatDesc}
 
 ════════════════════════════════════════
-TWÓJ OUTPUT:
+ZADANIE KLIENTA:
+${briefText || '[Brak zadania — generuj na podstawie tożsamości marki]'}
 
-1. CONCEPT — Pojedynczy pomysł. Jaką emocję wywołuje? (1-2 zdania)
+PLATFORMA: ${formatInfo.name}
+WYTYCZNE: ${formatInfo.copyGuide}
+TYP WIZUALA: ${visualType === 'photo' ? 'Zdjęcie' : 'Grafika'}
 
-2. CREATIVE BRIEF — Dla grafika. TYLKO nastrój i wizualna metafora.
-   2-4 zdania. BEZ instrukcji logo, BEZ kolorów hex, BEZ zasad layoutu, BEZ wskazówek kompozycji.
+════════════════════════════════════════
+TWÓJ OUTPUT — 3 WARIANTY
 
-3. TRZY WARIANTY. Dla każdego:
-   - "headline": MAKS. 8 słów. Samodzielne stwierdzenie. Działa na grafice bez kontekstu.
-   - "subtext": MAKS. 15 słów. Podpis grafiki — jedna myśl, nie akapit. Uzupełnia nagłówek, nie wyjaśnia go.
-   - "cta": MAKS. 4 słowa. MARKETING=etykieta przycisku. LUDZKI GŁOS=końcowy sentyment.
-   - "post_copy": Właściwa treść posta w social media (3-6 zdań). Żyje POZA grafiką. Pisz jakby brand manager wpisał to właśnie teraz — prawdziwym głosem marki, dopasowanym do trybu (marketing lub ludzki). Dodaj emoji jeśli pasują do marki.
-   - "rationale": MAKS. 8 słów. Jedna kluczowa decyzja kreatywna. Nic więcej.
+Dla każdego wariantu wygeneruj:
 
-Zwróć WYŁĄCZNIE poprawny JSON, bez markdown, bez wyjaśnień:
+1. "post_copy" — Gotowy tekst posta do opublikowania. Napisz go tak, jakby brand manager wpisał go właśnie teraz. W głosie marki, odpowiedniej długości dla platformy. To jest GŁÓWNY output.
+
+2. "visual_brief" — ${visualBriefInstruction}
+
+3. "headline" — MAKS. 8 słów. Tekst na grafikę (jeśli grafika ma mieć tekst). Samodzielne stwierdzenie.
+
+4. "subtext" — MAKS. 15 słów. Podpis grafiki. Uzupełnia nagłówek, nie wyjaśnia go.
+
+5. "cta" — MAKS. 4 słowa. Etykieta CTA lub końcowy sentyment.
+
+6. "rationale" — MAKS. 10 słów. Dlaczego ten wariant zadziała.
+
+Zwróć WYŁĄCZNIE poprawny JSON:
 {
-  "concept": "...",
-  "creative_brief": "...",
+  "concept": "Jeden pomysł, jedna emocja (1-2 zdania)",
   "variants": [
-    { "headline": "...", "subtext": "...", "cta": "...", "post_copy": "...", "rationale": "..." },
-    { "headline": "...", "subtext": "...", "cta": "...", "post_copy": "...", "rationale": "..." },
-    { "headline": "...", "subtext": "...", "cta": "...", "post_copy": "...", "rationale": "..." }
+    { "post_copy": "...", "visual_brief": "...", "headline": "...", "subtext": "...", "cta": "...", "rationale": "..." },
+    { "post_copy": "...", "visual_brief": "...", "headline": "...", "subtext": "...", "cta": "...", "rationale": "..." },
+    { "post_copy": "...", "visual_brief": "...", "headline": "...", "subtext": "...", "cta": "...", "rationale": "..." }
   ]
 }
 
@@ -189,16 +218,11 @@ Pisz CAŁY tekst po polsku.`;
     const cleaned = responseText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
     const parsed = JSON.parse(cleaned);
 
-    // Return new format if present, fallback for backward compat
-    if (parsed.variants) {
-      return NextResponse.json({
-        results: parsed.variants,
-        concept: parsed.concept || '',
-        creative_brief: parsed.creative_brief || '',
-      });
-    }
-    // Old format fallback (plain array)
-    return NextResponse.json({ results: Array.isArray(parsed) ? parsed : [] });
+    return NextResponse.json({
+      results: parsed.variants || [],
+      concept: parsed.concept || '',
+      visualType,
+    });
 
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);
