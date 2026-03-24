@@ -59,20 +59,32 @@ ${(vc.example_good || []).map(e => `→ "${e}"`).join('\n')}
 Marka NIGDY TAK NIE BRZMI (anty-wzorzec):
 ${(vc.example_bad || []).map(e => `✗ "${e}"`).join('\n')}` : '';
 
-  // ── 3. PLATFORM RULES ──
-  const platformRules: Record<string, string> = {
-    facebook: `Facebook | 80-150 słów | 1-3 krótkie akapity | CTA z bezpośrednim linkiem lub zachętą do komentarza/wiadomości — NIGDY "link w bio"`,
-    linkedin: `LinkedIn | 100-200 słów | profesjonalny ale ludzki ton | storytelling mile widziany | emoji z umiarem | CTA: zachęta do komentarza, udostępnienia lub przejścia na stronę`,
-    instagram: `Instagram | 50-120 słów + hashtagi | chwytliwy pierwszy wiersz (hook) | 5-10 trafnych hashtagów na końcu | CTA: "link w bio", "napisz DM" lub "zapisz post"`,
-    general: `Social media | 80-150 słów | ton dopasowany do marki | CTA dopasowane do kontekstu`,
+  // ── 3. PLATFORM RULES (tekst + format kadru dla briefa fotograficznego) ──
+  const platformData: Record<string, { rule: string; photoFormat: string }> = {
+    facebook: {
+      rule: `Facebook | 80-150 słów | 1-3 krótkie akapity | CTA z bezpośrednim linkiem lub zachętą do komentarza/wiadomości — NIGDY "link w bio"`,
+      photoFormat: `Kadr: 1200×630 px (landscape 1.91:1) lub 1080×1080 (kwadrat). Oba formaty działają na FB.`,
+    },
+    linkedin: {
+      rule: `LinkedIn | 100-200 słów | profesjonalny ale ludzki ton | storytelling mile widziany | emoji z umiarem | CTA: zachęta do komentarza, udostępnienia lub przejścia na stronę`,
+      photoFormat: `Kadr: 1200×627 px (landscape 1.91:1) — optymalny dla LinkedIn feed.`,
+    },
+    instagram: {
+      rule: `Instagram | 50-120 słów + hashtagi | chwytliwy pierwszy wiersz (hook) | 5-10 trafnych hashtagów na końcu | CTA: "link w bio", "napisz DM" lub "zapisz post"`,
+      photoFormat: `Kadr: 1080×1350 px (portrait 4:5) — optymalny dla IG feed, zajmuje maksimum ekranu.`,
+    },
+    general: {
+      rule: `Social media | 80-150 słów | ton dopasowany do marki | CTA dopasowane do kontekstu`,
+      photoFormat: `Kadr: 1080×1080 px (kwadrat) — uniwersalny format.`,
+    },
   };
-  const platformRule = platformRules[format] || platformRules['general'];
+  const platform = platformData[format] || platformData['general'];
 
-  // ── 4. VISUAL BRIEF INSTRUCTIONS ──
+  // ── 4. VISUAL BRIEF INSTRUCTIONS (z formatem kadru per platforma) ──
   const visualBriefInstructions: Record<string, string> = {
-    graphic: `Brief dla grafika (3-5 zdań): nastrój, wizualna metafora, typ ilustracji (abstrakcyjna/ikonograficzna/typograficzna/kolażowa), atmosfera. BEZ logo, BEZ hex kolorów, BEZ layoutu.`,
-    photo: `Brief dla fotografa (3-5 zdań): typ zdjęcia (packshot/lifestyle/flatlay/portret), kadrowanie, oświetlenie i mood, stylizacja/props/tło. BEZ logo, BEZ kolorów marki. Na zdjęciu NIE będzie tekstu.`,
-    photo_text: `Brief dla fotografa pod tekst (3-5 zdań): typ zdjęcia, kadrowanie z przestrzenią na nałożenie tekstu (jasna/ciemna strefa, bokeh, negatywna przestrzeń), oświetlenie, stylizacja. Wskaż gdzie powinien być tekst.`,
+    graphic: `Brief dla grafika (3-5 zdań): nastrój, wizualna metafora, typ ilustracji (abstrakcyjna/ikonograficzna/typograficzna/kolażowa), atmosfera. BEZ logo, BEZ hex kolorów, BEZ layoutu. ${platform.photoFormat}`,
+    photo: `Brief dla fotografa (3-5 zdań): typ zdjęcia (packshot/lifestyle/flatlay/portret), kadrowanie, oświetlenie i mood, stylizacja/props/tło. BEZ logo, BEZ kolorów marki. Na zdjęciu NIE będzie tekstu. ${platform.photoFormat}`,
+    photo_text: `Brief dla fotografa pod tekst (3-5 zdań): typ zdjęcia, kadrowanie z przestrzenią na nałożenie tekstu (jasna/ciemna strefa, bokeh, negatywna przestrzeń), oświetlenie, stylizacja. Wskaż gdzie powinien być tekst. ${platform.photoFormat}`,
   };
   const visualBriefInstruction = visualBriefInstructions[visualType] || visualBriefInstructions['graphic'];
 
@@ -118,15 +130,19 @@ ZADANIE
 ════════════════════════════════════════
 ${briefText || '[Brak zadania — generuj na podstawie tożsamości marki]'}
 
-Platforma: ${platformRule}
+Platforma: ${platform.rule}
 Wizual: ${{ graphic: 'Grafika z tekstem', photo: 'Czyste zdjęcie (bez tekstu)', photo_text: 'Zdjęcie z nałożonym tekstem' }[visualType] || 'Grafika'}
+${vc ? `
+WAŻNE — elementy głosu marki obowiązkowe w KAŻDYM wariancie post_copy:
+${(vc.golden_rules || []).map((r, i) => `${i + 1}. ${r}`).join('\n')}
+Jeśli złota zasada mówi o konkretnym emoji, frazie lub zwrocie — MUSI pojawić się w treści posta, nie tylko w nagłówku.` : ''}
 
 ════════════════════════════════════════
-OUTPUT — 3 WARIANTY (każdy INNY w podejściu)
+OUTPUT — 3 WARIANTY (każdy INNY w hooku i podejściu)
 ════════════════════════════════════════
-Wariant 1: najkrótszy, punchline — mocne otwarcie, szybki CTA.
-Wariant 2: storytelling — dłuższy, buduje nastrój, angażuje emocjonalnie.
-Wariant 3: pytanie do odbiorcy jako hook — zaczyna od pytania, prowokuje interakcję.
+Wariant 1: hook zmysłowy — otwórz obrazem, zapachem, smakiem. Krótki, punchline.
+Wariant 2: hook nostalgiczny/storytelling — odwołaj się do wspomnienia, tradycji, emocji. Dłuższy.
+Wariant 3: hook pytanie/interakcja — zacznij od pytania do odbiorcy, prowokuj komentarz.
 
 Każdy wariant zawiera: ${variantFields}
 
@@ -135,7 +151,7 @@ Każdy wariant zawiera: ${variantFields}
 
 Zwróć WYŁĄCZNIE poprawny JSON:
 {
-  "concept": "Jeden pomysł, jedna emocja (1-2 zdania)",
+  "concept": "Jedna emocja, jedno zdanie. Nie łącz dwóch uczuć.",
   "variants": [
     ${jsonExample},
     ${jsonExample},
