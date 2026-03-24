@@ -33,11 +33,10 @@ Zwróć WYŁĄCZNIE poprawny JSON:
 
 {
   "banned_cliches": [
-    // MAKS 6-8 pozycji. Wybierz tylko najczęstsze i najbardziej szkodliwe klisze TEJ branży.
-    // Łącz warianty w jedną pozycję: "uczta dla podniebienia / niebo w gębie" to JEDNA pozycja, nie dwie.
-    // NIE duplikuj wzorców, które się pokrywają.
-    // Przykład gastro: "to nie jest zwykłe [cokolwiek]", "uczta dla podniebienia / niebo w gębie"
-    // Przykład moto: "Twoje auto zasługuje na [cokolwiek]", "oddaj się w ręce profesjonalistów"
+    // MAKS 6-8 pozycji. Każda w formacie: "klisza → pozytywny zamiennik"
+    // Łącz warianty w jedną pozycję. NIE duplikuj wzorców, które się pokrywają.
+    // Przykład gastro: "uczta dla podniebienia / niebo w gębie → nazwij konkretną teksturę lub zapach"
+    // Przykład moto: "oddaj się w ręce profesjonalistów → opisz konkretną czynność, np. wymiana oleju w 20 min"
   ],
   "banned_marketing_words": [
     // 5-8 konkretnych słów/wyrażeń nadużywanych w TEJ branży

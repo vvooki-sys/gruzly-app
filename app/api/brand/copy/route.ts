@@ -69,21 +69,21 @@ ${(vc.example_bad || []).map(e => `✗ "${e}"`).join('\n')}` : '';
 
   // Zakazane wzorce: uniwersalne + branżowe
   const universalBanned = [
-    '"to nie jest zwykłe [cokolwiek]"',
-    '"zasłużyliście / pozwólcie sobie / dokładnie tego potrzebujesz" — protekcjonalny ton',
-    '"uczta dla podniebienia / niebo w gębie / symfonia smaków"',
-    '"odkryj nowy wymiar / kulinarna podróż"',
-    '"smakuje jak u mamy/babci"',
-    '"tylko świeże i lokalne składniki"',
+    '"to nie jest zwykłe [cokolwiek]" → nazwij co KONKRETNIE wyróżnia',
+    '"zasłużyliście / pozwólcie sobie" (protekcjonalny ton) → opisz sytuację użycia',
+    '"uczta dla podniebienia / niebo w gębie / symfonia smaków" → nazwij konkretne doznanie: teksturę, zapach, dźwięk',
+    '"odkryj nowy wymiar / kulinarna podróż" → pokaż zaskakujący detal produktu lub podania',
+    '"smakuje jak u mamy/babci" → przywołaj konkretny moment lub wspomnienie',
+    '"tylko świeże i lokalne składniki" → wymień 1-2 składniki po nazwie',
   ];
   const industryBanned = ir?.banned_cliches?.map(c => `"${c}"`) || [];
   // Dedup: skip industry clichés already covered by universal patterns, cap total at 8
   const allBannedPatterns = [...universalBanned];
   for (const ic of industryBanned) {
     if (allBannedPatterns.length >= 8) break;
-    const icClean = ic.replace(/"/g, '').toLowerCase();
+    const icClean = ic.replace(/"/g, '').split('→')[0].trim().toLowerCase();
     const covered = universalBanned.some(ub => {
-      const ubClean = ub.replace(/"/g, '').toLowerCase();
+      const ubClean = ub.replace(/"/g, '').split('→')[0].trim().toLowerCase();
       return ubClean.includes(icClean) || icClean.includes(ubClean);
     });
     if (!covered) allBannedPatterns.push(ic);
@@ -115,22 +115,26 @@ ${clicheSentinel}`;
   // WARSTWA 1 — UNIWERSALNA (stała struktura)
   // ══════════════════════════════════════════════════════════════
 
-  const platformData: Record<string, { rule: string; photoFormat: string }> = {
+  const platformData: Record<string, { rule: string; photoFormat: string; wordRanges: [string, string, string] }> = {
     facebook: {
-      rule: `Facebook | TWARDY LIMIT: 80-150 słów (policz przed zwróceniem — jeśli >150 skróć, jeśli <80 rozbuduj) | 1-3 krótkie akapity | CTA z bezpośrednim linkiem lub zachętą do komentarza/wiadomości — NIGDY "link w bio"`,
+      rule: `Facebook | Celuj w 100-130 słów (twardy limit: 80-150 — policz przed zwróceniem, koryguj jeśli poza zakresem) | 1-3 krótkie akapity | CTA z bezpośrednim linkiem lub zachętą do komentarza/wiadomości — NIGDY "link w bio" | Bez hashtagów`,
       photoFormat: `Kadr: 1200×630 px (landscape 1.91:1) lub 1080×1080 (kwadrat).`,
+      wordRanges: ['80-100', '120-150', '90-120'],
     },
     linkedin: {
-      rule: `LinkedIn | TWARDY LIMIT: 100-200 słów (policz przed zwróceniem — jeśli >200 skróć, jeśli <100 rozbuduj) | profesjonalny ale ludzki ton | storytelling mile widziany | emoji z umiarem | CTA: zachęta do komentarza, udostępnienia lub przejścia na stronę`,
+      rule: `LinkedIn | Celuj w 130-170 słów (twardy limit: 100-200 — policz przed zwróceniem, koryguj jeśli poza zakresem) | profesjonalny ale ludzki ton | storytelling mile widziany | emoji z umiarem | CTA: zachęta do komentarza, udostępnienia lub przejścia na stronę`,
       photoFormat: `Kadr: 1200×627 px (landscape 1.91:1).`,
+      wordRanges: ['100-130', '160-200', '120-160'],
     },
     instagram: {
-      rule: `Instagram | TWARDY LIMIT: 50-120 słów + hashtagi (policz przed zwróceniem — jeśli >120 skróć, jeśli <50 rozbuduj) | chwytliwy pierwszy wiersz (hook) | 5-10 trafnych hashtagów na końcu | CTA: "link w bio", "napisz DM" lub "zapisz post"`,
+      rule: `Instagram | Celuj w 60-100 słów + hashtagi (twardy limit: 50-120 — policz przed zwróceniem, koryguj jeśli poza zakresem) | chwytliwy pierwszy wiersz (hook) | 5-10 trafnych hashtagów na końcu | CTA: "link w bio", "napisz DM" lub "zapisz post"`,
       photoFormat: `Kadr: 1080×1350 px (portrait 4:5).`,
+      wordRanges: ['50-70', '90-120', '65-90'],
     },
     general: {
-      rule: `Social media | TWARDY LIMIT: 80-150 słów (policz przed zwróceniem — jeśli >150 skróć, jeśli <80 rozbuduj) | ton dopasowany do marki | CTA dopasowane do kontekstu`,
+      rule: `Social media | Celuj w 100-130 słów (twardy limit: 80-150 — policz przed zwróceniem, koryguj jeśli poza zakresem) | ton dopasowany do marki | CTA dopasowane do kontekstu`,
       photoFormat: `Kadr: 1080×1080 px (kwadrat).`,
+      wordRanges: ['80-100', '120-150', '90-120'],
     },
   };
   const platform = platformData[format] || platformData['general'];
@@ -201,21 +205,18 @@ OPIS PRODUKTU/USŁUGI JEST ŹRÓDŁEM PRAWDY — zarówno w post_copy, jak i w v
 Platforma: ${platform.rule}
 Wizual: ${{ graphic: 'Grafika z tekstem', photo: 'Czyste zdjęcie (bez tekstu)', photo_text: 'Zdjęcie z nałożonym tekstem' }[visualType] || 'Grafika'}
 ${vc ? `
-WAŻNE — elementy głosu marki obowiązkowe w KAŻDYM wariancie post_copy:
-${(vc.golden_rules || []).map((r, i) => {
-    const rule = r.replace(
-      /[Zz]awsze używ[a-ząćęłńóśźż]+ przynajmniej jednego żółtego serca \(💛\)/,
-      'Dokładnie jedno 💛 w treści posta (nie w nagłówku, nie dwa razy). Umieść je w zdaniu, które mówi o emocji lub komforcie — tam ma największą siłę'
-    );
-    return `${i + 1}. ${rule}`;
-  }).join('\n')}` : ''}
+WAŻNE: Zastosuj WSZYSTKIE złote zasady z sekcji GŁOS MARKI w każdym wariancie post_copy.${
+  (vc.golden_rules || []).some(r => /żółt[a-ząćęłńóśźż]* serc|💛/.test(r))
+    ? '\nEmoji 💛: dokładnie jedno w treści posta (nie w nagłówku, nie dwa razy). Umieść w zdaniu o emocji lub komforcie.'
+    : ''
+}` : ''}
 
 ════════════════════════════════════════
 OUTPUT — 3 WARIANTY (każdy INNY w hooku i podejściu)
 ════════════════════════════════════════
-Wariant 1: hook zmysłowy — otwórz obrazem, doznaniem zmysłowym pasującym do branży. Krótki, punchline.
-Wariant 2: hook nostalgiczny/storytelling — odwołaj się do wspomnienia, tradycji, emocji. Dłuższy.
-Wariant 3: hook pytanie/interakcja — zacznij od KONKRETNEGO pytania, na które łatwo odpowiedzieć (wybór A vs B, dokończ zdanie, podziel się jednym wspomnieniem). Unikaj pytań tak szerokich, że nie dają impulsu do odpowiedzi.
+Wariant 1: hook zmysłowy — otwórz obrazem, doznaniem zmysłowym pasującym do branży. Krótki, punchline. CEL: ${platform.wordRanges[0]} słów.
+Wariant 2: hook nostalgiczny/storytelling — odwołaj się do wspomnienia, tradycji, emocji. Dłuższy. CEL: ${platform.wordRanges[1]} słów.
+Wariant 3: hook pytanie/interakcja — zacznij od KONKRETNEGO pytania, na które łatwo odpowiedzieć (wybór A vs B, dokończ zdanie, podziel się jednym wspomnieniem). Unikaj pytań tak szerokich, że nie dają impulsu do odpowiedzi. CEL: ${platform.wordRanges[2]} słów.
 
 Każdy wariant zawiera: ${variantFields}
 
@@ -227,7 +228,7 @@ Dobrze: "Konkretny benefit budzi zaufanie, CTA domyka konwersję"
 
 Zwróć WYŁĄCZNIE poprawny JSON:
 {
-  "concept": "Maks. 15 słów. Jedna emocja + jeden konkretny detal TEGO produktu/usługi. Jeśli pasuje do dowolnej firmy z tej branży, jest za ogólny.",
+  "concept": "Maks. 15 słów. Jedna emocja + jeden konkretny detal TEGO produktu/usługi. MUSI zawierać nazwę lub element konkretnego produktu z briefu. Jeśli pasuje do dowolnej firmy z tej branży, jest za ogólny.",
   "variants": [
     ${jsonExample},
     ${jsonExample},
