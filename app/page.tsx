@@ -78,6 +78,7 @@ export default function BrandEditor() {
         await refreshData();
         setShowWizard(false);
       }}
+      onClose={() => setShowWizard(false)}
       onProjectUpdate={p => setProject(p)}
       onAssetsUpdate={a => setAssets(a)}
       showToast={showToast}
@@ -146,7 +147,7 @@ export default function BrandEditor() {
           className="h-8 px-3 rounded-full border border-teal-deep/15 dark:border-holo-mint/15 hover:border-holo-mint/50 text-xs font-semibold opacity-50 hover:opacity-100 transition-all shrink-0 flex items-center gap-1.5"
           title="Konfiguruj bazę marki"
         >
-          🧱 <span className="hidden sm:inline">Baza marki</span>
+          🔍 <span className="hidden sm:inline">Analiza marki</span>
         </button>
 
         <button

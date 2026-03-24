@@ -21,7 +21,7 @@ export default function BrandBasePreview({ sections, logos }: BrandBasePreviewPr
 
   return (
     <div className="space-y-3">
-      <p className="text-xs font-bold opacity-30 uppercase tracking-wide">Baza marki</p>
+      <p className="text-xs font-bold opacity-30 uppercase tracking-wide">Analiza marki</p>
 
       {/* Logo preview */}
       {logos.length > 0 && (
@@ -48,7 +48,7 @@ export default function BrandBasePreview({ sections, logos }: BrandBasePreviewPr
       {sections.length === 0 && logos.length === 0 && (
         <div className="text-center py-8 opacity-30">
           <p className="text-3xl mb-2">🧱</p>
-          <p className="text-xs">Baza marki jest pusta</p>
+          <p className="text-xs">Analiza marki jest pusta</p>
           <p className="text-xs opacity-60">Przejdź przez kolejne kroki żeby ją wypełnić</p>
         </div>
       )}

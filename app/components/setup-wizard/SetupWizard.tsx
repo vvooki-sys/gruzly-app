@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
+import { X } from 'lucide-react';
 import type { Project, BrandAsset } from '@/lib/types';
 import BrandBasePreview, { type BrandBaseSection } from './BrandBasePreview';
 import StepLogo from './StepLogo';
@@ -11,6 +12,7 @@ interface SetupWizardProps {
   project: Project;
   assets: BrandAsset[];
   onComplete: () => Promise<void>;
+  onClose: () => void;
   onProjectUpdate: (p: Project) => void;
   onAssetsUpdate: (a: BrandAsset[]) => void;
   showToast: (msg: string) => void;
@@ -26,6 +28,7 @@ export default function SetupWizard({
   project,
   assets,
   onComplete,
+  onClose,
   onProjectUpdate,
   onAssetsUpdate,
   showToast,
@@ -87,11 +90,12 @@ export default function SetupWizard({
           <div className="flex items-center gap-3">
             <img src="/gruzly-bear.png" alt="Gruzly" className="w-8 h-8 rounded-lg object-cover" />
             <div>
-              <span className="font-black text-sm">Konfiguracja marki</span>
+              <span className="font-black text-sm">Analiza marki</span>
               <span className="text-xs opacity-40 ml-2">{project.name}</span>
             </div>
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-2">
+            <div className="flex gap-1">
             {STEPS.map((s, i) => (
               <button
                 key={s.id}
@@ -109,6 +113,14 @@ export default function SetupWizard({
                 <span className="sm:hidden">{i + 1}</span>
               </button>
             ))}
+            </div>
+            <button
+              onClick={onClose}
+              className="w-8 h-8 rounded-full flex items-center justify-center border border-teal-deep/15 dark:border-holo-mint/15 hover:border-red-400/50 hover:text-red-400 opacity-40 hover:opacity-100 transition-all"
+              title="Zamknij"
+            >
+              <X className="h-4 w-4" />
+            </button>
           </div>
         </div>
       </header>
