@@ -302,22 +302,6 @@ export default function BrandSettings({
           />
         </div>
 
-        {/* Logo position */}
-        <div>
-          <label className="text-xs font-semibold opacity-50 uppercase tracking-wide block mb-1">Pozycja logo na grafikach</label>
-          <select
-            className="w-full bg-offwhite dark:bg-teal-deep rounded-xl px-3 py-2 text-sm border border-teal-deep/15 dark:border-holo-mint/10 focus:border-holo-mint outline-none transition-colors"
-            value={editLogoPosition}
-            onChange={e => { setEditLogoPosition(e.target.value); setTimeout(saveProjectMeta, 0); }}
-          >
-            <option value="top-left">↖ Lewy górny</option>
-            <option value="top-right">↗ Prawy górny</option>
-            <option value="bottom-left">↙ Lewy dolny</option>
-            <option value="bottom-right">↘ Prawy dolny</option>
-            <option value="none">✕ Bez logo</option>
-          </select>
-        </div>
-
         {savingProject && <p className="text-xs text-holo-mint font-bold">Zapisuję...</p>}
       </div>
 
