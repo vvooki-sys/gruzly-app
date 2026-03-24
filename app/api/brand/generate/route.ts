@@ -256,8 +256,9 @@ export async function POST(req: NextRequest) {
     isFromCopywriter = false,
   } = await req.json();
 
-  if (!headline || !format) {
-    return NextResponse.json({ error: 'headline and format required' }, { status: 400 });
+  const hasPhoto = !!(photoUrl && photoMode !== 'none');
+  if ((!headline && !hasPhoto) || !format) {
+    return NextResponse.json({ error: 'headline or photo required, format required' }, { status: 400 });
   }
 
   const [project] = await getDb()`SELECT * FROM projects WHERE id = ${projectId}`;
@@ -485,9 +486,9 @@ ${sep}
 MARKA: ${project.name}
 FORMAT: ${FORMAT_SIZES[format] || '1080x1080px square'} — projektuj dokładnie dla tego rozmiaru i proporcji płótna
 
-TEKST DO UMIESZCZENIA NA GRAFICE (zachowaj dokładnie tak jak podano — nie tłumacz, nie zmieniaj):
+${headline ? `TEKST DO UMIESZCZENIA NA GRAFICE (zachowaj dokładnie tak jak podano — nie tłumacz, nie zmieniaj):
 Nagłówek: "${headline}"
-${subtext ? `Podtekst: "${subtext}"` : ''}
+${subtext ? `Podtekst: "${subtext}"` : ''}` : 'BRAK TEKSTU — stwórz grafikę wizualną bez tekstu na obrazie (tekst może zostać nałożony później).'}
 
 ${brief ? (isFromCopywriter
   ? `KIERUNEK KREATYWNY (z Copywritera — traktuj jako główną art direction):\n"${brief}"\nRealizuj tę wizję ściśle — to brief od copywritera przygotowany specjalnie pod ten post.`
