@@ -83,7 +83,7 @@ interface StepBrandScanProps {
   assets: BrandAsset[];
   onProjectUpdate: (p: Project) => void;
   onAssetsUpdate: (a: BrandAsset[]) => void;
-  onSectionsUpdate: (sections: BrandBaseSection[]) => void;
+  onSectionsUpdate: (sections: BrandBaseSection[], source?: string) => void;
   showToast: (msg: string) => void;
 }
 
@@ -167,7 +167,7 @@ export default function StepBrandScan({
         if (data.assets) onAssetsUpdate(data.assets);
         // Convert scan data to brand base sections
         const newSections = brandDnaToSections(data.brandDna);
-        onSectionsUpdate(newSections);
+        onSectionsUpdate(newSections, 'scan');
         showToast('Brand DNA zeskanowany ✓');
       } else if (data.fallback) {
         setScanError('Strona blokuje skanowanie — spróbuj wgrać brandbook');
@@ -214,7 +214,7 @@ export default function StepBrandScan({
           content: String(s.content || ''),
           source: 'brandbook' as const,
         }));
-        onSectionsUpdate(bbSections);
+        onSectionsUpdate(bbSections, 'brandbook');
         onProjectUpdate({ ...project, brand_analysis: data.analysis, updated_at: new Date().toISOString() });
         showToast('Brandbook przeanalizowany ✓');
       } else {

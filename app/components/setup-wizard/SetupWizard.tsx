@@ -31,20 +31,8 @@ export default function SetupWizard({
   showToast,
 }: SetupWizardProps) {
   const [step, setStep] = useState(0);
-  const [sections, setSections] = useState<BrandBaseSection[]>(() => {
-    // Initialize from existing brand_sections if any
-    const existing = (project as unknown as Record<string, unknown>).brand_sections;
-    if (Array.isArray(existing)) {
-      return existing.map((s: Record<string, unknown>) => ({
-        id: String(s.id || ''),
-        title: String(s.title || ''),
-        icon: String(s.icon || '📄'),
-        content: String(s.content || ''),
-        source: (s.source as BrandBaseSection['source']) || 'manual',
-      }));
-    }
-    return [];
-  });
+  // Wizard always starts fresh — builds brand base from scratch
+  const [sections, setSections] = useState<BrandBaseSection[]>([]);
 
   const logos = assets.filter(a => a.type === 'logo');
 
@@ -60,9 +48,11 @@ export default function SetupWizard({
     });
   }, []);
 
-  const addSections = useCallback((newSections: BrandBaseSection[]) => {
+  const replaceSections = useCallback((newSections: BrandBaseSection[], source?: string) => {
     setSections(prev => {
-      const updated = [...prev];
+      // If source given, remove all old sections from that source first
+      const kept = source ? prev.filter(s => s.source !== source) : [];
+      const updated = [...kept];
       for (const ns of newSections) {
         const idx = updated.findIndex(s => s.id === ns.id);
         if (idx >= 0) {
@@ -143,7 +133,7 @@ export default function SetupWizard({
                 assets={assets}
                 onProjectUpdate={onProjectUpdate}
                 onAssetsUpdate={onAssetsUpdate}
-                onSectionsUpdate={addSections}
+                onSectionsUpdate={replaceSections}
                 showToast={showToast}
               />
             )}
