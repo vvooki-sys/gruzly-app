@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
   const file = formData.get('file') as File | null;
   const text = formData.get('text') as string | null;
   const format = formData.get('format') as string || 'general';
-  const visualType = formData.get('visualType') as string || 'graphic'; // 'graphic' | 'photo'
+  const visualType = formData.get('visualType') as string || 'graphic'; // 'graphic' | 'photo' | 'photo_text'
 
   if (!file && !text) {
     return NextResponse.json({ error: 'file or text required' }, { status: 400 });
@@ -114,22 +114,31 @@ ${(vc.example_bad || []).map(e => `✗ "${e}"`).join('\n')}
   };
   const formatInfo = formatMap[format] || formatMap['general'];
 
-  const visualBriefInstruction = visualType === 'photo'
-    ? `BRIEF DLA FOTOGRAFA:
+  const visualBriefInstructions: Record<string, string> = {
+    graphic: `BRIEF DLA GRAFIKA:
+   Napisz brief kreatywny (3-5 zdań). Opisz:
+   - Nastrój i emocja grafiki
+   - Wizualna metafora / motyw przewodni
+   - Typ ilustracji (abstrakcyjna, ikonograficzna, typograficzna, kolażowa...)
+   - Sugerowana atmosfera
+   BEZ instrukcji logo, BEZ kolorów hex, BEZ zasad layoutu — to brief na koncept wizualny.`,
+    photo: `BRIEF DLA FOTOGRAFA:
    Napisz szczegółowy brief fotograficzny (3-5 zdań). Opisz:
    - Typ zdjęcia (packshot, lifestyle, flatlay, portret, reportaż...)
    - Kadrowanie i kompozycja
    - Oświetlenie i mood (naturalne, studyjne, ciepłe, zimne...)
    - Stylizacja / props / tło
    - Inspiracja / referencja nastroju
-   BEZ kolorów marki, BEZ logo — to brief na samo zdjęcie.`
-    : `BRIEF DLA GRAFIKA:
-   Napisz brief kreatywny (3-5 zdań). Opisz:
-   - Nastrój i emocja grafiki
-   - Wizualna metafora / motyw przewodni
-   - Typ ilustracji (abstrakcyjna, ikonograficzna, typograficzna, kolażowa...)
-   - Sugerowana atmosfera
-   BEZ instrukcji logo, BEZ kolorów hex, BEZ zasad layoutu — to brief na koncept wizualny.`;
+   BEZ kolorów marki, BEZ logo — to brief na samo zdjęcie. Na tym zdjęciu NIE będzie żadnego tekstu.`,
+    photo_text: `BRIEF DLA FOTOGRAFA (zdjęcie pod tekst):
+   Napisz brief fotograficzny (3-5 zdań). Opisz:
+   - Typ zdjęcia (packshot, lifestyle, flatlay, portret, reportaż...)
+   - Kadrowanie i kompozycja — UWZGLĘDNIJ przestrzeń na nałożenie tekstu (np. jasna/ciemna strefa, bokeh, negatywna przestrzeń)
+   - Oświetlenie i mood (naturalne, studyjne, ciepłe, zimne...)
+   - Stylizacja / props / tło
+   Zadbaj o to, żeby zdjęcie dobrze działało jako tło pod tekst — wskaż gdzie tekst powinien być umieszczony.`,
+  };
+  const visualBriefInstruction = visualBriefInstructions[visualType] || visualBriefInstructions['graphic'];
 
   const copyPrompt = `Jesteś doświadczonym copywriterem i strategiem komunikacji. Tworzysz treści w głosie marki.
 
@@ -169,7 +178,7 @@ ${briefText || '[Brak zadania — generuj na podstawie tożsamości marki]'}
 
 PLATFORMA: ${formatInfo.name}
 WYTYCZNE: ${formatInfo.copyGuide}
-TYP WIZUALA: ${visualType === 'photo' ? 'Zdjęcie' : 'Grafika'}
+TYP WIZUALA: ${{ graphic: 'Grafika (z tekstem)', photo: 'Zdjęcie (bez tekstu)', photo_text: 'Zdjęcie z nałożonym tekstem' }[visualType] || 'Grafika'}
 
 ════════════════════════════════════════
 TWÓJ OUTPUT — 3 WARIANTY
@@ -180,11 +189,11 @@ Dla każdego wariantu wygeneruj:
 
 2. "visual_brief" — ${visualBriefInstruction}
 
-3. "headline" — MAKS. 8 słów. Tekst na grafikę (jeśli grafika ma mieć tekst). Samodzielne stwierdzenie.
+${visualType === 'photo' ? `UWAGA: Typ wizuala to CZYSTE ZDJĘCIE — bez żadnego tekstu na obrazie. NIE generuj headline, subtext ani cta. Ustaw je na puste stringi "".` : `3. "headline" — MAKS. 8 słów. Tekst na ${visualType === 'photo_text' ? 'zdjęcie' : 'grafikę'}. Samodzielne stwierdzenie, chwytliwe i zwięzłe.
 
-4. "subtext" — MAKS. 15 słów. Podpis grafiki. Uzupełnia nagłówek, nie wyjaśnia go.
+4. "subtext" — MAKS. 15 słów. Podpis pod nagłówkiem. Uzupełnia go, nie wyjaśnia.
 
-5. "cta" — MAKS. 4 słowa. Etykieta CTA lub końcowy sentyment.
+5. "cta" — MAKS. 4 słowa. Etykieta CTA lub końcowy sentyment.`}
 
 6. "rationale" — MAKS. 10 słów. Dlaczego ten wariant zadziała.
 
@@ -203,11 +212,15 @@ Pisz CAŁY tekst po polsku.`;
   const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
   try {
-    const userContent: Anthropic.MessageParam['content'] = [];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const userContent: any[] = [];
 
     if (filePart) {
       userContent.push({ type: 'text', text: 'Poniżej brief w formie dokumentu PDF:' });
-      userContent.push({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: filePart.inlineData.data } } as Anthropic.MessageParam['content'][number]);
+      userContent.push({
+        type: 'document',
+        source: { type: 'base64', media_type: 'application/pdf', data: filePart.inlineData.data },
+      });
     }
 
     userContent.push({ type: 'text', text: copyPrompt });

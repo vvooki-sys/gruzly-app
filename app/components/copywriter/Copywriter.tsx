@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Upload, Loader2, PenLine, Wand2, Camera, Image, Check, Copy } from 'lucide-react';
+import { Upload, Loader2, PenLine, Wand2, Camera, Image, Check, Copy, Type } from 'lucide-react';
 import type { Project } from '@/lib/types';
 
 interface CopywriterProps {
@@ -33,7 +33,7 @@ export default function Copywriter({ project, showToast, onUseCopy }: Copywriter
   const [task, setTask] = useState('');
   const [briefFile, setBriefFile] = useState<File | null>(null);
   const [format, setFormat] = useState('facebook');
-  const [visualType, setVisualType] = useState<'graphic' | 'photo'>('graphic');
+  const [visualType, setVisualType] = useState<'graphic' | 'photo' | 'photo_text'>('graphic');
   const [generating, setGenerating] = useState(false);
   const [results, setResults] = useState<CopyVariant[]>([]);
   const [concept, setConcept] = useState('');
@@ -130,31 +130,29 @@ export default function Copywriter({ project, showToast, onUseCopy }: Copywriter
         {/* Visual type */}
         <div>
           <label className="text-xs font-semibold opacity-50 mb-1.5 block uppercase tracking-wide">Typ wizuala do posta</label>
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              onClick={() => setVisualType('graphic')}
-              className={`py-3 rounded-xl border-2 transition-all flex flex-col items-center gap-1.5 ${
-                visualType === 'graphic'
-                  ? 'border-holo-mint bg-holo-mint/10 text-holo-mint'
-                  : 'border-teal-deep/15 dark:border-holo-mint/15 hover:border-holo-mint/40'
-              }`}
-            >
-              <Image className={`h-5 w-5 ${visualType === 'graphic' ? '' : 'opacity-50'}`} />
-              <span className={`text-xs font-bold ${visualType === 'graphic' ? '' : 'opacity-60'}`}>Grafika</span>
-              <span className={`text-[10px] text-center ${visualType === 'graphic' ? 'opacity-60' : 'opacity-30'}`}>Ilustracja, typografia, design</span>
-            </button>
-            <button
-              onClick={() => setVisualType('photo')}
-              className={`py-3 rounded-xl border-2 transition-all flex flex-col items-center gap-1.5 ${
-                visualType === 'photo'
-                  ? 'border-holo-mint bg-holo-mint/10 text-holo-mint'
-                  : 'border-teal-deep/15 dark:border-holo-mint/15 hover:border-holo-mint/40'
-              }`}
-            >
-              <Camera className={`h-5 w-5 ${visualType === 'photo' ? '' : 'opacity-50'}`} />
-              <span className={`text-xs font-bold ${visualType === 'photo' ? '' : 'opacity-60'}`}>Zdjęcie</span>
-              <span className={`text-[10px] text-center ${visualType === 'photo' ? 'opacity-60' : 'opacity-30'}`}>Fotografia, packshot, lifestyle</span>
-            </button>
+          <div className="grid grid-cols-3 gap-2">
+            {([
+              { id: 'graphic' as const, icon: Image, label: 'Grafika', desc: 'Ilustracja, typografia, tekst na grafice' },
+              { id: 'photo' as const, icon: Camera, label: 'Zdjęcie', desc: 'Fotografia bez tekstu' },
+              { id: 'photo_text' as const, icon: Type, label: 'Zdjęcie + tekst', desc: 'Foto z nałożonym tekstem' },
+            ]).map(vt => {
+              const active = visualType === vt.id;
+              return (
+                <button
+                  key={vt.id}
+                  onClick={() => setVisualType(vt.id)}
+                  className={`py-3 rounded-xl border-2 transition-all flex flex-col items-center gap-1.5 ${
+                    active
+                      ? 'border-holo-mint bg-holo-mint/10 text-holo-mint'
+                      : 'border-teal-deep/15 dark:border-holo-mint/15 hover:border-holo-mint/40'
+                  }`}
+                >
+                  <vt.icon className={`h-5 w-5 ${active ? '' : 'opacity-50'}`} />
+                  <span className={`text-xs font-bold ${active ? '' : 'opacity-60'}`}>{vt.label}</span>
+                  <span className={`text-[10px] text-center leading-tight px-1 ${active ? 'opacity-60' : 'opacity-30'}`}>{vt.desc}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -226,15 +224,17 @@ export default function Copywriter({ project, showToast, onUseCopy }: Copywriter
                 {/* Visual brief */}
                 <div className="space-y-1.5 border-l-2 border-holo-lavender/30 pl-3">
                   <p className="text-xs font-bold opacity-40 uppercase tracking-wide">
-                    {visualType === 'photo' ? '📷 Brief dla fotografa' : '🎨 Brief dla grafika'}
+                    {visualType === 'graphic' ? '🎨 Brief dla grafika' : '📷 Brief dla fotografa'}
                   </p>
                   <p className="text-xs opacity-60 leading-relaxed">{r.visual_brief}</p>
                 </div>
 
-                {/* Headline/subtext for graphic */}
-                {(r.headline || r.subtext) && (
+                {/* Headline/subtext — only for graphic and photo_text */}
+                {visualType !== 'photo' && (r.headline || r.subtext) && (
                   <div className="space-y-1 bg-offwhite dark:bg-teal-deep rounded-lg px-3 py-2">
-                    <p className="text-[10px] font-bold opacity-30 uppercase tracking-wide">Tekst na grafikę</p>
+                    <p className="text-[10px] font-bold opacity-30 uppercase tracking-wide">
+                      {visualType === 'photo_text' ? 'Tekst na zdjęcie' : 'Tekst na grafikę'}
+                    </p>
                     {r.headline && <p className="text-sm font-bold">{r.headline}</p>}
                     {r.subtext && <p className="text-xs opacity-60">{r.subtext}</p>}
                     {r.cta && <p className="text-xs text-holo-mint font-medium">{r.cta}</p>}
