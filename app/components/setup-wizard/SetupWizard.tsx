@@ -7,6 +7,7 @@ import BrandBasePreview, { type BrandBaseSection } from './BrandBasePreview';
 import StepLogo from './StepLogo';
 import StepBrandScan from './StepBrandScan';
 import StepVoice from './StepVoice';
+import StepIndustryRules from './StepIndustryRules';
 
 interface SetupWizardProps {
   project: Project;
@@ -22,6 +23,7 @@ const STEPS = [
   { id: 'logo', label: 'Logo', icon: '🏷' },
   { id: 'brand-scan', label: 'Brand Scan', icon: '🌐' },
   { id: 'voice', label: 'Ton głosu', icon: '🗣' },
+  { id: 'industry', label: 'Reguły branżowe', icon: '📋' },
 ] as const;
 
 export default function SetupWizard({
@@ -155,6 +157,13 @@ export default function SetupWizard({
                 sections={sections}
                 onSectionUpdate={addOrUpdateSection}
                 showToast={showToast}
+              />
+            )}
+            {step === 3 && (
+              <StepIndustryRules
+                project={project}
+                showToast={showToast}
+                onProjectUpdate={onProjectUpdate}
               />
             )}
 
