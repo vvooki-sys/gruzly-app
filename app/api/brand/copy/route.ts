@@ -61,10 +61,10 @@ ${(vc.example_bad || []).map(e => `✗ "${e}"`).join('\n')}` : '';
 
   // ── 3. PLATFORM RULES ──
   const platformRules: Record<string, string> = {
-    facebook: `Facebook | 80-150 słów | 1-3 krótkie akapity | wyraźne CTA na końcu`,
-    linkedin: `LinkedIn | 100-200 słów | profesjonalny ale ludzki ton | storytelling mile widziany | emoji z umiarem`,
-    instagram: `Instagram | 50-120 słów + hashtagi | chwytliwy pierwszy wiersz (hook) | 5-10 trafnych hashtagów na końcu`,
-    general: `Social media | 80-150 słów | ton dopasowany do marki`,
+    facebook: `Facebook | 80-150 słów | 1-3 krótkie akapity | CTA z bezpośrednim linkiem lub zachętą do komentarza/wiadomości — NIGDY "link w bio"`,
+    linkedin: `LinkedIn | 100-200 słów | profesjonalny ale ludzki ton | storytelling mile widziany | emoji z umiarem | CTA: zachęta do komentarza, udostępnienia lub przejścia na stronę`,
+    instagram: `Instagram | 50-120 słów + hashtagi | chwytliwy pierwszy wiersz (hook) | 5-10 trafnych hashtagów na końcu | CTA: "link w bio", "napisz DM" lub "zapisz post"`,
+    general: `Social media | 80-150 słów | ton dopasowany do marki | CTA dopasowane do kontekstu`,
   };
   const platformRule = platformRules[format] || platformRules['general'];
 
