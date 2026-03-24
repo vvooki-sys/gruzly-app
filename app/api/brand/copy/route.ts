@@ -70,16 +70,15 @@ ${(vc.example_bad || []).map(e => `✗ "${e}"`).join('\n')}` : '';
   // Zakazane wzorce: uniwersalne + branżowe
   const universalBanned = [
     '"to nie jest zwykłe [cokolwiek]"',
-    '"zasłużyliście / pozwólcie sobie / pora na chwilę dla siebie" — protekcjonalny ton',
-    '"odkryj / poznaj nowy wymiar [czegokolwiek]"',
+    '"zasłużyliście / pozwólcie sobie / dokładnie tego potrzebujesz" — protekcjonalny ton',
+    '"uczta dla podniebienia / niebo w gębie / symfonia smaków"',
+    '"odkryj nowy wymiar / kulinarna podróż"',
+    '"smakuje jak u mamy/babci"',
+    '"tylko świeże i lokalne składniki"',
   ];
   const industryBanned = ir?.banned_cliches?.map(c => `"${c}"`) || [];
   const allBannedPatterns = [...universalBanned, ...industryBanned];
   const clicheSentinel = ir ? 'Jeśli zdanie brzmi jak z folderu każdej firmy w tej branży — przepisz je.' : 'Jeśli zdanie brzmi jak z broszury reklamowej — przepisz je.';
-
-  const bannedMarketingWords = ir?.banned_marketing_words?.length
-    ? `- Zakazane w tej branży: ${ir.banned_marketing_words.join(', ')}`
-    : '';
 
   const industryRulesBlock = ir ? `
 ════════════════════════════════════════
@@ -89,9 +88,10 @@ Zakazane wzorce (nie tylko dosłowne frazy — także ich warianty):
 ${allBannedPatterns.map(p => `• ${p}`).join('\n')}
 ${clicheSentinel}
 
-${bannedMarketingWords}
+${ir.banned_marketing_words?.length ? `\nZakazane słowa w tej branży: ${ir.banned_marketing_words.join(', ')}` : ''}
 
-Specyfika języka: ${ir.language_notes || ''}` : `
+Jak pisać w tej branży:
+${ir.language_notes || '- Opisuj konkretnie, bez ogólników'}` : `
 Zakazane wzorce (uniwersalne):
 ${universalBanned.map(p => `• ${p}`).join('\n')}
 ${clicheSentinel}`;
@@ -173,8 +173,7 @@ MARKETING (promocja, oferta, produkt, kampania):
 - Zdanie 1: nazwij problem lub pragnienie odbiorcy
 - Zdanie 2-3: pokaż rozwiązanie konkretnie, w języku branży
 - Zdanie końcowe: CTA
-- Zakazane: "kompleksowy", "innowacyjny", "kluczowy", "synergia", "w dzisiejszym świecie"
-${bannedMarketingWords}
+- Zakazane: "kompleksowy", "kluczowy", "synergia", "w dzisiejszym świecie"
 
 LUDZKI GŁOS (życzenia, podziękowania, kultura firmy, celebracja):
 - Pisz jak człowiek do człowieka — bez frameworków
@@ -187,7 +186,7 @@ ZADANIE
 ════════════════════════════════════════
 ${briefText || '[Brak zadania — generuj na podstawie tożsamości marki]'}
 
-OPIS PRODUKTU/USŁUGI JEST ŹRÓDŁEM PRAWDY — zarówno w post_copy, jak i w visual_brief. Nie dodawaj cech, których nie ma w opisie (kolory, smaki, tekstury, temperatura podania). Nie wymyślaj.
+OPIS PRODUKTU/USŁUGI JEST ŹRÓDŁEM PRAWDY — zarówno w post_copy, jak i w visual_brief. Nie dodawaj cech, których nie ma w opisie. Nie wymyślaj. Dotyczy też parafraz: "świeżo wypiekana" ≠ "prosto z pieca" (to dodaje temperaturę). "Ze szczypiorkiem" ≠ "z dużą ilością szczypiorku" (to dodaje ilość).
 
 Platforma: ${platform.rule}
 Wizual: ${{ graphic: 'Grafika z tekstem', photo: 'Czyste zdjęcie (bez tekstu)', photo_text: 'Zdjęcie z nałożonym tekstem' }[visualType] || 'Grafika'}
