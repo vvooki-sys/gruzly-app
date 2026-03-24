@@ -124,11 +124,8 @@ export default function Generator({
 
   // ── Handler: generate ──────────────────────────────────────────────────────
 
-  const hasPhoto = !!(photoUrl && photoMode !== 'none');
-  const canGenerate = !!(headline || hasPhoto);
-
   const generate = async () => {
-    if (!canGenerate || !id) return;
+    if (!id) return;
     setGenerating(true);
     try {
       const res = await fetch(`/api/brand/generate`, {
@@ -489,7 +486,7 @@ export default function Generator({
               {/* Generate CTA */}
               <button
                 onClick={generate}
-                disabled={generating || !canGenerate}
+                disabled={generating}
                 className="w-full h-12 rounded-full holo-gradient text-teal-deep font-black disabled:opacity-40 hover:opacity-90 transition-opacity flex items-center justify-center gap-2 text-sm"
               >
                 {generating

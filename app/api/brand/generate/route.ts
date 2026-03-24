@@ -256,9 +256,8 @@ export async function POST(req: NextRequest) {
     isFromCopywriter = false,
   } = await req.json();
 
-  const hasPhoto = !!(photoUrl && photoMode !== 'none');
-  if ((!headline && !hasPhoto) || !format) {
-    return NextResponse.json({ error: 'headline or photo required, format required' }, { status: 400 });
+  if (!format) {
+    return NextResponse.json({ error: 'format required' }, { status: 400 });
   }
 
   const [project] = await getDb()`SELECT * FROM projects WHERE id = ${projectId}`;
