@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { Loader2, Upload, Wand2, Camera } from 'lucide-react';
+import { Loader2, Wand2, Camera } from 'lucide-react';
 import { mergeBrandSections } from '@/lib/brand-sections';
 import type { Project, BrandAsset, BrandSection, VoiceCard } from '@/lib/types';
 
@@ -54,8 +54,6 @@ export default function BrandSettings({
   showToast,
 }: BrandSettingsProps) {
   const id = project.id;
-  const references = assets.filter(a => a.type === 'reference');
-
   // --- Rules state ---
   const [editRules, setEditRules] = useState(project.brand_rules || '');
   const [savingRules, setSavingRules] = useState(false);
@@ -73,20 +71,6 @@ export default function BrandSettings({
   });
   const [editingSectionId, setEditingSectionId] = useState<string | null>(null);
   const [editingSectionContent, setEditingSectionContent] = useState('');
-
-  // --- Tone of voice state ---
-  const [toneOfVoice, setToneOfVoice] = useState(
-    (() => {
-      try {
-        if (project.brand_scan_data && typeof project.brand_scan_data === 'object' && 'toneOfVoice' in project.brand_scan_data) {
-          return (project.brand_scan_data as { toneOfVoice?: string }).toneOfVoice || '';
-        }
-      } catch { /* ignore */ }
-      return '';
-    })()
-  );
-  const [savingTov, setSavingTov] = useState(false);
-  const [generatingTov, setGeneratingTov] = useState(false);
 
   // --- Voice card state ---
   const [voiceCard, setVoiceCard] = useState<VoiceCard | null>(project.voice_card || null);
@@ -155,37 +139,6 @@ export default function BrandSettings({
     }
   };
 
-  const saveTov = async (value: string) => {
-    setSavingTov(true);
-    try {
-      await fetch(`/api/brand`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ toneOfVoice: value }),
-      });
-    } finally {
-      setSavingTov(false);
-    }
-  };
-
-  const generateTov = async () => {
-    setGeneratingTov(true);
-    try {
-      const res = await fetch(`/api/brand/tov`, { method: 'POST' });
-      const data = await res.json();
-      if (data.tov) {
-        setToneOfVoice(data.tov);
-        try { await saveTov(data.tov); } catch { /* ignore */ }
-        showToast('Ton & głos wygenerowany ✓');
-      } else {
-        alert('Błąd: ' + (data.error || 'Spróbuj ponownie'));
-      }
-    } catch {
-      alert('Błąd połączenia');
-    } finally {
-      setGeneratingTov(false);
-    }
-  };
 
   const saveRules = async () => {
     setSavingRules(true);
@@ -270,14 +223,6 @@ export default function BrandSettings({
     setVoiceCard(null);
     setVoiceSamples('');
     showToast('Voice Card usunięta');
-  };
-
-  const toggleFeaturedRef = async (assetId: number) => {
-    const res = await fetch(`/api/brand/assets?assetId=${assetId}`, { method: 'PATCH' });
-    if (res.ok) {
-      const updated = await res.json();
-      onAssetsUpdate(assets.map(a => a.id === assetId ? { ...a, is_featured: updated.is_featured } : a));
-    }
   };
 
   /* ══════════════════════ JSX ══════════════════════ */
@@ -451,32 +396,6 @@ export default function BrandSettings({
           </div>
         );
       })()}
-
-      {/* ── Tone of Voice ── */}
-      <div className="rounded-2xl border border-teal-deep/15 dark:border-holo-mint/15 bg-white dark:bg-teal-mid p-4 space-y-3">
-        <div className="flex items-center justify-between gap-2">
-          <div>
-            <p className="text-sm font-bold">Ton & głos marki</p>
-            <p className="text-xs opacity-40 mt-0.5">Jak marka mówi — styl, emocje, słownictwo</p>
-          </div>
-          <button
-            onClick={generateTov}
-            disabled={generatingTov || brandSections.length === 0}
-            className="shrink-0 h-8 px-3 rounded-full border border-holo-mint/30 text-holo-mint text-xs font-semibold flex items-center gap-1.5 hover:bg-holo-mint/10 disabled:opacity-40 transition-colors"
-          >
-            {generatingTov ? <><Loader2 className="h-3 w-3 animate-spin" /> Generuję...</> : <><Wand2 className="h-3 w-3" /> Wygeneruj z analizy →</>}
-          </button>
-        </div>
-        <textarea
-          className="w-full bg-offwhite dark:bg-teal-deep text-teal-deep dark:text-offwhite border border-teal-deep/15 dark:border-holo-mint/10 focus:border-holo-mint rounded-xl px-4 py-3 text-sm resize-none outline-none transition-colors"
-          rows={4}
-          placeholder="Opisz ton komunikacji marki — np. 'Profesjonalny, ale ciepły. Unikamy technicznego żargonu...'"
-          value={toneOfVoice}
-          onChange={e => setToneOfVoice(e.target.value)}
-          onBlur={e => saveTov(e.target.value)}
-        />
-        {savingTov && <p className="text-xs opacity-30">Zapisuję...</p>}
-      </div>
 
       {/* ── Voice Card ── */}
       <div className="rounded-2xl border border-teal-deep/15 dark:border-holo-mint/15 bg-white dark:bg-teal-mid p-4 space-y-4">
@@ -676,94 +595,6 @@ export default function BrandSettings({
         </button>
       </div>
 
-      {/* ── Logo ── */}
-      <div className="pt-5 border-t border-teal-deep/10 dark:border-holo-mint/10">
-        <h3 className="font-bold text-sm mb-0.5">Logo</h3>
-        <p className="text-xs opacity-40 mb-3">Gemini nie obsługuje SVG — wgraj PNG lub JPG</p>
-        <div className="flex items-center gap-3">
-          {(() => {
-            const logoAsset = assets.find(a => a.type === 'logo' && a.variant !== 'icon');
-            const logoSrc = logoAsset?.url || project.logo_url;
-            return logoSrc ? (
-              <img src={logoSrc} alt="logo" className="h-12 w-auto rounded-xl border border-teal-deep/10 dark:border-holo-mint/10 bg-white p-1"
-                onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-            ) : null;
-          })()}
-          <label className="cursor-pointer h-9 px-4 rounded-full border border-teal-deep/15 dark:border-holo-mint/15 text-sm font-semibold flex items-center gap-2 hover:border-holo-mint/50 transition-colors opacity-70 hover:opacity-100">
-            <Upload className="h-4 w-4" />
-            {assets.some(a => a.type === 'logo') || project.logo_url ? 'Zmień logo' : 'Wgraj logo'}
-            <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={async (e) => {
-              const file = e.target.files?.[0];
-              if (!file) return;
-              const fd = new FormData();
-              fd.append('file', file);
-              fd.append('type', 'logo');
-              const res = await fetch(`/api/brand/assets`, { method: 'POST', body: fd });
-              if (res.ok) {
-                const asset = await res.json();
-                onProjectUpdate({ ...project, logo_url: asset.url });
-                onAssetsUpdate([...assets.filter(a => a.type !== 'logo'), asset]);
-              }
-            }} />
-          </label>
-        </div>
-      </div>
-
-      {/* ── Reference Images ── */}
-      <div className="pt-5 border-t border-teal-deep/10 dark:border-holo-mint/10">
-        <div className="flex items-center justify-between mb-3">
-          <div>
-            <h3 className="font-bold text-sm">Grafiki referencyjne</h3>
-            <p className="text-xs opacity-40">{references.length}/10</p>
-            <p className="text-xs opacity-30 mt-0.5">Wgraj do 10 grafik w spójnym stylu marki. Im bardziej spójne referencje, tym lepsze wyniki.</p>
-          </div>
-          {references.length < 10 && (
-            <label className="cursor-pointer h-8 px-3 rounded-full border border-teal-deep/15 dark:border-holo-mint/15 text-xs font-semibold flex items-center gap-1.5 hover:border-holo-mint/50 transition-colors opacity-70 hover:opacity-100">
-              <Upload className="h-3 w-3" /> Dodaj
-              <input type="file" accept="image/*" multiple className="hidden" onChange={async (e) => {
-                const files = Array.from(e.target.files || []).slice(0, 10 - references.length);
-                const newAssets = [...assets];
-                for (const file of files) {
-                  const fd = new FormData();
-                  fd.append('file', file);
-                  fd.append('type', 'reference');
-                  const res = await fetch(`/api/brand/assets`, { method: 'POST', body: fd });
-                  if (res.ok) {
-                    const asset = await res.json();
-                    newAssets.push(asset);
-                  }
-                }
-                onAssetsUpdate(newAssets);
-              }} />
-            </label>
-          )}
-        </div>
-        {references.length > 0 ? (
-          <div className="grid grid-cols-3 gap-2">
-            {references.map(a => (
-              <div key={a.id} className={`relative group aspect-square rounded-xl overflow-hidden border ${a.is_featured ? 'border-holo-mint' : 'border-teal-deep/10 dark:border-holo-mint/10'}`}>
-                <img src={a.url} alt={a.filename} className="w-full h-full object-cover" />
-                <button
-                  onClick={() => toggleFeaturedRef(a.id)}
-                  title={a.is_featured ? 'Usuń priorytet' : 'Ustaw jako priorytet stylu'}
-                  className={`absolute top-1 left-1 w-5 h-5 rounded-full flex items-center justify-center transition-all ${a.is_featured ? 'bg-holo-mint text-teal-deep opacity-100' : 'bg-black/40 text-white opacity-0 group-hover:opacity-100'}`}
-                >
-                  <span className="text-[9px] leading-none">{a.is_featured ? '★' : '☆'}</span>
-                </button>
-                <button
-                  onClick={async () => {
-                    await fetch(`/api/brand/assets?assetId=${a.id}`, { method: 'DELETE' });
-                    onAssetsUpdate(assets.filter(x => x.id !== a.id));
-                  }}
-                  className="absolute top-1 right-1 bg-red-500/80 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500"
-                >×</button>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="text-sm opacity-30">Brak referencji — wgraj przykładowe posty marki.</p>
-        )}
-      </div>
 
     </div>
   );
