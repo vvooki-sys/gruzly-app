@@ -11,6 +11,7 @@ import Copywriter from '@/app/components/copywriter/Copywriter';
 import AssetManager from '@/app/components/assets/AssetManager';
 import BrandScanner from '@/app/components/brand-scanner/BrandScanner';
 import BrandSettings from '@/app/components/settings/BrandSettings';
+import SetupWizard from '@/app/components/setup-wizard/SetupWizard';
 
 export default function BrandEditor() {
   const [project, setProject] = useState<Project | null>(null);
@@ -18,6 +19,7 @@ export default function BrandEditor() {
   const [generations, setGenerations] = useState<Generation[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState('generate');
+  const [showWizard, setShowWizard] = useState(false);
   const [isDark, setIsDark] = useState(true);
   const [toast, setToast] = useState<string | null>(null);
 
@@ -29,6 +31,13 @@ export default function BrandEditor() {
         setProject(d.project);
         setAssets(d.assets || []);
         setGenerations(d.generations || []);
+        // Show wizard if brand base is empty (no sections, no brand_scan_data)
+        const sections = d.project?.brand_sections;
+        const hasSections = Array.isArray(sections) && sections.length > 0;
+        const hasLogos = (d.assets || []).some((a: BrandAsset) => a.type === 'logo');
+        if (!hasSections && !hasLogos && !d.project?.brand_scan_data) {
+          setShowWizard(true);
+        }
         setLoading(false);
       })
       .catch(() => setLoading(false));
@@ -58,8 +67,22 @@ export default function BrandEditor() {
 
   if (!project) return (
     <div className="min-h-screen bg-offwhite dark:bg-teal-deep flex items-center justify-center text-sm opacity-50">
-      Error loading brand data
+      Błąd ładowania danych marki
     </div>
+  );
+
+  if (showWizard) return (
+    <SetupWizard
+      project={project}
+      assets={assets}
+      onComplete={async () => {
+        await refreshData();
+        setShowWizard(false);
+      }}
+      onProjectUpdate={p => setProject(p)}
+      onAssetsUpdate={a => setAssets(a)}
+      showToast={showToast}
+    />
   );
 
   return (
