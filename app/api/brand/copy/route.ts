@@ -7,14 +7,21 @@ import Anthropic from '@anthropic-ai/sdk';
 export const maxDuration = 60;
 
 function buildCopyPrompt(project: Record<string, unknown>, briefText: string, format: string, visualType: string) {
-  type BrandSec = { title: string; content: string; order: number };
+
+  // ── 1. BRAND IDENTITY (sekcje z bazy marki, bez tonu — ton idzie z Voice Card) ──
+  type BrandSec = { title: string; content: string; order: number; id?: string };
   const brandSections: BrandSec[] = (project.brand_sections as BrandSec[]) || [];
-  const brandDna = brandSections.length > 0
-    ? [...brandSections].sort((a, b) => a.order - b.order).map(s => `[${s.title.toUpperCase()}]\n${s.content}`).join('\n\n')
-    : ((project.brand_analysis as string) || `Brand: ${project.name}`);
+  // Filtruj sekcje tonalne — te idą wyłącznie z Voice Card
+  const tonalIds = ['ton_glosu'];
+  const identitySections = brandSections
+    .filter(s => !tonalIds.includes(s.id || ''))
+    .sort((a, b) => a.order - b.order);
 
-  const tov = (project.tone_of_voice as string) || 'Professional, creative, impactful. Stay true to the brand identity.';
+  const brandIdentity = identitySections.length > 0
+    ? identitySections.map(s => `[${s.title.toUpperCase()}]\n${s.content}`).join('\n\n')
+    : ((project.brand_analysis as string) || `Marka: ${project.name}`);
 
+  // ── 2. VOICE CARD (jedyne źródło tonu — bez duplikacji) ──
   type VoiceCard = {
     voice_summary?: string; archetype?: string;
     golden_rules?: string[]; taboos?: string[];
@@ -25,144 +32,114 @@ function buildCopyPrompt(project: Record<string, unknown>, briefText: string, fo
     example_good?: string[]; example_bad?: string[];
   };
   const vc: VoiceCard | null = (project.voice_card as VoiceCard) || null;
-  const voiceCardBlock = vc ? `
+
+  const voiceBlock = vc ? `
 ════════════════════════════════════════
-KARTA GŁOSU MARKI (najwyższy priorytet — nadpisuje wszystkie ogólne instrukcje tonalne)
+GŁOS MARKI
 ════════════════════════════════════════
 Archetyp: ${vc.archetype || ''}
-Głos: ${vc.voice_summary || ''}
+${vc.voice_summary || ''}
 
-Złote Zasady (niepodlegające negocjacji):
+Złote zasady (niepodlegające negocjacji):
 ${(vc.golden_rules || []).map((r, i) => `${i + 1}. ${r}`).join('\n')}
 
-Styl:
-- Zdania: ${vc.sentence_style?.structure || ''}
-- Emoji: ${vc.emoji_usage?.emoji_rules || ''}
-- Odwołanie do siebie: ${vc.person_address?.self_reference || ''}
-- Zwracanie się do odbiorcy: ${vc.person_address?.audience_address || ''}
-${vc.vocabulary?.forbidden_words?.length ? `- Zakazane słowa: ${vc.vocabulary.forbidden_words.join(', ')}` : ''}
-${vc.vocabulary?.signature_phrases?.length ? `- Firmowe frazy: ${vc.vocabulary.signature_phrases.join(', ')}` : ''}
+Styl zdań: ${vc.sentence_style?.structure || ''}
+Emoji: ${vc.emoji_usage?.emoji_rules || 'Z umiarem, tam gdzie dodają wartości.'}
+Odwołanie do siebie: ${vc.person_address?.self_reference || ''}
+Zwracanie się do odbiorcy: ${vc.person_address?.audience_address || ''}
+${vc.vocabulary?.forbidden_words?.length ? `Zakazane słowa: ${vc.vocabulary.forbidden_words.join(', ')}` : ''}
+${vc.vocabulary?.signature_phrases?.length ? `Firmowe frazy: ${vc.vocabulary.signature_phrases.join(', ')}` : ''}
 
 TABU — marka NIGDY tego nie robi:
 ${(vc.taboos || []).map(t => `• ${t}`).join('\n')}
 
-Marka BRZMI TAK (wzorcowy styl):
+Marka BRZMI TAK (wzorzec):
 ${(vc.example_good || []).map(e => `→ "${e}"`).join('\n')}
 
-Marka NIGDY NIE BRZMI TAK (anty-wzorzec):
-${(vc.example_bad || []).map(e => `✗ "${e}"`).join('\n')}
-════════════════════════════════════════` : '';
+Marka NIGDY TAK NIE BRZMI (anty-wzorzec):
+${(vc.example_bad || []).map(e => `✗ "${e}"`).join('\n')}` : '';
 
-  const formatMap: Record<string, { name: string; copyGuide: string }> = {
-    facebook: {
-      name: 'Facebook',
-      copyGuide: 'Post na FB: 1-3 krótkie akapity, angażujący ton, emoji OK ale z umiarem, wyraźne CTA. Optymalnie 80-150 słów.',
-    },
-    linkedin: {
-      name: 'LinkedIn',
-      copyGuide: 'Post na LinkedIn: profesjonalny ale ludzki ton, oparty na insightach/wartości, bez nadmiaru emoji, storytelling mile widziany. Optymalnie 100-200 słów. Może być dłuższy jeśli treść tego wymaga.',
-    },
-    instagram: {
-      name: 'Instagram',
-      copyGuide: 'Caption na Instagram: chwytliwy pierwszy wiersz (hook), krótka treść, hashtagi na końcu (5-10 trafnych). Optymalnie 50-120 słów + hashtagi.',
-    },
-    general: {
-      name: 'Social media',
-      copyGuide: 'Uniwersalny post social media. Optymalnie 80-150 słów.',
-    },
+  // ── 3. PLATFORM RULES ──
+  const platformRules: Record<string, string> = {
+    facebook: `Facebook | 80-150 słów | 1-3 krótkie akapity | wyraźne CTA na końcu`,
+    linkedin: `LinkedIn | 100-200 słów | profesjonalny ale ludzki ton | storytelling mile widziany | emoji z umiarem`,
+    instagram: `Instagram | 50-120 słów + hashtagi | chwytliwy pierwszy wiersz (hook) | 5-10 trafnych hashtagów na końcu`,
+    general: `Social media | 80-150 słów | ton dopasowany do marki`,
   };
-  const formatInfo = formatMap[format] || formatMap['general'];
+  const platformRule = platformRules[format] || platformRules['general'];
 
+  // ── 4. VISUAL BRIEF INSTRUCTIONS ──
   const visualBriefInstructions: Record<string, string> = {
-    graphic: `BRIEF DLA GRAFIKA:
-   Napisz brief kreatywny (3-5 zdań). Opisz:
-   - Nastrój i emocja grafiki
-   - Wizualna metafora / motyw przewodni
-   - Typ ilustracji (abstrakcyjna, ikonograficzna, typograficzna, kolażowa...)
-   - Sugerowana atmosfera
-   BEZ instrukcji logo, BEZ kolorów hex, BEZ zasad layoutu — to brief na koncept wizualny.`,
-    photo: `BRIEF DLA FOTOGRAFA:
-   Napisz szczegółowy brief fotograficzny (3-5 zdań). Opisz:
-   - Typ zdjęcia (packshot, lifestyle, flatlay, portret, reportaż...)
-   - Kadrowanie i kompozycja
-   - Oświetlenie i mood (naturalne, studyjne, ciepłe, zimne...)
-   - Stylizacja / props / tło
-   - Inspiracja / referencja nastroju
-   BEZ kolorów marki, BEZ logo — to brief na samo zdjęcie. Na tym zdjęciu NIE będzie żadnego tekstu.`,
-    photo_text: `BRIEF DLA FOTOGRAFA (zdjęcie pod tekst):
-   Napisz brief fotograficzny (3-5 zdań). Opisz:
-   - Typ zdjęcia (packshot, lifestyle, flatlay, portret, reportaż...)
-   - Kadrowanie i kompozycja — UWZGLĘDNIJ przestrzeń na nałożenie tekstu (np. jasna/ciemna strefa, bokeh, negatywna przestrzeń)
-   - Oświetlenie i mood (naturalne, studyjne, ciepłe, zimne...)
-   - Stylizacja / props / tło
-   Zadbaj o to, żeby zdjęcie dobrze działało jako tło pod tekst — wskaż gdzie tekst powinien być umieszczony.`,
+    graphic: `Brief dla grafika (3-5 zdań): nastrój, wizualna metafora, typ ilustracji (abstrakcyjna/ikonograficzna/typograficzna/kolażowa), atmosfera. BEZ logo, BEZ hex kolorów, BEZ layoutu.`,
+    photo: `Brief dla fotografa (3-5 zdań): typ zdjęcia (packshot/lifestyle/flatlay/portret), kadrowanie, oświetlenie i mood, stylizacja/props/tło. BEZ logo, BEZ kolorów marki. Na zdjęciu NIE będzie tekstu.`,
+    photo_text: `Brief dla fotografa pod tekst (3-5 zdań): typ zdjęcia, kadrowanie z przestrzenią na nałożenie tekstu (jasna/ciemna strefa, bokeh, negatywna przestrzeń), oświetlenie, stylizacja. Wskaż gdzie powinien być tekst.`,
   };
   const visualBriefInstruction = visualBriefInstructions[visualType] || visualBriefInstructions['graphic'];
 
-  return `Jesteś doświadczonym copywriterem i strategiem komunikacji. Tworzysz treści w głosie marki.
+  // ── 5. OUTPUT SCHEMA (warunkowy — photo nie ma headline/subtext/cta) ──
+  const hasTextOnVisual = visualType !== 'photo';
+
+  const variantFields = hasTextOnVisual
+    ? `"post_copy", "visual_brief", "headline" (maks. 8 słów — tekst na ${visualType === 'photo_text' ? 'zdjęcie' : 'grafikę'}), "subtext" (maks. 15 słów — uzupełnia nagłówek), "cta" (maks. 4 słowa), "rationale" (maks. 10 słów — dlaczego zadziała)`
+    : `"post_copy", "visual_brief", "rationale" (maks. 10 słów — dlaczego zadziała)`;
+
+  const jsonExample = hasTextOnVisual
+    ? `{ "post_copy": "...", "visual_brief": "...", "headline": "...", "subtext": "...", "cta": "...", "rationale": "..." }`
+    : `{ "post_copy": "...", "visual_brief": "...", "rationale": "..." }`;
+
+  // ── BUILD PROMPT ──
+  return `Jesteś copywriterem marki ${project.name}. Piszesz treści gotowe do publikacji — w głosie marki, bez sztuczności.
 
 ════════════════════════════════════════
-KROK 1 — WYKRYJ TYP KOMUNIKACJI
+TOŻSAMOŚĆ MARKI
 ════════════════════════════════════════
-Zaklasyfikuj zadanie klienta jako:
-- MARKETING: promocja, kampania, oferta, produkt, lead gen, budowanie świadomości
-- LUDZKI GŁOS: życzenia, podziękowania, kultura firmy, komunikacja wewnętrzna, celebracja
+${brandIdentity}
+${voiceBlock}
 
 ════════════════════════════════════════
 ZASADY PISANIA
 ════════════════════════════════════════
-MARKETING:
-- Framework P-A-S (Problem → Agitacja → Rozwiązanie) lub A-I-D-A
-- Konkrety, zero korporacyjnych przymiotników
+Wykryj typ zadania i dopasuj podejście:
+
+MARKETING (promocja, oferta, produkt, kampania):
+- Zdanie 1: nazwij problem lub pragnienie odbiorcy
+- Zdanie 2-3: pokaż rozwiązanie — zmysłowo, konkretnie
+- Zdanie końcowe: CTA
 - Zakazane: "kompleksowy", "innowacyjny", "kluczowy", "synergia", "w dzisiejszym świecie"
 
-LUDZKI GŁOS:
-- Porzuć frameworki. Pisz jak człowiek do człowieka.
-- Krótkie zdania, naturalny rytm, autentyczność
-- Emoji: maks. 1-2, tam gdzie dodają ciepła
+LUDZKI GŁOS (życzenia, podziękowania, kultura firmy, celebracja):
+- Pisz jak człowiek do człowieka — bez frameworków
+- Krótkie zdania, naturalny rytm
 - Podpis: nazwa marki, nigdy "Zespół...", "Dział..."
 - Zakazane: "zasłużona odnowa", "doceniamy waszą pasję", cokolwiek z newslettera HR
 
 ════════════════════════════════════════
-TOŻSAMOŚĆ MARKI:
-${brandDna}
-
-TON KOMUNIKACJI:
-${tov}
-${voiceCardBlock}
-
+ZADANIE
 ════════════════════════════════════════
-ZADANIE KLIENTA:
 ${briefText || '[Brak zadania — generuj na podstawie tożsamości marki]'}
 
-PLATFORMA: ${formatInfo.name}
-WYTYCZNE: ${formatInfo.copyGuide}
-TYP WIZUALA: ${{ graphic: 'Grafika (z tekstem)', photo: 'Zdjęcie (bez tekstu)', photo_text: 'Zdjęcie z nałożonym tekstem' }[visualType] || 'Grafika'}
+Platforma: ${platformRule}
+Wizual: ${{ graphic: 'Grafika z tekstem', photo: 'Czyste zdjęcie (bez tekstu)', photo_text: 'Zdjęcie z nałożonym tekstem' }[visualType] || 'Grafika'}
 
 ════════════════════════════════════════
-TWÓJ OUTPUT — 3 WARIANTY
+OUTPUT — 3 WARIANTY (każdy INNY w podejściu)
+════════════════════════════════════════
+Wariant 1: najkrótszy, punchline — mocne otwarcie, szybki CTA.
+Wariant 2: storytelling — dłuższy, buduje nastrój, angażuje emocjonalnie.
+Wariant 3: pytanie do odbiorcy jako hook — zaczyna od pytania, prowokuje interakcję.
 
-Dla każdego wariantu wygeneruj:
+Każdy wariant zawiera: ${variantFields}
 
-1. "post_copy" — Gotowy tekst posta do opublikowania. Napisz go tak, jakby brand manager wpisał go właśnie teraz. W głosie marki, odpowiedniej długości dla platformy. To jest GŁÓWNY output.
-
-2. "visual_brief" — ${visualBriefInstruction}
-
-${visualType === 'photo' ? `UWAGA: Typ wizuala to CZYSTE ZDJĘCIE — bez żadnego tekstu na obrazie. NIE generuj headline, subtext ani cta. Ustaw je na puste stringi "".` : `3. "headline" — MAKS. 8 słów. Tekst na ${visualType === 'photo_text' ? 'zdjęcie' : 'grafikę'}. Samodzielne stwierdzenie, chwytliwe i zwięzłe.
-
-4. "subtext" — MAKS. 15 słów. Podpis pod nagłówkiem. Uzupełnia go, nie wyjaśnia.
-
-5. "cta" — MAKS. 4 słowa. Etykieta CTA lub końcowy sentyment.`}
-
-6. "rationale" — MAKS. 10 słów. Dlaczego ten wariant zadziała.
+"post_copy" — gotowy tekst posta. Napisz go tak, jakby brand manager wpisał go właśnie teraz.
+"visual_brief" — ${visualBriefInstruction}
 
 Zwróć WYŁĄCZNIE poprawny JSON:
 {
   "concept": "Jeden pomysł, jedna emocja (1-2 zdania)",
   "variants": [
-    { "post_copy": "...", "visual_brief": "...", "headline": "...", "subtext": "...", "cta": "...", "rationale": "..." },
-    { "post_copy": "...", "visual_brief": "...", "headline": "...", "subtext": "...", "cta": "...", "rationale": "..." },
-    { "post_copy": "...", "visual_brief": "...", "headline": "...", "subtext": "...", "cta": "...", "rationale": "..." }
+    ${jsonExample},
+    ${jsonExample},
+    ${jsonExample}
   ]
 }
 
