@@ -133,6 +133,7 @@ export default function SetupWizard({
                 project={project}
                 assets={assets}
                 onAssetsUpdate={onAssetsUpdate}
+                onProjectUpdate={onProjectUpdate}
                 showToast={showToast}
               />
             )}

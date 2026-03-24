@@ -150,6 +150,14 @@ export default function BrandEditor() {
         </div>
 
         <button
+          onClick={() => setShowWizard(true)}
+          className="h-8 px-3 rounded-full border border-teal-deep/15 dark:border-holo-mint/15 hover:border-holo-mint/50 text-xs font-semibold opacity-50 hover:opacity-100 transition-all shrink-0 flex items-center gap-1.5"
+          title="Konfiguruj bazę marki"
+        >
+          🧱 <span className="hidden sm:inline">Baza marki</span>
+        </button>
+
+        <button
           onClick={toggleTheme}
           className="w-9 h-9 rounded-full flex items-center justify-center border border-teal-deep/15 dark:border-holo-mint/15 hover:border-holo-mint/50 transition-colors opacity-50 hover:opacity-100 shrink-0"
           aria-label="Przełącz motyw"
