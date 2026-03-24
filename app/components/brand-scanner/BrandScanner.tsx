@@ -7,12 +7,12 @@ import type { Project, BrandAsset, BrandSection, BrandScanData } from '@/lib/typ
 // ── Scan progress steps ──────────────────────────────────────────────────────
 
 const SCAN_STEPS = [
-  { id: 'fetch',  icon: '\u{1F310}', label: 'Pobieranie strony...',          duration: 2500 },
-  { id: 'colors', icon: '\u{1F3A8}', label: 'Analiza kolor\u00F3w i font\u00F3w...',   duration: 2500 },
-  { id: 'gemini', icon: '\u{1F916}', label: 'Gemini analizuje brand DNA...', duration: 5000 },
-  { id: 'logo',   icon: '\u{1F5BC}', label: 'Pobieranie logo...',            duration: 2000 },
-  { id: 'social', icon: '\u{1F4A1}', label: 'Skanowanie social media...',    duration: 5000, dynamic: true },
-  { id: 'save',   icon: '\u{1F4BE}', label: 'Zapisywanie Brand DNA...',      duration: 1000 },
+  { id: 'fetch',  icon: '🌐', label: 'Pobieranie strony...',          duration: 2500 },
+  { id: 'colors', icon: '🎨', label: 'Analiza kolorów i fontów...',   duration: 2500 },
+  { id: 'gemini', icon: '🤖', label: 'Gemini analizuje brand DNA...', duration: 5000 },
+  { id: 'logo',   icon: '🖼', label: 'Pobieranie logo...',            duration: 2000 },
+  { id: 'social', icon: '💡', label: 'Skanowanie social media...',    duration: 5000, dynamic: true },
+  { id: 'save',   icon: '💾', label: 'Zapisywanie Brand DNA...',      duration: 1000 },
 ];
 const SCAN_TOTAL = SCAN_STEPS.reduce((a, s) => a + s.duration, 0);
 
@@ -133,7 +133,7 @@ export default function BrandScanner({
   // Brand scan state
   const [brandScanUrl, setBrandScanUrl] = useState('');
   const [brandScanLoading, setBrandScanLoading] = useState(false);
-  const [brandScanStatus, setBrandScanStatus] = useState('');
+  const [, setBrandScanStatus] = useState('');
   const [brandScanResult, setBrandScanResult] = useState<BrandScanData | null>(null);
   const [brandScanError, setBrandScanError] = useState('');
   const [applyingBrandScan, setApplyingBrandScan] = useState(false);
@@ -164,10 +164,10 @@ export default function BrandScanner({
     if (!id || !brandScanUrl) return;
     setBrandScanLoading(true);
     setBrandScanError('');
-    setBrandScanStatus('Skanuj\u0119 stron\u0119...');
+    setBrandScanStatus('Skanuję stronę...');
     try {
-      setBrandScanStatus('Analizuj\u0119 brand...');
-      const res = await fetch(`/api/brand/brand-scan`, {
+      setBrandScanStatus('Analizuję brand...');
+      const res = await fetch('/api/brand/brand-scan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url: brandScanUrl, projectId: id }),
@@ -179,17 +179,17 @@ export default function BrandScanner({
           onAssetsUpdate(data.assets);
         }
         setBrandScanStatus('Gotowe!');
-        showToast('Brand DNA zeskanowany \u2713');
+        showToast('Brand DNA zeskanowany ✓');
         await refreshData();
       } else if (data.fallback) {
-        setBrandScanError('Strona blokuje skanowanie \u2014 u\u017Cyj r\u0119cznego uploadu');
+        setBrandScanError('Strona blokuje skanowanie — użyj ręcznego uploadu');
         setBrandScanStatus('');
       } else {
-        setBrandScanError(data.error || 'B\u0142\u0105d skanowania');
+        setBrandScanError(data.error || 'Błąd skanowania');
         setBrandScanStatus('');
       }
     } catch {
-      setBrandScanError('B\u0142\u0105d po\u0142\u0105czenia');
+      setBrandScanError('Błąd połączenia');
       setBrandScanStatus('');
     } finally {
       setBrandScanLoading(false);
@@ -202,7 +202,7 @@ export default function BrandScanner({
     try {
       // 1. Tone of voice (separate project field)
       if (brandScanResult.toneOfVoice) {
-        await fetch(`/api/brand/sections/apply-scan`, {
+        await fetch('/api/brand/sections/apply-scan', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ projectId: id, toneOfVoice: brandScanResult.toneOfVoice }),
@@ -213,7 +213,7 @@ export default function BrandScanner({
       const bsd = brandScanResult;
       const candidateSections = [
         {
-          title: 'Kolory marki', icon: '\u{1F3A8}', order: 10,
+          title: 'Kolory marki', icon: '🎨', order: 10,
           content: [
             bsd.primaryColor   && `Primary color: ${bsd.primaryColor}`,
             bsd.secondaryColor && `Secondary color: ${bsd.secondaryColor}`,
@@ -221,7 +221,7 @@ export default function BrandScanner({
           ].filter(Boolean).join('\n'),
         },
         {
-          title: 'Typografia', icon: '\u{1F524}', order: 20,
+          title: 'Typografia', icon: '🔤', order: 20,
           content: [
             bsd.headingFont && `Heading font: ${bsd.headingFont}`,
             bsd.bodyFont    && `Body font: ${bsd.bodyFont}`,
@@ -229,7 +229,7 @@ export default function BrandScanner({
           ].filter(Boolean).join('\n'),
         },
         {
-          title: 'Ton g\u0142osu i komunikacja', icon: '\u{1F4AC}', order: 30,
+          title: 'Ton głosu i komunikacja', icon: '💬', order: 30,
           content: [
             bsd.toneOfVoice          && `Tone of voice: ${bsd.toneOfVoice}`,
             bsd.brandKeywords?.length && `Brand keywords: ${bsd.brandKeywords.join(', ')}`,
@@ -238,7 +238,7 @@ export default function BrandScanner({
           ].filter(Boolean).join('\n'),
         },
         {
-          title: 'Styl wizualny', icon: '\u2728', order: 40,
+          title: 'Styl wizualny', icon: '✨', order: 40,
           content: [
             bsd.visualStyle && `Visual style: ${bsd.visualStyle}`,
             bsd.photoStyle  && `Photo style: ${bsd.photoStyle}`,
@@ -246,20 +246,20 @@ export default function BrandScanner({
           ].filter(Boolean).join('\n'),
         },
         {
-          title: 'Warto\u015Bci marki', icon: '\u{1F48E}', order: 50,
+          title: 'Wartości marki', icon: '💎', order: 50,
           content: bsd.brandValues?.length ? `Brand values: ${bsd.brandValues.join(', ')}` : '',
         },
         {
-          title: 'Grupa docelowa', icon: '\u{1F3AF}', order: 60,
+          title: 'Grupa docelowa', icon: '🎯', order: 60,
           content: bsd.targetAudience ? `Target audience: ${bsd.targetAudience}` : '',
         },
         {
-          title: 'Call to Action', icon: '\u{1F680}', order: 70,
+          title: 'Call to Action', icon: '🚀', order: 70,
           content: bsd.ctaExamples?.length ? `CTA examples: ${bsd.ctaExamples.join(' | ')}` : '',
         },
       ].filter(s => s.content.trim().length > 0);
 
-      const res = await fetch(`/api/brand/sections/apply-scan`, {
+      const res = await fetch('/api/brand/sections/apply-scan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ projectId: id, sections: candidateSections }),
@@ -267,14 +267,14 @@ export default function BrandScanner({
       const { appliedCount } = await res.json();
 
       // 3. Refresh local state
-      const updated = await fetch(`/api/brand?projectId=${id}`).then(r => r.json());
+      const updated = await fetch('/api/brand').then(r => r.json());
       if (updated.project) {
         onProjectUpdate(updated.project);
       }
 
-      showToast(`Brand DNA zastosowane \u2014 ${appliedCount} sekcji \u2713`);
+      showToast(`Brand DNA zastosowane — ${appliedCount} sekcji ✓`);
     } catch {
-      showToast('B\u0142\u0105d zapisu');
+      showToast('Błąd zapisu');
     } finally {
       setApplyingBrandScan(false);
     }
@@ -284,7 +284,7 @@ export default function BrandScanner({
     if (!id) return;
     setGeneratingBrandBook(true);
     try {
-      const res = await fetch(`/api/brand/brandbook/generate`, {
+      const res = await fetch('/api/brand/brandbook/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ projectId: id }),
@@ -293,12 +293,12 @@ export default function BrandScanner({
       if (data.url) {
         setBrandBookUrl(data.url);
         window.open(data.url, '_blank');
-        showToast('Brand Book wygenerowany \u2713');
+        showToast('Brand Book wygenerowany ✓');
       } else {
-        showToast('B\u0142\u0105d generowania Brand Book');
+        showToast('Błąd generowania Brand Book');
       }
     } catch {
-      showToast('B\u0142\u0105d po\u0142\u0105czenia');
+      showToast('Błąd połączenia');
     } finally {
       setGeneratingBrandBook(false);
     }
@@ -308,7 +308,7 @@ export default function BrandScanner({
     if (!id) return;
     setAnalyzing(true);
     try {
-      const res = await fetch(`/api/brand/analyze`, {
+      const res = await fetch('/api/brand/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ projectId: id }),
@@ -317,10 +317,10 @@ export default function BrandScanner({
       if (data.sections) {
         onProjectUpdate({ ...project, brand_analysis: data.analysis, updated_at: new Date().toISOString() });
       } else {
-        alert('B\u0142\u0105d analizy: ' + (data.error || 'Spr\u00F3buj ponownie'));
+        alert('Błąd analizy: ' + (data.error || 'Spróbuj ponownie'));
       }
     } catch {
-      alert('B\u0142\u0105d po\u0142\u0105czenia');
+      alert('Błąd połączenia');
     } finally {
       setAnalyzing(false);
     }
@@ -330,7 +330,7 @@ export default function BrandScanner({
     if (!id) return;
     setAnalyzing(true);
     try {
-      const res = await fetch(`/api/brand/analyze`, {
+      const res = await fetch('/api/brand/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ projectId: id, source: 'brandbook' }),
@@ -339,13 +339,13 @@ export default function BrandScanner({
       if (data.sections) {
         onProjectUpdate({ ...project, brand_analysis: data.analysis, updated_at: new Date().toISOString() });
         if (data.suggestedRules) {
-          showToast('Brandbook zawiera zasady \u2014 przejrzyj je w sekcji Zasady obowi\u0105zkowe');
+          showToast('Brandbook zawiera zasady — przejrzyj je w sekcji Zasady obowiązkowe');
         }
       } else {
-        alert('B\u0142\u0105d analizy: ' + (data.error || 'Spr\u00F3buj ponownie'));
+        alert('Błąd analizy: ' + (data.error || 'Spróbuj ponownie'));
       }
     } catch {
-      alert('B\u0142\u0105d po\u0142\u0105czenia');
+      alert('Błąd połączenia');
     } finally {
       setAnalyzing(false);
     }
@@ -358,17 +358,17 @@ export default function BrandScanner({
     fd.append('file', file);
     fd.append('type', 'brandbook');
     fd.append('projectId', String(id));
-    const res = await fetch(`/api/brand/assets`, { method: 'POST', body: fd });
+    const res = await fetch('/api/brand/assets', { method: 'POST', body: fd });
     if (res.ok) {
       const asset = await res.json();
       onAssetsUpdate([...assets.filter(a => a.type !== 'brandbook'), asset]);
-      showToast('Brandbook wgrany \u2713');
+      showToast('Brandbook wgrany ✓');
     }
   };
 
   const deleteBrandbook = async () => {
     if (!brandbookAsset || !id) return;
-    await fetch(`/api/brand/assets?assetId=${brandbookAsset.id}&projectId=${id}`, { method: 'DELETE' });
+    await fetch(`/api/brand/assets?assetId=${brandbookAsset.id}`, { method: 'DELETE' });
     onAssetsUpdate(assets.filter(a => a.type !== 'brandbook'));
   };
 
@@ -383,7 +383,7 @@ export default function BrandScanner({
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <div>
             <p className="text-sm font-bold">
-              {brandSections.length > 0 ? `\u2705 Analiza marki \u2014 ${brandSections.length} sekcji` : '\u{1F50D} Analiza marki'}
+              {brandSections.length > 0 ? `✅ Analiza marki — ${brandSections.length} sekcji` : '🔍 Analiza marki'}
             </p>
             <p className="text-xs opacity-40 mt-0.5">Wgraj brandbook lub analizuj z grafik referencyjnych</p>
           </div>
@@ -393,7 +393,7 @@ export default function BrandScanner({
             className="h-8 px-3 rounded-full border border-teal-deep/15 dark:border-holo-mint/15 text-xs font-semibold flex items-center gap-1.5 hover:border-holo-mint/50 disabled:opacity-40 transition-colors whitespace-nowrap shrink-0"
           >
             {analyzing
-              ? <><Loader2 className="h-3 w-3 animate-spin" /> Analizuj\u0119...</>
+              ? <><Loader2 className="h-3 w-3 animate-spin" /> Analizuję...</>
               : <><Wand2 className="h-3 w-3" /> Analizuj z referencji</>
             }
           </button>
@@ -401,8 +401,8 @@ export default function BrandScanner({
 
         {analysisStale && (
           <div className="flex items-center gap-2 text-xs text-holo-yellow bg-holo-yellow/10 px-3 py-2 rounded-xl">
-            <span>\u26A0\uFE0F</span>
-            <span>Referencje zmieni\u0142y si\u0119 od ostatniej analizy \u2014 rozwa\u017C ponown\u0105 analiz\u0119</span>
+            <span>⚠️</span>
+            <span>Referencje zmieniły się od ostatniej analizy — rozważ ponowną analizę</span>
           </div>
         )}
 
@@ -412,26 +412,26 @@ export default function BrandScanner({
             <p className="text-xs font-semibold opacity-50 uppercase tracking-wide">Brandbook (PDF)</p>
             <label className="cursor-pointer h-7 px-3 rounded-full border border-teal-deep/15 dark:border-holo-mint/15 text-xs font-semibold flex items-center gap-1.5 hover:border-holo-mint/50 transition-colors opacity-70 hover:opacity-100 shrink-0">
               <Upload className="h-3 w-3" />
-              {brandbookAsset ? 'Zmie\u0144' : 'Wgraj PDF'}
+              {brandbookAsset ? 'Zmień' : 'Wgraj PDF'}
               <input type="file" accept="application/pdf" className="hidden" onChange={handleBrandbookUpload} />
             </label>
           </div>
           {brandbookAsset ? (
             <div className="flex items-center justify-between bg-offwhite dark:bg-teal-deep rounded-xl px-3 py-2">
-              <span className="text-xs opacity-60 truncate">{'\u{1F4C4}'} {brandbookAsset.filename}</span>
+              <span className="text-xs opacity-60 truncate">📄 {brandbookAsset.filename}</span>
               <div className="flex gap-2 shrink-0">
                 <button
                   onClick={analyzeFromBrandbook}
                   disabled={analyzing}
                   className="h-7 px-3 rounded-full bg-holo-mint text-teal-deep disabled:opacity-50 text-xs font-bold flex items-center gap-1 hover:opacity-90 transition-opacity"
                 >
-                  {analyzing ? <><Loader2 className="h-3 w-3 animate-spin" /> Analizuj\u0119...</> : <><Wand2 className="h-3 w-3" /> Analizuj brandbook</>}
+                  {analyzing ? <><Loader2 className="h-3 w-3 animate-spin" /> Analizuję...</> : <><Wand2 className="h-3 w-3" /> Analizuj brandbook</>}
                 </button>
-                <button onClick={deleteBrandbook} className="h-7 w-7 rounded-full border border-red-500/20 flex items-center justify-center opacity-40 hover:opacity-100 hover:border-red-500/50 hover:text-red-400 transition-all text-sm">\u00D7</button>
+                <button onClick={deleteBrandbook} className="h-7 w-7 rounded-full border border-red-500/20 flex items-center justify-center opacity-40 hover:opacity-100 hover:border-red-500/50 hover:text-red-400 transition-all text-sm">×</button>
               </div>
             </div>
           ) : (
-            <p className="text-xs opacity-30">Wgraj brandbook \u2014 AI wyci\u0105gnie z niego kolory, fonty i zasady automatycznie</p>
+            <p className="text-xs opacity-30">Wgraj brandbook — AI wyciągnie z niego kolory, fonty i zasady automatycznie</p>
           )}
         </div>
       </div>
@@ -439,8 +439,8 @@ export default function BrandScanner({
       {/* BRAND SCAN */}
       <div className="rounded-2xl border border-teal-deep/10 dark:border-holo-mint/10 bg-white dark:bg-teal-mid p-4 space-y-3">
         <div>
-          <p className="text-sm font-bold">{'\u{1F310}'} Brand Scan</p>
-          <p className="text-xs opacity-40 mt-0.5">Podaj URL strony \u2014 AI automatycznie wyci\u0105gnie Brand DNA</p>
+          <p className="text-sm font-bold">🌐 Brand Scan</p>
+          <p className="text-xs opacity-40 mt-0.5">Podaj URL strony — AI automatycznie wyciągnie Brand DNA</p>
         </div>
         <div className="flex gap-2">
           <input
@@ -458,8 +458,8 @@ export default function BrandScanner({
             className="h-9 px-4 rounded-full holo-gradient text-teal-deep text-xs font-bold disabled:opacity-40 hover:opacity-90 transition-opacity whitespace-nowrap shrink-0 flex items-center gap-1.5"
           >
             {brandScanLoading
-              ? <><Loader2 className="h-3 w-3 animate-spin" /> Skanuj\u0119...</>
-              : <><Wand2 className="h-3 w-3" /> Skanuj mark\u0119</>
+              ? <><Loader2 className="h-3 w-3 animate-spin" /> Skanuję...</>
+              : <><Wand2 className="h-3 w-3" /> Skanuj markę</>
             }
           </button>
         </div>
@@ -468,8 +468,8 @@ export default function BrandScanner({
 
         {brandScanError && (
           <div className="flex items-start gap-2 text-xs text-red-400 bg-red-500/10 px-3 py-2 rounded-xl">
-            <span>\u26A0\uFE0F</span>
-            <span>{brandScanError}{brandScanError.includes('blokuje') && ' \u2014 spr\u00F3buj r\u0119cznego uploadu brandbooka.'}</span>
+            <span>⚠️</span>
+            <span>{brandScanError}{brandScanError.includes('blokuje') && ' — spróbuj ręcznego uploadu brandbooka.'}</span>
           </div>
         )}
 
@@ -484,7 +484,7 @@ export default function BrandScanner({
                     <div className="flex items-center gap-1.5">
                       <div className="h-5 w-5 rounded-full border border-white/20 shrink-0" style={{ backgroundColor: brandScanResult.primaryColor }} />
                       <span className="text-xs font-mono opacity-60">{brandScanResult.primaryColor}</span>
-                      <span className="text-xs opacity-30">g\u0142\u00F3wny</span>
+                      <span className="text-xs opacity-30">główny</span>
                     </div>
                   )}
                   {brandScanResult.secondaryColor && (
@@ -521,7 +521,7 @@ export default function BrandScanner({
               )}
               {brandScanResult.industry && (
                 <div className="flex items-center gap-1.5">
-                  <span className="text-xs opacity-40">Bran\u017Ca:</span>
+                  <span className="text-xs opacity-40">Branża:</span>
                   <span className="text-xs font-semibold opacity-70">{brandScanResult.industry}</span>
                 </div>
               )}
@@ -533,10 +533,10 @@ export default function BrandScanner({
                 <p className="text-xs font-semibold opacity-40 uppercase tracking-wide">Fonty</p>
                 <div className="flex gap-3 flex-wrap text-xs">
                   {brandScanResult.headingFont && (
-                    <span><span className="opacity-40">Nag\u0142\u00F3wki:</span> <span className="font-semibold">{brandScanResult.headingFont}</span></span>
+                    <span><span className="opacity-40">Nagłówki:</span> <span className="font-semibold">{brandScanResult.headingFont}</span></span>
                   )}
                   {brandScanResult.bodyFont && brandScanResult.bodyFont !== brandScanResult.headingFont && (
-                    <span><span className="opacity-40">Tre\u015B\u0107:</span> <span className="font-semibold">{brandScanResult.bodyFont}</span></span>
+                    <span><span className="opacity-40">Treść:</span> <span className="font-semibold">{brandScanResult.bodyFont}</span></span>
                   )}
                 </div>
               </div>
@@ -545,7 +545,7 @@ export default function BrandScanner({
             {/* Keywords */}
             {brandScanResult.brandKeywords?.length > 0 && (
               <div className="space-y-1">
-                <p className="text-xs font-semibold opacity-40 uppercase tracking-wide">S\u0142owa kluczowe</p>
+                <p className="text-xs font-semibold opacity-40 uppercase tracking-wide">Słowa kluczowe</p>
                 <div className="flex gap-1.5 flex-wrap">
                   {brandScanResult.brandKeywords.map((kw: string, i: number) => (
                     <span key={i} className="text-xs bg-teal-deep/5 dark:bg-teal-deep border border-teal-deep/10 dark:border-holo-mint/10 px-2 py-0.5 rounded-full">{kw}</span>
@@ -557,7 +557,7 @@ export default function BrandScanner({
             {/* Brand values */}
             {brandScanResult.brandValues?.length > 0 && (
               <div className="space-y-1">
-                <p className="text-xs font-semibold opacity-40 uppercase tracking-wide">Warto\u015Bci marki</p>
+                <p className="text-xs font-semibold opacity-40 uppercase tracking-wide">Wartości marki</p>
                 <div className="flex gap-1.5 flex-wrap">
                   {brandScanResult.brandValues.map((v: string, i: number) => (
                     <span key={i} className="text-xs bg-holo-yellow/10 text-holo-yellow border border-holo-yellow/20 px-2 py-0.5 rounded-full">{v}</span>
@@ -577,7 +577,7 @@ export default function BrandScanner({
                 )}
                 {brandScanResult.photoStyle && (
                   <div className="bg-teal-deep/5 dark:bg-teal-deep rounded-xl px-3 py-2">
-                    <p className="text-xs opacity-40 mb-0.5">Styl zdj\u0119\u0107</p>
+                    <p className="text-xs opacity-40 mb-0.5">Styl zdjęć</p>
                     <p className="text-xs font-semibold">{brandScanResult.photoStyle}</p>
                   </div>
                 )}
@@ -587,7 +587,7 @@ export default function BrandScanner({
             {/* CTA examples */}
             {brandScanResult.ctaExamples?.length > 0 && (
               <div className="space-y-1">
-                <p className="text-xs font-semibold opacity-40 uppercase tracking-wide">Przyk\u0142ady CTA</p>
+                <p className="text-xs font-semibold opacity-40 uppercase tracking-wide">Przykłady CTA</p>
                 <div className="flex gap-1.5 flex-wrap">
                   {brandScanResult.ctaExamples.map((cta: string, i: number) => (
                     <span key={i} className="text-xs bg-teal-deep/5 dark:bg-teal-deep border border-teal-deep/10 dark:border-holo-mint/10 px-2 py-0.5 rounded-full italic opacity-70">&quot;{cta}&quot;</span>
@@ -618,7 +618,7 @@ export default function BrandScanner({
               className="w-full h-9 rounded-full bg-holo-mint/20 hover:bg-holo-mint/30 text-holo-mint border border-holo-mint/30 text-xs font-bold transition-colors disabled:opacity-40 flex items-center justify-center gap-1.5"
             >
               {applyingBrandScan
-                ? <><Loader2 className="h-3 w-3 animate-spin" /> Zastosowuj\u0119...</>
+                ? <><Loader2 className="h-3 w-3 animate-spin" /> Zastosowuję...</>
                 : <><Check className="h-3 w-3" /> Zastosuj do projektu</>
               }
             </button>
@@ -630,8 +630,8 @@ export default function BrandScanner({
       {(project.brand_scan_data || brandScanResult) && (
         <div className="rounded-2xl border border-holo-lavender/20 bg-holo-lavender/5 p-4 space-y-3">
           <div>
-            <p className="text-sm font-bold">{'\u{1F4D6}'} Brand Book</p>
-            <p className="text-xs opacity-40 mt-0.5">Wygeneruj pi\u0119kn\u0105 stron\u0119 z Brand Guidelines gotow\u0105 do udost\u0119pnienia</p>
+            <p className="text-sm font-bold">📖 Brand Book</p>
+            <p className="text-xs opacity-40 mt-0.5">Wygeneruj piękną stronę z Brand Guidelines gotową do udostępnienia</p>
           </div>
           <div className="flex gap-2">
             <button
@@ -640,7 +640,7 @@ export default function BrandScanner({
               className="flex-1 h-9 rounded-full bg-holo-lavender/20 hover:bg-holo-lavender/30 text-holo-lavender border border-holo-lavender/30 text-xs font-bold transition-colors disabled:opacity-40 flex items-center justify-center gap-1.5"
             >
               {generatingBrandBook
-                ? <><Loader2 className="h-3 w-3 animate-spin" /> Generuj\u0119...</>
+                ? <><Loader2 className="h-3 w-3 animate-spin" /> Generuję...</>
                 : <><Wand2 className="h-3 w-3" /> Generuj Brand Book</>
               }
             </button>
@@ -651,7 +651,7 @@ export default function BrandScanner({
                 rel="noopener noreferrer"
                 className="h-9 px-4 rounded-full border border-holo-lavender/30 text-holo-lavender text-xs font-bold hover:bg-holo-lavender/10 transition-colors flex items-center gap-1.5 shrink-0"
               >
-                <ExternalLink className="h-3 w-3" /> Otw\u00F3rz
+                <ExternalLink className="h-3 w-3" /> Otwórz
               </a>
             )}
           </div>
