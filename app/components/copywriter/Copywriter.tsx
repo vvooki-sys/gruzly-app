@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Upload, Loader2, PenLine, Wand2, Camera, Image } from 'lucide-react';
+import { Upload, Loader2, PenLine, Wand2, Camera, Image, Check, Copy } from 'lucide-react';
 import type { Project } from '@/lib/types';
 
 interface CopywriterProps {
@@ -37,6 +37,13 @@ export default function Copywriter({ project, showToast, onUseCopy }: Copywriter
   const [generating, setGenerating] = useState(false);
   const [results, setResults] = useState<CopyVariant[]>([]);
   const [concept, setConcept] = useState('');
+  const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
+
+  const copyText = (text: string, idx: number) => {
+    navigator.clipboard.writeText(text);
+    setCopiedIdx(idx);
+    setTimeout(() => setCopiedIdx(null), 2000);
+  };
 
   const generate = async () => {
     if (!task && !briefFile) return;
@@ -126,27 +133,27 @@ export default function Copywriter({ project, showToast, onUseCopy }: Copywriter
           <div className="grid grid-cols-2 gap-2">
             <button
               onClick={() => setVisualType('graphic')}
-              className={`py-3 rounded-xl border-2 transition-all flex flex-col items-center gap-1 ${
+              className={`py-3 rounded-xl border-2 transition-all flex flex-col items-center gap-1.5 ${
                 visualType === 'graphic'
-                  ? 'border-holo-mint bg-holo-mint/5'
-                  : 'border-teal-deep/10 dark:border-holo-mint/10 opacity-50 hover:opacity-80'
+                  ? 'border-holo-mint bg-holo-mint/10 text-holo-mint'
+                  : 'border-teal-deep/15 dark:border-holo-mint/15 hover:border-holo-mint/40'
               }`}
             >
-              <Image className="h-5 w-5" />
-              <span className="text-xs font-bold">Grafika</span>
-              <span className="text-[10px] opacity-40">Ilustracja, typografia, design</span>
+              <Image className={`h-5 w-5 ${visualType === 'graphic' ? '' : 'opacity-50'}`} />
+              <span className={`text-xs font-bold ${visualType === 'graphic' ? '' : 'opacity-60'}`}>Grafika</span>
+              <span className={`text-[10px] text-center ${visualType === 'graphic' ? 'opacity-60' : 'opacity-30'}`}>Ilustracja, typografia, design</span>
             </button>
             <button
               onClick={() => setVisualType('photo')}
-              className={`py-3 rounded-xl border-2 transition-all flex flex-col items-center gap-1 ${
+              className={`py-3 rounded-xl border-2 transition-all flex flex-col items-center gap-1.5 ${
                 visualType === 'photo'
-                  ? 'border-holo-mint bg-holo-mint/5'
-                  : 'border-teal-deep/10 dark:border-holo-mint/10 opacity-50 hover:opacity-80'
+                  ? 'border-holo-mint bg-holo-mint/10 text-holo-mint'
+                  : 'border-teal-deep/15 dark:border-holo-mint/15 hover:border-holo-mint/40'
               }`}
             >
-              <Camera className="h-5 w-5" />
-              <span className="text-xs font-bold">Zdjęcie</span>
-              <span className="text-[10px] opacity-40">Fotografia, packshot, lifestyle</span>
+              <Camera className={`h-5 w-5 ${visualType === 'photo' ? '' : 'opacity-50'}`} />
+              <span className={`text-xs font-bold ${visualType === 'photo' ? '' : 'opacity-60'}`}>Zdjęcie</span>
+              <span className={`text-[10px] text-center ${visualType === 'photo' ? 'opacity-60' : 'opacity-30'}`}>Fotografia, packshot, lifestyle</span>
             </button>
           </div>
         </div>
@@ -203,10 +210,14 @@ export default function Copywriter({ project, showToast, onUseCopy }: Copywriter
                   <div className="flex items-center justify-between">
                     <p className="text-xs font-bold opacity-40 uppercase tracking-wide">Treść posta</p>
                     <button
-                      onClick={() => { navigator.clipboard.writeText(r.post_copy); showToast('Skopiowano'); }}
-                      className="text-xs opacity-40 hover:opacity-80 transition-opacity"
+                      onClick={() => copyText(r.post_copy, i)}
+                      className={`flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full border transition-all ${
+                        copiedIdx === i
+                          ? 'border-holo-mint text-holo-mint bg-holo-mint/10'
+                          : 'border-teal-deep/10 dark:border-holo-mint/10 opacity-50 hover:opacity-90 hover:border-holo-mint/40'
+                      }`}
                     >
-                      Kopiuj
+                      {copiedIdx === i ? <><Check className="h-3 w-3" /> Skopiowano</> : <><Copy className="h-3 w-3" /> Kopiuj</>}
                     </button>
                   </div>
                   <p className="text-sm leading-relaxed whitespace-pre-line">{r.post_copy}</p>

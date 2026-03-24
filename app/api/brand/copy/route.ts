@@ -1,8 +1,8 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
-import { BRAND_ID, GEMINI_MODEL } from '@/lib/constants';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { BRAND_ID } from '@/lib/constants';
+import Anthropic from '@anthropic-ai/sdk';
 
 export const maxDuration = 60;
 
@@ -200,20 +200,28 @@ Zwróć WYŁĄCZNIE poprawny JSON:
 
 Pisz CAŁY tekst po polsku.`;
 
-  const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_KEY!);
-  const model = genAI.getGenerativeModel({ model: GEMINI_MODEL });
+  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
   try {
-    const parts = filePart ? [filePart, { text: copyPrompt }] : [{ text: copyPrompt }];
+    const userContent: Anthropic.MessageParam['content'] = [];
 
-    const result = await model.generateContent({
-      contents: [{ role: 'user', parts }],
+    if (filePart) {
+      userContent.push({ type: 'text', text: 'Poniżej brief w formie dokumentu PDF:' });
+      userContent.push({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: filePart.inlineData.data } } as Anthropic.MessageParam['content'][number]);
+    }
+
+    userContent.push({ type: 'text', text: copyPrompt });
+
+    const response = await anthropic.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 4096,
+      messages: [{ role: 'user', content: userContent }],
     });
 
-    const responseText = result.response.candidates?.[0]?.content?.parts
-      ?.filter((p: { text?: string }) => p.text)
-      ?.map((p: { text?: string }) => p.text)
-      ?.join('') || '';
+    const responseText = response.content
+      .filter(b => b.type === 'text')
+      .map(b => (b as { type: 'text'; text: string }).text)
+      .join('');
 
     const cleaned = responseText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
     const parsed = JSON.parse(cleaned);
