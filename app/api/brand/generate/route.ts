@@ -20,10 +20,10 @@ const FORMAT_SIZES: Record<string, string> = {
 
 const CREATIVITY_BLOCKS: Record<number, string> = {
   1: '',
-  2: 'Add secondary geometric or decorative elements that complement the brand style. Enrich the composition with subtle texture or layering.',
-  3: 'Create a visually rich composition with multiple layered graphic elements. Use the full brand gradient palette across multiple decorative shapes and background treatments.',
-  4: 'Design a striking, editorial-level graphic. Push visual complexity — layered shapes, depth, bold typographic treatment, dynamic composition. Stay within brand palette and layout rules.',
-  5: 'Create a premium, award-worthy graphic. Maximum visual richness within brand rules. Cinematic composition, complex multi-layer design, immersive use of brand colors and graphic elements. Every pixel intentional.',
+  2: 'Dodaj drugorzędne geometryczne lub dekoracyjne elementy uzupełniające styl marki. Wzbogać kompozycję subtelną teksturą lub warstwowością.',
+  3: 'Stwórz wizualnie bogatą kompozycję z wieloma warstwowymi elementami graficznymi. Użyj pełnej palety gradientów marki na wielu dekoracyjnych kształtach i tłach.',
+  4: 'Zaprojektuj uderzającą grafikę na poziomie edytorialnym. Zwiększ złożoność wizualną — warstwowe kształty, głębia, odważna typografia, dynamiczna kompozycja. Pozostań w palecie marki i zasadach layoutu.',
+  5: 'Stwórz premium grafikę wartą nagrody. Maksymalne bogactwo wizualne w ramach zasad marki. Kinowa kompozycja, złożony wielowarstwowy design, immersyjne użycie kolorów i elementów graficznych marki. Każdy piksel celowy.',
 };
 
 // ── Logo compositor ───────────────────────────────────────────────────────────
@@ -290,7 +290,7 @@ export async function POST(req: NextRequest) {
   const refParts: Array<{ inlineData: { data: string; mimeType: string } } | { text: string }> = [];
   if (!elementOnly && hasUserPhoto) {
     // Only send ref inlineData when user has provided a photo — safe context, no face leakage risk
-    refParts.push({ text: '⚠️ STYLE REFERENCES ONLY — These images show color palette, composition style and mood. DO NOT reproduce any face, person, or photographic content from them into the output.' });
+    refParts.push({ text: '⚠️ TYLKO REFERENCJE STYLISTYCZNE — Te obrazy pokazują paletę kolorów, styl kompozycji i nastrój. NIE odtwarzaj żadnej twarzy, osoby ani treści fotograficznej z nich w wynikowej grafice.' });
     // Regular refs — extract style only
     for (const ref of regularRefs) {
       if (ref.url.toLowerCase().endsWith('.svg')) continue;
@@ -299,7 +299,7 @@ export async function POST(req: NextRequest) {
     }
     // Featured refs — match this exact style
     if (featuredRefs.length > 0) {
-      refParts.push({ text: 'PRIORITY STYLE TARGET — match this exact visual aesthetic, color palette and mood as closely as possible in your output:' });
+      refParts.push({ text: 'PRIORYTETOWY CEL STYLISTYCZNY — dopasuj dokładnie tę estetykę wizualną, paletę kolorów i nastrój w swoim wyniku:' });
       for (const ref of featuredRefs) {
         if (ref.url.toLowerCase().endsWith('.svg')) continue;
         const b64 = await urlToBase64(ref.url, true);
@@ -332,25 +332,25 @@ export async function POST(req: NextRequest) {
   const logoPosition: string = project.logo_position || 'top-left';
 
   const LOGO_EMPTY_ZONE: Record<string, string | null> = {
-    'top-left':     'top-left area (first 25% width, first 20% height)',
-    'top-right':    'top-right area (last 25% width, first 20% height)',
-    'bottom-left':  'bottom-left area (first 25% width, last 20% height)',
-    'bottom-right': 'bottom-right area (last 25% width, last 20% height)',
+    'top-left':     'lewy górny obszar (pierwsze 25% szerokości, pierwsze 20% wysokości)',
+    'top-right':    'prawy górny obszar (ostatnie 25% szerokości, pierwsze 20% wysokości)',
+    'bottom-left':  'lewy dolny obszar (pierwsze 25% szerokości, ostatnie 20% wysokości)',
+    'bottom-right': 'prawy dolny obszar (ostatnie 25% szerokości, ostatnie 20% wysokości)',
     'none':         null,
   };
   const emptyZone = LOGO_EMPTY_ZONE[logoPosition] ?? LOGO_EMPTY_ZONE['top-left'];
 
   // Asset usage rules — always present (protects against content leakage from reference images)
   const assetUsageRules = [
-    'CRITICAL — ASSET LEAKAGE PREVENTION: Reference images are provided ONLY as visual style inspiration. DO NOT reproduce, copy, or extract any faces, people, identifiable persons, specific objects, products, or photographic scenes from reference images into the generated graphic. References provide: color palette, composition style, typography approach, mood/atmosphere ONLY.',
-    'DO NOT use any person\'s face or likeness from any reference image under any circumstances',
+    'KRYTYCZNE — ZAPOBIEGANIE WYCIEKOWI ASSETÓW: Obrazy referencyjne są podane WYŁĄCZNIE jako inspiracja stylistyczna. NIE odtwarzaj, nie kopiuj ani nie wyodrębniaj żadnych twarzy, osób, rozpoznawalnych postaci, konkretnych obiektów, produktów ani scen fotograficznych z obrazów referencyjnych do generowanej grafiki. Referencje dostarczają TYLKO: paletę kolorów, styl kompozycji, podejście typograficzne, nastrój/atmosferę.',
+    'NIE używaj twarzy ani wizerunku żadnej osoby z obrazów referencyjnych pod żadnym pozorem',
     ...((!photoUrl || photoMode === 'none') && !elementOnly
-      ? ['NO PHOTO PROVIDED — ABSOLUTE RULE: The central element MUST be abstract or illustrative only — geometric shapes, gradients, icons, brand graphic elements, typographic compositions. NO faces, NO people, NO photographic human content, NO scenes copied from references. Ignore any photographic content in reference images completely.']
+      ? ['BRAK ZDJĘCIA — ZASADA BEZWZGLĘDNA: Centralny element MUSI być wyłącznie abstrakcyjny lub ilustracyjny — geometryczne kształty, gradienty, ikony, elementy graficzne marki, kompozycje typograficzne. BEZ twarzy, BEZ ludzi, BEZ fotograficznej treści ludzkiej, BEZ scen skopiowanych z referencji. Całkowicie ignoruj treść fotograficzną w obrazach referencyjnych.']
       : []),
-    'RENDER ONLY text listed under "TEXT TO APPEAR ON GRAPHIC" — no other text, captions or labels',
+    'RENDERUJ TYLKO tekst wymieniony pod "TEKST DO UMIESZCZENIA NA GRAFICE" — żaden inny tekst, podpisy ani etykiety',
     ...(emptyZone
-      ? [`[LOGO ZONE — ${emptyZone}]: This area must be a seamless, natural continuation of the surrounding background — apply the same style, texture, grain and gradients as the rest of the background, but place NO concrete objects, graphic elements, decorative shapes or text here. The zone must remain visually empty of content while being technically identical to the surrounding background, so a logo PNG can be composited cleanly in post-processing. Do NOT draw any rectangle, box, border or flat color block here.`]
-      : ['No logo required — you may use the full canvas freely']),
+      ? [`[STREFA LOGO — ${emptyZone}]: Ten obszar musi być płynną, naturalną kontynuacją otaczającego tła — zastosuj ten sam styl, teksturę, ziarno i gradienty co reszta tła, ale NIE umieszczaj tu żadnych konkretnych obiektów, elementów graficznych, dekoracyjnych kształtów ani tekstu. Strefa musi pozostać wizualnie pusta z treści, będąc technicznie identyczna z otaczającym tłem, aby logo PNG mogło być czysto nałożone w postprodukcji. NIE rysuj tu żadnego prostokąta, ramki, obramowania ani płaskiego bloku koloru.`]
+      : ['Logo nie jest wymagane — możesz swobodnie wykorzystać całe płótno']),
   ];
 
   // Layer 1 — always present (asset rules + optional brand rules)
@@ -359,20 +359,20 @@ export async function POST(req: NextRequest) {
     : [];
   const allLayer1Rules = [...assetUsageRules, ...brandRuleLines];
   const layer1 = `\n${sep}
-LAYER 1 — ABSOLUTE RULES (non-negotiable constraints)
-These are hard limits. Violating ANY of these is unacceptable, regardless of the brief.
+WARSTWA 1 — ZASADY BEZWZGLĘDNE (niepodlegające negocjacji ograniczenia)
+To są twarde limity. Złamanie KTÓREGOKOLWIEK z nich jest niedopuszczalne, niezależnie od briefu.
 ${sep}
 ${allLayer1Rules.map((r, i) => `${i + 1}. ${r}`).join('\n')}
 `;
 
   const refNote = !elementOnly && imageRefCount > 0
-    ? `\n- Style reference images (${imageRefCount} provided${featuredRefs.length > 0 ? `, ${featuredRefs.length} marked as PRIORITY STYLE TARGET` : ''}): extract color palette, mood and visual style — do NOT copy faces, people, objects or scenes`
+    ? `\n- Obrazy referencyjne stylu (${imageRefCount} dostarczonych${featuredRefs.length > 0 ? `, ${featuredRefs.length} oznaczonych jako PRIORYTETOWY CEL STYLISTYCZNY` : ''}): wyodrębnij paletę kolorów, nastrój i styl wizualny — NIE kopiuj twarzy, ludzi, obiektów ani scen`
     : '';
-  const elNote = !elementOnly && brandElements.length > 0 ? `\n- Brand graphic elements: use these decorative/brand elements in the composition` : '';
-  const photoNote = photoUrl && photoMode !== 'none' && !elementOnly ? '\n- PHOTO PROVIDED: place this as the central/hero image, compose brand elements around it' : '';
+  const elNote = !elementOnly && brandElements.length > 0 ? `\n- Elementy graficzne marki: użyj tych dekoracyjnych/brandowych elementów w kompozycji` : '';
+  const photoNote = photoUrl && photoMode !== 'none' && !elementOnly ? '\n- ZDJĘCIE DOSTARCZONE: umieść je jako centralny/główny obraz, skomponuj elementy marki wokół niego' : '';
   const allParts = [...refParts, ...imageParts];
   const assetNote = allParts.length > 0
-    ? `Provided visual assets:${refNote}${elNote}${photoNote}\n\n`
+    ? `Dostarczone zasoby wizualne:${refNote}${elNote}${photoNote}\n\n`
     : '';
 
   // AVAILABLE ASSETS text block for Layer 2
@@ -381,18 +381,18 @@ ${allLayer1Rules.map((r, i) => `${i + 1}. ${r}`).join('\n')}
     logoAssets.forEach(l => availableAssets.push(`- Logo (${l.variant || 'default'}): ${l.url}`));
   }
   brandElements.forEach(el => {
-    availableAssets.push(`- Brand element "${el.filename}"${el.description ? ` — ${el.description}` : ''}: ${el.url}`);
+    availableAssets.push(`- Element marki "${el.filename}"${el.description ? ` — ${el.description}` : ''}: ${el.url}`);
   });
   // Refs sent as inlineData — note their count and guardrail in prompt
   if (!elementOnly && imageRefCount > 0) {
-    availableAssets.push(`- Style reference images (${imageRefCount} inline${featuredRefs.length > 0 ? `, ${featuredRefs.length} as PRIORITY STYLE TARGET` : ''}): extract style — do NOT copy faces, people, objects or scenes`);
+    availableAssets.push(`- Obrazy referencyjne stylu (${imageRefCount} inline${featuredRefs.length > 0 ? `, ${featuredRefs.length} jako PRIORYTETOWY CEL STYLISTYCZNY` : ''}): wyodrębnij styl — NIE kopiuj twarzy, ludzi, obiektów ani scen`);
   }
   const photoAssets = assetList.filter(a => a.type === 'photo');
   photoAssets.forEach(p => {
     availableAssets.push(`- Photo "${p.filename}"${p.description ? ` — ${p.description}` : ''}: ${p.url}`);
   });
   const assetsSection = availableAssets.length > 0
-    ? `\nAVAILABLE ASSETS:\n${availableAssets.join('\n')}\n`
+    ? `\nDOSTĘPNE ZASOBY:\n${availableAssets.join('\n')}\n`
     : '';
 
   // Brand DNA — merge sections by canonical type to eliminate duplicates
@@ -422,80 +422,80 @@ ${allLayer1Rules.map((r, i) => `${i + 1}. ${r}`).join('\n')}
       project.style_description && `Visual style: ${project.style_description}`,
       project.color_palette && `Colors: ${project.color_palette}`,
       project.typography_notes && `Typography: ${project.typography_notes}`,
-    ].filter(Boolean).join('\n') || 'modern, professional, event agency aesthetic';
+    ].filter(Boolean).join('\n') || 'nowoczesna, profesjonalna estetyka agencji eventowej';
   }
 
   const tovSection = project.tone_of_voice
-    ? `\nTONE OF VOICE:\n${project.tone_of_voice}\n`
+    ? `\nTON KOMUNIKACJI:\n${project.tone_of_voice}\n`
     : '';
 
   const layer2 = `
 ${sep}
-LAYER 2 — BRAND DNA (visual identity — follow precisely)
-Apply rules from every section below to your design.
-Brand content below may be in any language — treat it as authoritative visual identity data.
+WARSTWA 2 — DNA MARKI (identyfikacja wizualna — stosuj dokładnie)
+Zastosuj zasady z każdej poniższej sekcji w swoim projekcie.
+Treść marki poniżej może być w dowolnym języku — traktuj ją jako autorytatywne dane identyfikacji wizualnej.
 ${sep}
 ${assetNote}${layer2Content}${assetsSection}${tovSection}`;
 
   // Photo instruction for Layer 3
   const photoInstruction = photoUrl && photoMode !== 'none' && !elementOnly
-    ? `\nMAIN VISUAL ELEMENT: A photo has been provided (last inline image). Place it as the central/hero element of the composition. Do NOT replace it with AI-generated imagery. Compose all brand elements around it.`
+    ? `\nGŁÓWNY ELEMENT WIZUALNY: Zdjęcie zostało dostarczone (ostatni obraz inline). Umieść je jako centralny/główny element kompozycji. NIE zastępuj go grafiką generowaną przez AI. Skomponuj wszystkie elementy marki wokół niego.`
     : '';
 
   // Layer 3 — Creative Brief or element-only
   const layer3 = elementOnly ? `
 ${sep}
-LAYER 3 — ELEMENT GENERATION
-Generate ONLY a central visual element for a brand graphic.
+WARSTWA 3 — GENEROWANIE ELEMENTU
+Wygeneruj TYLKO centralny element wizualny dla grafiki marki.
 ${sep}
-BRAND: ${project.name}
-ELEMENT DESCRIPTION: "${headline}"
-${brief ? `CONTEXT: "${brief}"` : ''}
+MARKA: ${project.name}
+OPIS ELEMENTU: "${headline}"
+${brief ? `KONTEKST: "${brief}"` : ''}
 
-OUTPUT REQUIREMENTS:
-- Generate ONLY the visual element — NO text, NO logo, NO background fill, NO frame
-- The element should work as a central focal point composited into a brand template
-- Clean subject, suitable for compositing over a colored background
-- Square-ish composition, centered subject
-- Style must match brand DNA from Layer 2` : `
+WYMAGANIA DLA OUTPUTU:
+- Wygeneruj TYLKO element wizualny — BEZ tekstu, BEZ logo, BEZ wypełnienia tła, BEZ ramki
+- Element powinien działać jako centralny punkt skupienia wkomponowany w szablon marki
+- Czysty obiekt, odpowiedni do nałożenia na kolorowe tło
+- Kwadratowa kompozycja, wycentrowany obiekt
+- Styl musi pasować do DNA marki z Warstwy 2` : `
 ${sep}
-LAYER 3 — CREATIVE BRIEF
-Create a graphic that satisfies all layers above. Be creative within constraints.
+WARSTWA 3 — BRIEF KREATYWNY
+Stwórz grafikę spełniającą wymagania wszystkich warstw powyżej. Bądź kreatywny w ramach ograniczeń.
 ${sep}
-BRAND: ${project.name}
-FORMAT: ${FORMAT_SIZES[format] || '1080x1080px square'} — design for this exact canvas size and ratio
+MARKA: ${project.name}
+FORMAT: ${FORMAT_SIZES[format] || '1080x1080px square'} — projektuj dokładnie dla tego rozmiaru i proporcji płótna
 
-TEXT TO APPEAR ON GRAPHIC (keep exactly as provided — do not translate, do not alter):
-Headline: "${headline}"
-${subtext ? `Subtext: "${subtext}"` : ''}
+TEKST DO UMIESZCZENIA NA GRAFICE (zachowaj dokładnie tak jak podano — nie tłumacz, nie zmieniaj):
+Nagłówek: "${headline}"
+${subtext ? `Podtekst: "${subtext}"` : ''}
 
-${brief ? `CREATIVE DIRECTION (context only — do not render verbatim): "${brief}"` : ''}
+${brief ? `KIERUNEK KREATYWNY (tylko kontekst — nie renderuj dosłownie): "${brief}"` : ''}
 ${photoInstruction}
-OUTPUT REQUIREMENTS:
-- LOGO ZONE (${emptyZone ?? 'none'}) ${emptyZone ? `must be a seamless continuation of the surrounding background style — no objects, shapes, text, flat fills or boxes. Logo PNG is composited here after generation.` : '— no logo zone, use full canvas'}
-- RENDER ONLY the text lines listed above under "TEXT TO APPEAR ON GRAPHIC" — render each line EXACTLY ONCE, no repetition, no paraphrasing, no additional captions
-- No human photography unless explicitly requested in creative direction
-- Zero typos — double-check all text before rendering
-- Fill the entire canvas — no white borders or padding outside the design
-- Professional print-quality output`;
+WYMAGANIA DLA OUTPUTU:
+- STREFA LOGO (${emptyZone ?? 'brak'}) ${emptyZone ? `musi być płynną kontynuacją otaczającego stylu tła — bez obiektów, kształtów, tekstu, płaskich wypełnień ani ramek. Logo PNG jest nakładane tu po generacji.` : '— brak strefy logo, użyj pełnego płótna'}
+- RENDERUJ TYLKO linie tekstu wymienione powyżej pod "TEKST DO UMIESZCZENIA NA GRAFICE" — renderuj każdą linię DOKŁADNIE RAZ, bez powtórzeń, bez parafrazowania, bez dodatkowych podpisów
+- Bez fotografii ludzi, chyba że wyraźnie wskazano w kierunku kreatywnym
+- Zero literówek — sprawdź dwukrotnie cały tekst przed renderowaniem
+- Wypełnij całe płótno — bez białych obramowań ani paddingu poza designem
+- Profesjonalna jakość druku`;
 
   // Creativity directive (optional)
   const creativityBlock = CREATIVITY_BLOCKS[creativity] ? `
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-VISUAL RICHNESS DIRECTIVE (apply within brand constraints)
+DYREKTYWA BOGACTWA WIZUALNEGO (stosuj w ramach ograniczeń marki)
 ${CREATIVITY_BLOCKS[creativity]}
-All Layer 1 rules still override this directive.
+Wszystkie zasady Warstwy 1 nadal nadpisują tę dyrektywę.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ` : '';
 
   const closing = `
 
 ${sep}
-PRIORITY REMINDER: Layer 1 > Layer 2 > Layer 3.
-If brand DNA conflicts with the brief — brand DNA wins.
-If absolute rules conflict with anything — absolute rules win.
-Generate ONE complete, publication-ready graphic.`;
+PRZYPOMNIENIE O PRIORYTETACH: Warstwa 1 > Warstwa 2 > Warstwa 3.
+Jeśli DNA marki koliduje z briefem — DNA marki wygrywa.
+Jeśli zasady bezwzględne kolidują z czymkolwiek — zasady bezwzględne wygrywają.
+Wygeneruj JEDNĄ kompletną, gotową do publikacji grafikę.`;
 
   // For elementOnly: bypass brand hierarchy — use standalone no-branding prompt
   const brandColors = elementOnly
@@ -512,23 +512,23 @@ Generate ONE complete, publication-ready graphic.`;
     : '';
 
   const textPrompt = elementOnly
-    ? `Generate ONLY an abstract illustration to be used as a central decorative element in a social media graphic.
+    ? `Wygeneruj TYLKO abstrakcyjną ilustrację do użycia jako centralny element dekoracyjny w grafice social media.
 
-ABSOLUTE RULES — ANY VIOLATION MAKES THE OUTPUT UNUSABLE:
-- NO logos, NO brand marks, NO wordmarks
-- NO text, NO letters, NO numbers, NO words of any language
-- NO UI elements, NO buttons, NO icons
-- NO circles, shapes, or any element containing text
-- NO human faces or recognizable people
-- NO recognizable products or product shots
+ZASADY BEZWZGLĘDNE — KAŻDE NARUSZENIE CZYNI OUTPUT BEZUŻYTECZNYM:
+- BEZ logo, BEZ znaków marki, BEZ wordmarków
+- BEZ tekstu, BEZ liter, BEZ cyfr, BEZ słów w jakimkolwiek języku
+- BEZ elementów UI, BEZ przycisków, BEZ ikon
+- BEZ kół, kształtów ani elementów zawierających tekst
+- BEZ ludzkich twarzy ani rozpoznawalnych osób
+- BEZ rozpoznawalnych produktów ani zdjęć produktów
 
-ELEMENT TO CREATE: "${headline}"
-${brief ? `VISUAL DIRECTION: "${brief}"` : ''}
-${brandColors ? `USE THESE COLORS: ${brandColors}` : 'Use harmonious, vibrant colors.'}
+ELEMENT DO STWORZENIA: "${headline}"
+${brief ? `KIERUNEK WIZUALNY: "${brief}"` : ''}
+${brandColors ? `UŻYJ TYCH KOLORÓW: ${brandColors}` : 'Użyj harmonijnych, żywych kolorów.'}
 
-OUTPUT: One abstract illustration — shapes, gradients, organic forms, textures. Square-ish composition. Zero text. Zero branding. Suitable for compositing over a brand-colored background.`
-    : `You are a professional graphic designer creating social media graphics.
-Follow the three-layer instruction hierarchy below. Higher layers override lower ones.
+OUTPUT: Jedna abstrakcyjna ilustracja — kształty, gradienty, organiczne formy, tekstury. Kwadratowa kompozycja. Zero tekstu. Zero brandingu. Odpowiednia do nałożenia na tło w kolorach marki.`
+    : `Jesteś profesjonalnym grafikiem tworzącym grafiki do social media.
+Stosuj poniższą trójwarstwową hierarchię instrukcji. Wyższe warstwy nadpisują niższe.
 ${layer1}${layer2}${layer3}${creativityBlock}${closing}`;
 
   // ── TWO-STAGE PIPELINE (useCompositor) ───────────────────────────────────
@@ -650,11 +650,11 @@ async function generateWithCompositor({
   };
 
   const CREATIVITY_BLOCKS_ILL: Record<number, string> = {
-    1: 'Clean, minimal composition.',
-    2: 'Add subtle decorative elements that complement the brand style.',
-    3: 'Visually rich composition with layered graphic elements and full brand palette.',
-    4: 'Editorial complexity — layered shapes, depth, bold composition.',
-    5: 'Maximum visual richness. Cinematic, immersive, every detail intentional.',
+    1: 'Czysta, minimalna kompozycja.',
+    2: 'Dodaj subtelne elementy dekoracyjne uzupełniające styl marki.',
+    3: 'Wizualnie bogata kompozycja z warstwowymi elementami graficznymi i pełną paletą marki.',
+    4: 'Edytorialna złożoność — warstwowe kształty, głębia, odważna kompozycja.',
+    5: 'Maksymalne bogactwo wizualne. Kinowe, immersyjne, każdy detal celowy.',
   };
 
   // Collect brand DNA context for illustration prompt
@@ -667,29 +667,29 @@ async function generateWithCompositor({
         project.color_palette && `Colors: ${project.color_palette}`,
       ].filter(Boolean).join('\n') || '';
 
-  const illustrationPrompt = `You are creating a background illustration for a social media graphic.
+  const illustrationPrompt = `Tworzysz ilustrację tła dla grafiki social media.
 
-ABSOLUTE RULES — these override everything:
-1. DO NOT include any text, words, letters, numbers, or typography
-2. DO NOT include any logos, brand marks, or wordmarks
-3. DO NOT include any UI elements, buttons, frames, or borders
-4. Leave the bottom 35% of the image relatively simple/uncluttered — text will be overlaid there
-5. Leave the top 15% relatively clean — logo will be placed there
-6. DO NOT include any human faces or recognizable people
+ZASADY BEZWZGLĘDNE — nadpisują wszystko:
+1. NIE umieszczaj żadnego tekstu, słów, liter, cyfr ani typografii
+2. NIE umieszczaj żadnych logo, znaków marki ani wordmarków
+3. NIE umieszczaj żadnych elementów UI, przycisków, ramek ani obramowań
+4. Dolne 35% obrazu zostaw względnie proste/nieza zagracone — tekst będzie tam nałożony
+5. Górne 15% zostaw względnie czyste — logo będzie tam umieszczone
+6. NIE umieszczaj żadnych ludzkich twarzy ani rozpoznawalnych osób
 
-BRAND CONTEXT:
-${brandContext || `Visual style: professional, modern`}
-${brandColors.primary ? `Primary color: ${brandColors.primary}` : ''}
-${brandColors.secondary ? `Secondary color: ${brandColors.secondary}` : ''}
-${brandColors.accent ? `Accent color: ${brandColors.accent}` : ''}
+KONTEKST MARKI:
+${brandContext || `Styl wizualny: profesjonalny, nowoczesny`}
+${brandColors.primary ? `Kolor główny: ${brandColors.primary}` : ''}
+${brandColors.secondary ? `Kolor drugorzędny: ${brandColors.secondary}` : ''}
+${brandColors.accent ? `Kolor akcentowy: ${brandColors.accent}` : ''}
 
-FORMAT: ${FORMAT_LABELS[format] || '1080x1080px'} — fill this exact canvas
+FORMAT: ${FORMAT_LABELS[format] || '1080x1080px'} — wypełnij dokładnie to płótno
 
-VISUAL BRIEF: ${brief || headline}
+BRIEF WIZUALNY: ${brief || headline}
 
-RICHNESS: ${CREATIVITY_BLOCKS_ILL[creativity] || CREATIVITY_BLOCKS_ILL[2]}
+BOGACTWO: ${CREATIVITY_BLOCKS_ILL[creativity] || CREATIVITY_BLOCKS_ILL[2]}
 
-OUTPUT: A single background illustration. Pure visual — no text, no logo. The illustration should create atmosphere and brand identity through color, shape, and composition only.`;
+OUTPUT: Jedna ilustracja tła. Czysto wizualna — bez tekstu, bez logo. Ilustracja powinna budować atmosferę i tożsamość marki wyłącznie poprzez kolor, kształt i kompozycję.`;
 
   // ── Stage 1: Generate illustration via Gemini ─────────────────────────────
   // For illustration mode: only include brand elements (no logo — handled by compositor)

@@ -23,59 +23,60 @@ export async function POST(req: NextRequest) {
     .map((s, i) => `[${i + 1}] ${s.trim()}`)
     .join('\n\n');
 
-  const analyzerPrompt = `You are a world-class brand linguist and communication strategist. Your job is to reverse-engineer a brand's unique voice and tone from real content samples.
+  const analyzerPrompt = `Jesteś światowej klasy lingwistą marki i strategiem komunikacji. Twoim zadaniem jest odtworzenie unikalnego głosu i tonu marki na podstawie prawdziwych próbek treści.
 
-You will receive text samples from a brand (social media posts, website copy, emails, campaign descriptions). From these samples, extract a precise Voice Card — a machine-readable profile that allows AI to write NEW content indistinguishable from the brand's authentic voice.
+Otrzymasz próbki tekstów marki (posty w social media, teksty ze strony www, e-maile, opisy kampanii). Na ich podstawie wyodrębnij precyzyjną Voice Card — profil czytelny maszynowo, który pozwoli AI pisać NOWE treści nieodróżnialne od autentycznego głosu marki.
 
-## ANALYSIS FRAMEWORK
+## FRAMEWORK ANALIZY
 
-Analyze each dimension on a 1-10 scale with concrete evidence:
+Przeanalizuj każdy wymiar w skali 1-10 z konkretnymi dowodami:
 
-### 1. FORMALITY SPECTRUM (1=street talk, 10=legal document)
-Where exactly on the spectrum? Does it shift between contexts? Quote 2 examples.
+### 1. SPEKTRUM FORMALNOŚCI (1=slang uliczny, 10=dokument prawny)
+Gdzie dokładnie na spektrum? Czy zmienia się w zależności od kontekstu? Zacytuj 2 przykłady.
 
-### 2. WARMTH & DISTANCE (1=cold corporate, 10=best friend)
-How does the brand treat the reader? Power dynamic: equal, above, or below?
+### 2. CIEPŁO I DYSTANS (1=zimny korporat, 10=najlepszy przyjaciel)
+Jak marka traktuje czytelnika? Dynamika władzy: równy, wyżej czy niżej?
 
-### 3. SENTENCE ARCHITECTURE
-Average sentence length, paragraph structure, rhythm, fragments, questions.
+### 3. ARCHITEKTURA ZDAŃ
+Średnia długość zdania, struktura akapitów, rytm, urywki, pytania.
 
-### 4. VOCABULARY DNA
-Signature words/phrases (appear 3+ times), power words, forbidden words, jargon level, language mixing.
+### 4. DNA SŁOWNICTWA
+Charakterystyczne słowa/frazy (pojawiające się 3+ razy), słowa-klucze, słowa zakazane, poziom żargonu, mieszanie języków.
 
-### 5. EMOTIONAL REGISTER
-Primary emotion, humor style, authority type, emotional floor and ceiling.
+### 5. REJESTR EMOCJONALNY
+Główna emocja, styl humoru, typ autorytetu, emocjonalne minimum i maksimum.
 
-### 6. STRUCTURAL PATTERNS
-How do they START? How do they END? Emphasis tools? Line breaks?
+### 6. WZORCE STRUKTURALNE
+Jak ZACZYNAJĄ? Jak KOŃCZĄ? Narzędzia podkreślania? Łamanie linii?
 
-### 7. EMOJI & VISUAL PUNCTUATION
-Frequency, which emoji and what function, other visual elements.
+### 7. EMOJI I INTERPUNKCJA WIZUALNA
+Częstotliwość, które emoji i w jakiej funkcji, inne elementy wizualne.
 
-### 8. PERSON & ADDRESS
-I or we? Singular or plural you? How are people addressed?
+### 8. OSOBA I ZWRACANIE SIĘ
+Ja czy my? Ty czy wy? Jak zwracają się do ludzi?
 
-### 9. PERSUASION STYLE
-How do they convince? Directness level, qualifiers used.
+### 9. STYL PERSWAZJI
+Jak przekonują? Poziom bezpośredniości, użycie kwalifikatorów.
 
-### 10. TABOOS & ANTI-PATTERNS
-What does this brand NEVER do? What would feel instantly off-brand?
+### 10. TABU I ANTY-WZORCE
+Czego ta marka NIGDY nie robi? Co natychmiast brzmiałoby nie-na-miejscu?
 
-## CRITICAL INSTRUCTIONS
-1. Be SPECIFIC. "Casual tone" is useless. "Uses sentence fragments for emphasis, mixes Polish with English tech terms naturally" is useful.
-2. Every claim must have EVIDENCE from the samples. Quote specific phrases.
-3. The Voice Card must be ACTIONABLE — another AI reading only this card should produce content indistinguishable from the original.
-4. Taboos list is AS IMPORTANT as positive patterns.
+## KRYTYCZNE INSTRUKCJE
+1. Bądź KONKRETNY. "Luźny ton" jest bezużyteczne. "Używa urywków zdań dla podkreślenia, naturalnie miesza polski z angielskimi terminami technicznymi" jest użyteczne.
+2. Każde twierdzenie musi mieć DOWÓD z próbek. Cytuj konkretne frazy.
+3. Voice Card musi być OPERACYJNA — inne AI czytające tylko tę kartę powinno tworzyć treści nieodróżnialne od oryginału.
+4. Lista tabu jest TAK SAMO WAŻNA jak pozytywne wzorce.
+5. Zwróć CAŁĄ treść (opisy, podsumowania, przykłady) po polsku.
 
-## SAMPLES FROM: ${project.name}
+## PRÓBKI OD: ${project.name}
 
 ${samplesText}
 
-Return ONLY valid JSON, no markdown, no explanation:
+Zwróć WYŁĄCZNIE poprawny JSON, bez markdown, bez wyjaśnień:
 {
   "brand_name": "${project.name}",
-  "voice_summary": "One sentence capturing the entire voice",
-  "archetype": "The communication archetype (e.g. 'Warm Authority', 'Provocative Expert', 'Humble Leader')",
+  "voice_summary": "Jedno zdanie oddające cały głos marki",
+  "archetype": "Archetyp komunikacji (np. 'Ciepły autorytet', 'Prowokujący ekspert', 'Skromny lider')",
   "dimensions": {
     "formality": {"score": 0, "description": ""},
     "warmth": {"score": 0, "description": ""},

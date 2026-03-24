@@ -263,7 +263,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Load current project for merge
-  const [currentProject] = await getDb()`SELECT id, brand_sections FROM projects WHERE id = ${projectId}`;
+  const [currentProject] = await getDb()`SELECT id FROM projects WHERE id = ${projectId}`;
   if (!currentProject) return NextResponse.json({ error: 'Project not found' }, { status: 404 });
 
   await getDb()`ALTER TABLE projects ADD COLUMN IF NOT EXISTS brand_scan_data JSONB`.catch(() => {});
@@ -349,27 +349,27 @@ export async function POST(req: NextRequest) {
       fonts.length > 0 && `Fonts found on page: ${fonts.join(', ')}`,
     ].filter(Boolean).join('\n');
 
-    const prompt = `Analyze this website and extract brand identity information.${parts.length > 0 ? ' An image from the website is attached.' : ''}
+    const prompt = `Przeanalizuj tę stronę internetową i wyodrębnij informacje o tożsamości marki.${parts.length > 0 ? ' W załączeniu obraz ze strony.' : ''}
 
-Website data:
+Dane ze strony:
 ${textContext}
 ${colorContext}
 
-Return ONLY a valid JSON object (no markdown, no explanation):
+Zwróć WYŁĄCZNIE poprawny obiekt JSON (bez markdown, bez wyjaśnień):
 {
-  "PRIMARY_COLOR": "hex — dominant background or main brand color (use dark color for dark-theme sites)",
-  "SECONDARY_COLOR": "hex — supporting color, MUST differ from PRIMARY",
-  "ACCENT_COLOR": "hex — CTA/highlight color, MUST differ from both PRIMARY and SECONDARY",
-  "VISUAL_STYLE": "one of: minimalist / bold / elegant / playful / corporate / warm / technical",
-  "TONE_OF_VOICE": "one of: formal / casual / friendly / professional / inspirational / technical",
-  "BRAND_KEYWORDS": ["word1", "word2", "word3", "word4", "word5", "word6", "word7", "word8"],
-  "INDUSTRY": "industry or sector of this business",
-  "HEADING_FONT": "name of the heading/display font (from fonts found on page, or infer from visual style)",
-  "BODY_FONT": "name of the body/paragraph font",
-  "BRAND_VALUES": ["value1", "value2", "value3"],
-  "CTA_EXAMPLES": ["example CTA phrase 1", "example CTA phrase 2"],
-  "PHOTO_STYLE": "describe dominant photography style (e.g. studio product shots, lifestyle outdoor, corporate portraits)",
-  "TARGET_AUDIENCE": "who this website is targeting (e.g. business professionals, young families, luxury consumers)"
+  "PRIMARY_COLOR": "hex — dominujący kolor tła lub główny kolor marki (ciemny dla stron z ciemnym motywem)",
+  "SECONDARY_COLOR": "hex — kolor wspierający, MUSI się różnić od PRIMARY",
+  "ACCENT_COLOR": "hex — kolor CTA/wyróżnienia, MUSI się różnić zarówno od PRIMARY jak i SECONDARY",
+  "VISUAL_STYLE": "jedno z: minimalist / bold / elegant / playful / corporate / warm / technical",
+  "TONE_OF_VOICE": "jedno z: formal / casual / friendly / professional / inspirational / technical",
+  "BRAND_KEYWORDS": ["słowo1", "słowo2", "słowo3", "słowo4", "słowo5", "słowo6", "słowo7", "słowo8"],
+  "INDUSTRY": "branża lub sektor działalności firmy",
+  "HEADING_FONT": "nazwa fontu nagłówkowego (z fontów znalezionych na stronie lub wywnioskowana ze stylu wizualnego)",
+  "BODY_FONT": "nazwa fontu do tekstu głównego",
+  "BRAND_VALUES": ["wartość1", "wartość2", "wartość3"],
+  "CTA_EXAMPLES": ["przykładowe wezwanie do działania 1", "przykładowe wezwanie do działania 2"],
+  "PHOTO_STYLE": "opisz dominujący styl fotografii (np. studyjne zdjęcia produktowe, lifestyle na zewnątrz, korporacyjne portrety)",
+  "TARGET_AUDIENCE": "do kogo skierowana jest ta strona (np. profesjonaliści biznesowi, młode rodziny, klienci premium)"
 }`;
 
     parts.push({ text: prompt });
@@ -441,114 +441,10 @@ Return ONLY a valid JSON object (no markdown, no explanation):
     scannedAt: new Date().toISOString(),
   };
 
-  // ── Stage 3b: Build structured brand sections from scan data ──────────────
-  const SOURCE_PRIORITY: Record<string, number> = { brandbook: 3, references: 2, brand_scan: 1, manual: 0 };
-
-  const newScanSections: Array<{
-    id: string; title: string; content: string;
-    type: 'standard'; order: number; icon: string;
-    source: string; confidence: string;
-  }> = [];
-
-  if (brandDna.primaryColor || brandDna.secondaryColor || brandDna.accentColor) {
-    newScanSections.push({
-      id: 'kolorystyka', title: 'Kolory marki',
-      content: [
-        brandDna.primaryColor && `Primary color: ${brandDna.primaryColor}`,
-        brandDna.secondaryColor && `Secondary color: ${brandDna.secondaryColor}`,
-        brandDna.accentColor && `Accent color: ${brandDna.accentColor}`,
-      ].filter(Boolean).join('\n'),
-      type: 'standard', order: 10, icon: '🎨', source: 'brand_scan', confidence: 'auto',
-    });
-  }
-
-  if (brandDna.headingFont || brandDna.bodyFont || brandDna.fonts.length > 0) {
-    newScanSections.push({
-      id: 'typografia', title: 'Typografia',
-      content: [
-        brandDna.headingFont && `Heading font: ${brandDna.headingFont}`,
-        brandDna.bodyFont && `Body font: ${brandDna.bodyFont}`,
-        brandDna.fonts.length > 0 && `All detected fonts: ${brandDna.fonts.join(', ')}`,
-      ].filter(Boolean).join('\n'),
-      type: 'standard', order: 11, icon: '📝', source: 'brand_scan', confidence: 'auto',
-    });
-  }
-
-  if (brandDna.toneOfVoice || brandDna.brandKeywords.length > 0) {
-    newScanSections.push({
-      id: 'tone', title: 'Tone of Voice',
-      content: [
-        brandDna.toneOfVoice && `Tone of voice: ${brandDna.toneOfVoice}`,
-        brandDna.brandKeywords.length > 0 && `Brand keywords: ${brandDna.brandKeywords.join(', ')}`,
-      ].filter(Boolean).join('\n'),
-      type: 'standard', order: 12, icon: '💬', source: 'brand_scan',
-      confidence: 'auto',
-    });
-  }
-
-  if (brandDna.brandValues.length > 0) {
-    newScanSections.push({
-      id: 'values', title: 'Wartości marki',
-      content: `Brand values: ${brandDna.brandValues.join(', ')}`,
-      type: 'standard', order: 13, icon: '⭐', source: 'brand_scan', confidence: 'auto',
-    });
-  }
-
-  if (brandDna.visualStyle || brandDna.photoStyle) {
-    newScanSections.push({
-      id: 'visual_style', title: 'Styl wizualny',
-      content: [
-        brandDna.visualStyle && `Visual style: ${brandDna.visualStyle}`,
-        brandDna.photoStyle && `Photo style: ${brandDna.photoStyle}`,
-        brandDna.industry && `Industry: ${brandDna.industry}`,
-      ].filter(Boolean).join('\n'),
-      type: 'standard', order: 14, icon: '🖼', source: 'brand_scan', confidence: 'auto',
-    });
-  }
-
-  if (brandDna.targetAudience) {
-    newScanSections.push({
-      id: 'target', title: 'Grupa docelowa',
-      content: `Target audience: ${brandDna.targetAudience}`,
-      type: 'standard', order: 15, icon: '👥', source: 'brand_scan', confidence: 'auto',
-    });
-  }
-
-  if (brandDna.ctaExamples.length > 0) {
-    newScanSections.push({
-      id: 'cta_style', title: 'Call to Action',
-      content: `CTA examples: ${brandDna.ctaExamples.join(' | ')}`,
-      type: 'standard', order: 16, icon: '🎯', source: 'brand_scan', confidence: 'auto',
-    });
-  }
-
-  // Merge: remove old-style monolith "brand_scan" section, then merge new structured sections
-  // brand_scan does NOT overwrite sections with source brandbook or references
-  type ExistingSec = Record<string, unknown>;
-  const existingSections: ExistingSec[] = (currentProject.brand_sections || []).filter(
-    (s: ExistingSec) => s.id !== 'brand_scan'
-  );
-  const mergedSections = [...existingSections];
-
-  for (const newSec of newScanSections) {
-    const existingIdx = mergedSections.findIndex(s => s.id === newSec.id);
-    if (existingIdx >= 0) {
-      const existingSource = (mergedSections[existingIdx].source as string) || 'manual';
-      const existingPriority = SOURCE_PRIORITY[existingSource] ?? 0;
-      // brand_scan only overwrites brand_scan or manual, not brandbook/references
-      if (SOURCE_PRIORITY['brand_scan'] >= existingPriority) {
-        mergedSections[existingIdx] = newSec;
-      }
-    } else {
-      mergedSections.push(newSec);
-    }
-  }
-
-  // Save to DB
+  // Save brandDna and scanned_url to DB (brand_sections are handled by the frontend wizard)
   await getDb()`
     UPDATE projects
     SET brand_scan_data = ${JSON.stringify(brandDna)}::jsonb,
-        brand_sections = ${JSON.stringify(mergedSections)}::jsonb,
         scanned_url = ${url},
         updated_at = NOW()
     WHERE id = ${projectId}
@@ -581,5 +477,5 @@ Return ONLY a valid JSON object (no markdown, no explanation):
 
   const freshAssets = await getDb()`SELECT * FROM brand_assets WHERE project_id = ${projectId} ORDER BY created_at ASC`;
 
-  return NextResponse.json({ success: true, brandDna, brandSections: mergedSections, assets: freshAssets, message: 'Brand DNA extracted successfully' });
+  return NextResponse.json({ success: true, brandDna, assets: freshAssets, message: 'Brand DNA extracted successfully' });
 }

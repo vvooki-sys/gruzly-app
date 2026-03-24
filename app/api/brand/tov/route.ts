@@ -26,15 +26,15 @@ export async function POST(_req: NextRequest) {
     return NextResponse.json({ error: 'No brand analysis — run brand analysis first' }, { status: 400 });
   }
 
-  const prompt = `Based on this brand identity analysis for "${project.name}", define the brand's tone of voice in 3-5 sentences.
-Cover: communication style, emotional register, vocabulary choices, what to avoid.
-Write in Polish. Be specific and actionable — this will directly guide a copywriter.
-${project.brand_rules ? `\nBrand rules:\n${project.brand_rules}` : ''}
+  const prompt = `Na podstawie tej analizy identyfikacji marki "${project.name}", zdefiniuj ton głosu marki w 3-5 zdaniach.
+Opisz: styl komunikacji, rejestr emocjonalny, wybór słownictwa, czego unikać.
+Pisz po polsku. Bądź konkretny i praktyczny — to bezpośrednio poprowadzi copywritera.
+${project.brand_rules ? `\nZasady marki:\n${project.brand_rules}` : ''}
 
-Brand identity:
+Identyfikacja marki:
 ${brandContext}
 
-Return ONLY the tone of voice description — no JSON, no headers, just the plain text paragraph(s).`;
+Zwróć WYŁĄCZNIE opis tonu głosu — bez JSON, bez nagłówków, tylko zwykłe akapity tekstu.`;
 
   const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_KEY!);
   const model = genAI.getGenerativeModel({ model: GEMINI_MODEL });

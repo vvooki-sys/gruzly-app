@@ -67,98 +67,98 @@ export async function POST(req: NextRequest) {
   const vc: VoiceCard | null = project.voice_card || null;
   const voiceCardBlock = vc ? `
 ════════════════════════════════════════
-BRAND VOICE CARD (highest priority — overrides all generic tone instructions)
+KARTA GŁOSU MARKI (najwyższy priorytet — nadpisuje wszystkie ogólne instrukcje tonalne)
 ════════════════════════════════════════
-Archetype: ${vc.archetype || ''}
-Voice: ${vc.voice_summary || ''}
+Archetyp: ${vc.archetype || ''}
+Głos: ${vc.voice_summary || ''}
 
-Golden Rules (non-negotiable):
+Złote Zasady (niepodlegające negocjacji):
 ${(vc.golden_rules || []).map((r, i) => `${i + 1}. ${r}`).join('\n')}
 
-Style:
-- Sentences: ${vc.sentence_style?.structure || ''}
+Styl:
+- Zdania: ${vc.sentence_style?.structure || ''}
 - Emoji: ${vc.emoji_usage?.emoji_rules || ''}
-- Self-reference: ${vc.person_address?.self_reference || ''}
-- Audience address: ${vc.person_address?.audience_address || ''}
-${vc.vocabulary?.forbidden_words?.length ? `- Forbidden words: ${vc.vocabulary.forbidden_words.join(', ')}` : ''}
-${vc.vocabulary?.signature_phrases?.length ? `- Signature phrases: ${vc.vocabulary.signature_phrases.join(', ')}` : ''}
+- Odwołanie do siebie: ${vc.person_address?.self_reference || ''}
+- Zwracanie się do odbiorcy: ${vc.person_address?.audience_address || ''}
+${vc.vocabulary?.forbidden_words?.length ? `- Zakazane słowa: ${vc.vocabulary.forbidden_words.join(', ')}` : ''}
+${vc.vocabulary?.signature_phrases?.length ? `- Firmowe frazy: ${vc.vocabulary.signature_phrases.join(', ')}` : ''}
 
-TABOOS — the brand NEVER does these:
+TABU — marka NIGDY tego nie robi:
 ${(vc.taboos || []).map(t => `• ${t}`).join('\n')}
 
-The brand SOUNDS LIKE THIS (style reference):
+Marka BRZMI TAK (wzorcowy styl):
 ${(vc.example_good || []).map(e => `→ "${e}"`).join('\n')}
 
-The brand NEVER SOUNDS LIKE THIS (anti-reference):
+Marka NIGDY NIE BRZMI TAK (anty-wzorzec):
 ${(vc.example_bad || []).map(e => `✗ "${e}"`).join('\n')}
 ════════════════════════════════════════` : '';
 
   const formatMap: Record<string, string> = {
-    facebook: 'Facebook post (engaging, 1-3 short paragraphs, emoji OK, clear CTA)',
-    linkedin: 'LinkedIn post (professional tone, insight-driven, no excessive emoji)',
-    instagram: 'Instagram caption (punchy headline, short body, hashtag space at end)',
-    general: 'general social media post (versatile, works across platforms)',
-    ogólny: 'general social media post (versatile, works across platforms)',
+    facebook: 'Post na Facebooka (angażujący, 1-3 krótkie akapity, emoji OK, wyraźne CTA)',
+    linkedin: 'Post na LinkedIn (profesjonalny ton, oparty na insightach, bez nadmiaru emoji)',
+    instagram: 'Opis na Instagram (chwytliwy nagłówek, krótka treść, miejsce na hashtagi na końcu)',
+    general: 'ogólny post w social media (uniwersalny, działa na różnych platformach)',
+    ogólny: 'ogólny post w social media (uniwersalny, działa na różnych platformach)',
   };
   const formatDesc = formatMap[format] || formatMap['general'];
 
-  const copyPrompt = `[STEP 1 — BRIEF TYPE DETECTION]
-Before writing anything, classify the client brief as ONE of:
-- MARKETING: product/service promotion, campaign, offer, external audience, lead gen, awareness
-- HUMAN VOICE: team/employee communication, holiday wishes, birthday, anniversary, celebration, thank-you, internal culture moment, any message directed at your own people
+  const copyPrompt = `[KROK 1 — WYKRYWANIE TYPU BRIEFU]
+Zanim cokolwiek napiszesz, zaklasyfikuj brief klienta jako JEDEN z:
+- MARKETING: promocja produktu/usługi, kampania, oferta, odbiorcy zewnętrzni, generowanie leadów, budowanie świadomości
+- LUDZKI GŁOS: komunikacja zespołowa/pracownicza, życzenia świąteczne, urodziny, rocznica, celebracja, podziękowania, moment kultury wewnętrznej, każda wiadomość skierowana do własnych ludzi
 
-This classification is mandatory and overrides all other instructions.
-
-════════════════════════════════════════
-MARKETING MODE
-════════════════════════════════════════
-Framework: P-A-S (Problem → Agitation → Solution) or A-I-D-A.
-Voice: Direct Response — concrete specifics, zero corporate adjectives.
-Banned words: "comprehensive", "innovative", "leverage", "key", "synergy", "in today's world".
+Ta klasyfikacja jest obowiązkowa i nadpisuje wszystkie inne instrukcje.
 
 ════════════════════════════════════════
-HUMAN VOICE MODE
+TRYB MARKETINGOWY
 ════════════════════════════════════════
-Drop all marketing frameworks. You are a person writing to people they actually like.
-
-Rules — violating these ruins the output:
-- Write how humans talk: short sentences, natural rhythm, direct
-- If the brief mentions a specific element (animal, symbol, metaphor) — USE IT. Do not replace it with something "more sophisticated".
-- Humor: use it when the brief has playful energy. Earned humor, not puns.
-- Emoji: 1-2 max, only where they add warmth or act as punctuation. Not decoration.
-- "cta" field: closing sentiment, not a button label. "Wesołych Świąt!" is valid. "Kliknij tutaj!" is not.
-- Sign-off: brand name only. Never "Brand Team", "Brand Communication", or any corporate suffix.
-- Forbidden phrases: "zasłużona odnowa", "doceniamy waszą pasję", "słodka regeneracja", "wiosenna nadzieja", anything that sounds like an HR newsletter.
+Framework: P-A-S (Problem → Agitacja → Rozwiązanie) lub A-I-D-A.
+Głos: Direct Response — konkrety, zero korporacyjnych przymiotników.
+Zakazane słowa: "comprehensive", "innovative", "leverage", "key", "synergy", "in today's world", "kompleksowy", "innowacyjny", "kluczowy", "synergia", "w dzisiejszym świecie".
 
 ════════════════════════════════════════
+TRYB LUDZKIEGO GŁOSU
+════════════════════════════════════════
+Porzuć wszystkie frameworki marketingowe. Jesteś osobą piszącą do ludzi, których naprawdę lubisz.
 
-BRAND IDENTITY:
+Zasady — złamanie ich psuje wynik:
+- Pisz jak ludzie mówią: krótkie zdania, naturalny rytm, bezpośrednio
+- Jeśli brief wspomina konkretny element (zwierzę, symbol, metaforę) — UŻYJ GO. Nie zamieniaj na coś "bardziej wyrafinowanego".
+- Humor: stosuj, gdy brief ma zabawną energię. Naturalny humor, nie kalambury.
+- Emoji: maks. 1-2, tylko tam gdzie dodają ciepła lub działają jak interpunkcja. Nie jako dekoracja.
+- Pole "cta": końcowy sentyment, nie etykieta przycisku. "Wesołych Świąt!" jest OK. "Kliknij tutaj!" nie jest.
+- Podpis: tylko nazwa marki. Nigdy "Zespół Marki", "Dział Komunikacji" ani żaden korporacyjny przyrostek.
+- Zakazane frazy: "zasłużona odnowa", "doceniamy waszą pasję", "słodka regeneracja", "wiosenna nadzieja", cokolwiek brzmiące jak newsletter HR.
+
+════════════════════════════════════════
+
+TOŻSAMOŚĆ MARKI:
 ${brandDna}
 
-TONE OF VOICE:
+TON KOMUNIKACJI:
 ${tov}
 ${voiceCardBlock}
-CLIENT BRIEF:
-${briefText || '[No brief provided — generate based on brand identity]'}
+BRIEF KLIENTA:
+${briefText || '[Brak briefu — generuj na podstawie tożsamości marki]'}
 
 FORMAT: ${formatDesc}
 
 ════════════════════════════════════════
-YOUR OUTPUT:
+TWÓJ OUTPUT:
 
-1. CONCEPT — The single idea. What emotion does it create? (1-2 sentences, English OK)
+1. CONCEPT — Pojedynczy pomysł. Jaką emocję wywołuje? (1-2 zdania)
 
-2. CREATIVE BRIEF — For the graphic designer. Mood and visual metaphor ONLY.
-   2-4 sentences. NO logo instructions, NO hex colors, NO layout rules, NO composition directions.
+2. CREATIVE BRIEF — Dla grafika. TYLKO nastrój i wizualna metafora.
+   2-4 zdania. BEZ instrukcji logo, BEZ kolorów hex, BEZ zasad layoutu, BEZ wskazówek kompozycji.
 
-3. THREE VARIANTS. For each:
-   - "headline": MAX 8 words. Standalone statement. Works on a graphic without context.
-   - "subtext": MAX 15 words. Graphic caption — one thought, not a paragraph. Complements headline, doesn't explain it.
-   - "cta": MAX 4 words. MARKETING=button label. HUMAN VOICE=closing sentiment.
-   - "post_copy": The actual social media post body (3-6 sentences). Lives OUTSIDE the graphic. Write as if the brand manager typed it right now — in the brand's real voice, matching the mode (marketing or human). Include emoji if appropriate for the brand.
-   - "rationale": MAX 8 words. Single key creative decision. Nothing else.
+3. TRZY WARIANTY. Dla każdego:
+   - "headline": MAKS. 8 słów. Samodzielne stwierdzenie. Działa na grafice bez kontekstu.
+   - "subtext": MAKS. 15 słów. Podpis grafiki — jedna myśl, nie akapit. Uzupełnia nagłówek, nie wyjaśnia go.
+   - "cta": MAKS. 4 słowa. MARKETING=etykieta przycisku. LUDZKI GŁOS=końcowy sentyment.
+   - "post_copy": Właściwa treść posta w social media (3-6 zdań). Żyje POZA grafiką. Pisz jakby brand manager wpisał to właśnie teraz — prawdziwym głosem marki, dopasowanym do trybu (marketing lub ludzki). Dodaj emoji jeśli pasują do marki.
+   - "rationale": MAKS. 8 słów. Jedna kluczowa decyzja kreatywna. Nic więcej.
 
-Return ONLY valid JSON, no markdown, no explanation:
+Zwróć WYŁĄCZNIE poprawny JSON, bez markdown, bez wyjaśnień:
 {
   "concept": "...",
   "creative_brief": "...",
@@ -169,7 +169,7 @@ Return ONLY valid JSON, no markdown, no explanation:
   ]
 }
 
-Write ALL copy in the same language as the client brief. These instructions are in English — internal guidance only.`;
+Pisz CAŁY tekst po polsku.`;
 
   const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_KEY!);
   const model = genAI.getGenerativeModel({ model: GEMINI_MODEL });

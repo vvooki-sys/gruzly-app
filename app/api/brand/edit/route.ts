@@ -32,17 +32,17 @@ export async function POST(req: NextRequest) {
   }
 
   const mandatoryBlock = project.brand_rules
-    ? `⚠️ MANDATORY BRAND RULES — ABSOLUTE CONSTRAINTS:\n${(project.brand_rules as string).split('\n').map((r: string, i: number) => r.trim() ? `${i + 1}. ${r.trim()}` : '').filter(Boolean).join('\n')}\n\n`
+    ? `⚠️ OBOWIĄZKOWE ZASADY MARKI — BEZWZGLĘDNE OGRANICZENIA:\n${(project.brand_rules as string).split('\n').map((r: string, i: number) => r.trim() ? `${i + 1}. ${r.trim()}` : '').filter(Boolean).join('\n')}\n\n`
     : '';
 
-  const editPrompt = `Edit this graphic according to the instruction below. Keep all unchanged elements exactly as they are.
+  const editPrompt = `Edytuj tę grafikę zgodnie z poniższą instrukcją. Zachowaj wszystkie niezmienione elementy dokładnie tak, jak są.
 
-${mandatoryBlock}Brand: ${project.name}
-Colors: ${project.color_palette || 'dark navy, coral accent'}
+${mandatoryBlock}Marka: ${project.name}
+Kolory: ${project.color_palette || 'dark navy, coral accent'}
 
-INSTRUCTION: ${instruction}
+INSTRUKCJA: ${instruction}
 
-Maintain the overall layout, style and branding. Only change what is specified in the instruction.`;
+Zachowaj ogólny układ, styl i branding. Zmień tylko to, co jest wskazane w instrukcji.`;
 
   const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_KEY!);
   const model = genAI.getGenerativeModel({ model: GEMINI_MODEL });

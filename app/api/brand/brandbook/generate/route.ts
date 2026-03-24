@@ -39,48 +39,48 @@ export async function POST() {
     socialTone: bsd.socialMediaAnalysis || null,
   };
 
-  const prompt = `You are a brand strategist. Generate brand guidelines content based on this brand data.
-Write in the SAME LANGUAGE as the brand's website (detect from description/keywords — if Polish brand, write in Polish; if English, write in English).
+  const prompt = `Jesteś strategiem marki. Wygeneruj treść wytycznych brandowych na podstawie poniższych danych marki.
+Pisz po polsku.
 
-Brand data:
+Dane marki:
 ${JSON.stringify(brandBookData, null, 2)}
 
-Generate the following sections. Return ONLY valid JSON, no markdown, no explanation:
+Wygeneruj poniższe sekcje. Zwróć WYŁĄCZNIE poprawny JSON, bez markdown, bez wyjaśnień:
 {
   "hero": {
-    "tagline": "A bold 5-8 word brand tagline",
-    "description": "2-3 sentence brand positioning statement"
+    "tagline": "Odważny tagline marki, 5-8 słów",
+    "description": "2-3 zdania pozycjonujące markę"
   },
-  "mission": "1-2 sentences about what the brand does and why",
-  "vision": "1-2 sentences about where the brand is heading",
+  "mission": "1-2 zdania o tym, co marka robi i dlaczego",
+  "vision": "1-2 zdania o tym, dokąd zmierza marka",
   "values": [
-    { "name": "Value Name", "description": "One-line description" }
+    { "name": "Nazwa Wartości", "description": "Jednoliniowy opis" }
   ],
   "logo_guidelines": {
-    "usage_rules": ["rule 1", "rule 2", "rule 3"],
-    "do_list": ["thing to do 1", "thing to do 2", "thing to do 3"],
-    "dont_list": ["thing to avoid 1", "thing to avoid 2", "thing to avoid 3"]
+    "usage_rules": ["zasada 1", "zasada 2", "zasada 3"],
+    "do_list": ["co robić 1", "co robić 2", "co robić 3"],
+    "dont_list": ["czego unikać 1", "czego unikać 2", "czego unikać 3"]
   },
   "color_descriptions": {
-    "primary": "2-3 word usage description",
-    "secondary": "2-3 word usage description",
-    "accent": "2-3 word usage description"
+    "primary": "2-3 słowa opisujące zastosowanie",
+    "secondary": "2-3 słowa opisujące zastosowanie",
+    "accent": "2-3 słowa opisujące zastosowanie"
   },
   "typography_guidelines": {
-    "heading": "usage description for heading font",
-    "body": "usage description for body font",
-    "rules": ["rule 1", "rule 2"]
+    "heading": "opis zastosowania fontu nagłówkowego",
+    "body": "opis zastosowania fontu treści",
+    "rules": ["zasada 1", "zasada 2"]
   },
   "imagery_guidelines": {
-    "do_list": ["rule 1", "rule 2", "rule 3", "rule 4"],
-    "dont_list": ["rule 1", "rule 2", "rule 3", "rule 4"],
-    "style_description": "One sentence describing ideal visual style"
+    "do_list": ["zasada 1", "zasada 2", "zasada 3", "zasada 4"],
+    "dont_list": ["zasada 1", "zasada 2", "zasada 3", "zasada 4"],
+    "style_description": "Jedno zdanie opisujące idealny styl wizualny"
   },
   "tone_of_voice": {
-    "description": "2 sentences about how the brand communicates",
-    "do_list": ["do 1", "do 2", "do 3"],
-    "dont_list": ["dont 1", "dont 2", "dont 3"],
-    "example_phrases": ["phrase 1", "phrase 2", "phrase 3"]
+    "description": "2 zdania o tym, jak marka się komunikuje",
+    "do_list": ["rób 1", "rób 2", "rób 3"],
+    "dont_list": ["nie rób 1", "nie rób 2", "nie rób 3"],
+    "example_phrases": ["fraza 1", "fraza 2", "fraza 3"]
   }
 }`;
 

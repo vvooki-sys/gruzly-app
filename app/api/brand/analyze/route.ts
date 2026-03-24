@@ -57,33 +57,33 @@ export async function POST(req: NextRequest) {
 
     imageParts.push({ inlineData: { data: b64.data, mimeType: 'application/pdf' } });
 
-    analysisPrompt = `You are a senior brand identity analyst. Read this brand book PDF for "${project.name}" and extract ALL brand identity information into structured sections.
+    analysisPrompt = `Jesteś doświadczonym analitykiem identyfikacji wizualnej marki. Przeczytaj ten brand book (PDF) dla marki "${project.name}" i wyodrębnij WSZYSTKIE informacje o identyfikacji wizualnej w uporządkowane sekcje.
 
-CRITICAL RULES:
-1. Return ONLY valid JSON — no markdown, no explanation, no text outside the JSON
-2. Extract EVERY section you find in the brand book
-3. For standard sections (listed below), use the exact IDs provided
-4. For anything unique/special not in the standard list — create a custom section with id starting with "custom_"
-5. Content must be precise and actionable — include exact hex codes, exact measurements, exact rules
-6. Return ALL content (section titles, descriptions, brandRules) in English — even if the brand book is in another language
+KRYTYCZNE ZASADY:
+1. Zwróć WYŁĄCZNIE poprawny JSON — bez markdown, bez wyjaśnień, bez tekstu poza JSON-em
+2. Wyodrębnij KAŻDĄ sekcję, którą znajdziesz w brand booku
+3. Dla standardowych sekcji (lista poniżej) użyj dokładnych podanych ID
+4. Dla treści unikalnych/specjalnych spoza listy standardowej — utwórz sekcję niestandardową z id zaczynającym się od "custom_"
+5. Treść musi być precyzyjna i konkretna — podawaj dokładne hex codes, dokładne wymiary, dokładne zasady
+6. Zwróć CAŁĄ treść (tytuły sekcji, opisy, brandRules) po polsku
 
-STANDARD SECTION IDs (use these exact ids when the content matches):
-- "modul" — Construction module, margins, safety fields, measurements
-- "tlo" — Background color/treatment
-- "gradient" — Brand gradient (colors, direction, usage rules)
-- "kolorystyka" — Primary color palette with hex codes
-- "kolorystyka_dodatkowa" — Secondary/additional colors
-- "typografia" — Typography — fonts, weights, sizes, kerning, line height, rules
-- "logo" — Logotype — versions, placement, size, safety zone
-- "blob" — Decorative elements, shapes, organic elements
-- "copy" — Text/copy rules — case, alignment, hierarchy
-- "cta" — Call to Action — construction, colors, sizes, placement
-- "stickery" — Stickers, badges, labels, stamps, tabs (patki)
-- "packshot" — Product photography rules
-- "legal" — Legal text — size, color, placement
-- "animacje" — Animation rules (if present)
+STANDARDOWE ID SEKCJI (użyj tych dokładnych id, gdy treść pasuje):
+- "modul" — Moduł konstrukcyjny, marginesy, pola ochronne, wymiary
+- "tlo" — Kolor/obróbka tła
+- "gradient" — Gradient marki (kolory, kierunek, zasady użycia)
+- "kolorystyka" — Główna paleta kolorów z hex codes
+- "kolorystyka_dodatkowa" — Kolory dodatkowe/uzupełniające
+- "typografia" — Typografia — fonty, grubości, rozmiary, kerning, interlinia, zasady
+- "logo" — Logotyp — wersje, umiejscowienie, rozmiar, pole ochronne
+- "blob" — Elementy dekoracyjne, kształty, elementy organiczne
+- "copy" — Zasady tekstu/copy — wielkość liter, wyrównanie, hierarchia
+- "cta" — Call to Action — konstrukcja, kolory, rozmiary, umiejscowienie
+- "stickery" — Stickery, badge, etykiety, stemple, patki
+- "packshot" — Zasady fotografii produktowej
+- "legal" — Tekst prawny — rozmiar, kolor, umiejscowienie
+- "animacje" — Zasady animacji (jeśli występują)
 
-Return this exact JSON structure:
+Zwróć dokładnie taką strukturę JSON:
 {
   "sections": [
     {
@@ -118,24 +118,24 @@ Return this exact JSON structure:
       return NextResponse.json({ error: 'Failed to load reference images' }, { status: 500 });
     }
 
-    analysisPrompt = `You are a brand visual identity analyst. Analyze the ${imageParts.length} reference graphics for brand "${project.name}".
+    analysisPrompt = `Jesteś analitykiem identyfikacji wizualnej marki. Przeanalizuj ${imageParts.length} grafik referencyjnych dla marki "${project.name}".
 
-RULES:
-- Return ONLY valid JSON — no markdown, no explanation
-- Be thorough and precise — each section should be 2-5 sentences with specific values
-- Only describe recurring, non-optional patterns
-- Include exact hex codes, exact font names, exact measurements when visible
-- More detail is better — this drives AI image generation quality
-- Return ALL content (titles, descriptions) in English
+ZASADY:
+- Zwróć WYŁĄCZNIE poprawny JSON — bez markdown, bez wyjaśnień
+- Bądź dokładny i precyzyjny — każda sekcja powinna mieć 2-5 zdań z konkretnymi wartościami
+- Opisuj tylko powtarzające się, niezmienne wzorce
+- Podawaj dokładne hex codes, dokładne nazwy fontów, dokładne wymiary, gdy są widoczne
+- Im więcej szczegółów, tym lepiej — to napędza jakość generowania grafik przez AI
+- Zwróć CAŁĄ treść (tytuły, opisy) po polsku
 
-Return this exact JSON:
+Zwróć dokładnie taki JSON:
 {
   "sections": [
-    { "id": "tlo", "title": "Background", "content": "...", "type": "standard", "order": 1, "icon": "🖼" },
-    { "id": "typografia", "title": "Typography", "content": "...", "type": "standard", "order": 2, "icon": "📝" },
-    { "id": "modul", "title": "Composition & Layout", "content": "...", "type": "standard", "order": 3, "icon": "📐" },
-    { "id": "blob", "title": "Graphic Elements", "content": "...", "type": "standard", "order": 4, "icon": "✨" },
-    { "id": "copy", "title": "Tone & Mood", "content": "...", "type": "standard", "order": 5, "icon": "💬" }
+    { "id": "tlo", "title": "Tło", "content": "...", "type": "standard", "order": 1, "icon": "🖼" },
+    { "id": "typografia", "title": "Typografia", "content": "...", "type": "standard", "order": 2, "icon": "📝" },
+    { "id": "modul", "title": "Kompozycja i układ", "content": "...", "type": "standard", "order": 3, "icon": "📐" },
+    { "id": "blob", "title": "Elementy graficzne", "content": "...", "type": "standard", "order": 4, "icon": "✨" },
+    { "id": "copy", "title": "Ton i nastrój", "content": "...", "type": "standard", "order": 5, "icon": "💬" }
   ],
   "brandRules": []
 }`;
