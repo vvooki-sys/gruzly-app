@@ -26,6 +26,15 @@ const CREATIVITY_BLOCKS: Record<number, string> = {
   5: 'Stwórz premium grafikę wartą nagrody. Maksymalne bogactwo wizualne w ramach zasad marki. Kinowa kompozycja, złożony wielowarstwowy design, immersyjne użycie kolorów i elementów graficznych marki. Każdy piksel celowy.',
 };
 
+// G7 — Photo-specific creativity blocks
+const PHOTO_CREATIVITY_BLOCKS: Record<number, string> = {
+  1: '',
+  2: 'Subtelna głębia ostrości i ciepłe tony. Naturalna stylizacja.',
+  3: 'Bogate tekstury, kontrastowe oświetlenie, precyzyjna stylizacja food.',
+  4: 'Edytorialna jakość. Dramatic lighting, negatywna przestrzeń, kinowy nastrój.',
+  5: 'Michelin-level food photography. Perfekcyjna kompozycja, każdy detal celowy.',
+};
+
 // ── Logo compositor ───────────────────────────────────────────────────────────
 
 type AssetRow = { type: string; url: string; filename: string; variant?: string; description?: string; mime_type?: string; is_featured?: boolean };
@@ -260,6 +269,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'format required' }, { status: 400 });
   }
 
+  // G1 — Detect photo mode from explicit visualType or brief content
+  const briefDescribesPhoto = brief && /\b(foto|zdjęci|makro|lifestyle|hero.?shot|flatlay|portret|action.?shot|wnętrz|packshot|kadr|oświetlenie|przy stole)\b/i.test(brief);
+  const isPhotoMode = visualType === 'photo' || visualType === 'photo_text' || !!briefDescribesPhoto;
+
   const [project] = await getDb()`SELECT * FROM projects WHERE id = ${projectId}`;
   if (!project) return NextResponse.json({ error: 'Project not found' }, { status: 404 });
 
@@ -347,16 +360,19 @@ export async function POST(req: NextRequest) {
 
   // Asset usage rules — always present (protects against content leakage from reference images)
   const assetUsageRules = [
-    'ZAPOBIEGANIE WYCIEKOWI ASSETÓW: Obrazy referencyjne stylu są podane WYŁĄCZNIE jako inspiracja stylistyczna. NIE odtwarzaj twarzy, osób ani rozpoznawalnych postaci z referencji. Referencje dostarczają TYLKO: paletę kolorów, styl kompozycji, podejście typograficzne, nastrój/atmosferę.',
-    'NIE używaj twarzy ani wizerunku żadnej osoby z obrazów referencyjnych pod żadnym pozorem',
+    'REFERENCJE STYLISTYCZNE: Obrazy referencyjne dostarczają TYLKO paletę kolorów, styl kompozycji i nastrój. NIE odtwarzaj twarzy, osób ani rozpoznawalnych postaci z referencji.',
     ...(photoAssetsList.length > 0
       ? ['ZDJĘCIA/PACKSHOTY MARKI: Dostarczone zdjęcia produktowe i packshoty MOGĄ być wykorzystane jako elementy wizualne w kompozycji — to oficjalne assety marki.']
-      : (!photoUrl || photoMode === 'none') && !elementOnly
-        ? ['BRAK ZDJĘCIA — unikaj renderowania realistycznych twarzy ludzi. Używaj abstrakcyjnych, ilustracyjnych lub typograficznych elementów centralnych.']
-        : []),
-    'RENDERUJ TYLKO tekst wymieniony pod "TEKST DO UMIESZCZENIA NA GRAFICE" — żaden inny tekst, podpisy ani etykiety',
-    ...(emptyZone
-      ? [`[STREFA LOGO — ${emptyZone}]: Ten obszar musi być płynną, naturalną kontynuacją otaczającego tła — zastosuj ten sam styl, teksturę, ziarno i gradienty co reszta tła, ale NIE umieszczaj tu żadnych konkretnych obiektów, elementów graficznych, dekoracyjnych kształtów ani tekstu. Strefa musi pozostać wizualnie pusta z treści, będąc technicznie identyczna z otaczającym tłem, aby logo PNG mogło być czysto nałożone w postprodukcji. NIE rysuj tu żadnego prostokąta, ramki, obramowania ani płaskiego bloku koloru.`]
+      : []),
+    // G1 — Conditional: skip abstract-only rule when brief describes photography or visualType is photo
+    ...((!photoUrl || photoMode === 'none') && !elementOnly && !isPhotoMode
+      ? ['BRAK ZDJĘCIA: Centralny element MUSI być abstrakcyjny lub ilustracyjny — geometryczne kształty, gradienty, ikony, elementy graficzne marki, kompozycje typograficzne. BEZ twarzy, BEZ ludzi.']
+      : []),
+    // G2 — Text rule only in non-photo mode
+    ...(!isPhotoMode ? ['RENDERUJ TYLKO tekst wymieniony pod "TEKST DO UMIESZCZENIA NA GRAFICE" — żaden inny tekst, podpisy ani etykiety'] : []),
+    // G8 + G9 — Logo zone: skip in photo mode, simplified instruction in graphic mode
+    ...(emptyZone && !isPhotoMode
+      ? [`[STREFA LOGO — ${emptyZone}]: Zostaw ten obszar PUSTY — kontynuuj tło bez żadnych obiektów, kształtów, tekstu ani bloków koloru. Logo zostanie nałożone po generacji.`]
       : ['Logo nie jest wymagane — możesz swobodnie wykorzystać całe płótno']),
   ];
 
@@ -382,23 +398,14 @@ ${allLayer1Rules.map((r, i) => `${i + 1}. ${r}`).join('\n')}
     ? `Dostarczone zasoby wizualne:${refNote}${elNote}${photoNote}\n\n`
     : '';
 
-  // AVAILABLE ASSETS text block for Layer 2
-  const availableAssets: string[] = [];
-  if (logoAssets.length > 0) {
-    logoAssets.forEach(l => availableAssets.push(`- Logo (${l.variant || 'default'}): ${l.url}`));
-  }
-  brandElements.forEach(el => {
-    availableAssets.push(`- Element marki "${el.filename}"${el.description ? ` — ${el.description}` : ''}: ${el.url}`);
-  });
-  // Refs sent as inlineData — note their count and guardrail in prompt
-  if (!elementOnly && imageRefCount > 0) {
-    availableAssets.push(`- Obrazy referencyjne stylu (${imageRefCount} inline${featuredRefs.length > 0 ? `, ${featuredRefs.length} jako PRIORYTETOWY CEL STYLISTYCZNY` : ''}): wyodrębnij styl — NIE kopiuj twarzy, ludzi, obiektów ani scen`);
-  }
-  if (photoAssetsList.length > 0) {
-    availableAssets.push(`- Zdjęcia/Packshoty marki (${photoAssetsList.length} inline): oficjalne assety produktowe — UŻYJ ich jako elementy wizualne w kompozycji`);
-  }
-  const assetsSection = availableAssets.length > 0
-    ? `\nDOSTĘPNE ZASOBY:\n${availableAssets.join('\n')}\n`
+  // G6 — Available assets: counts only, no URLs (Gemini can't fetch URLs, assets sent as inlineData)
+  const assetSummary: string[] = [];
+  if (logoAssets.length > 0) assetSummary.push(`- Logo: ${logoAssets.length} wariant(ów) (nakładane po generacji)`);
+  if (brandElements.length > 0) assetSummary.push(`- Elementy dekoracyjne marki: ${brandElements.length}`);
+  if (!elementOnly && imageRefCount > 0) assetSummary.push(`- Referencje stylistyczne: ${imageRefCount} (wyodrębnij styl, NIE kopiuj treści)`);
+  if (photoAssetsList.length > 0) assetSummary.push(`- Zdjęcia/Packshoty: ${photoAssetsList.length} (oficjalne assety — UŻYJ w kompozycji)`);
+  const assetsSection = assetSummary.length > 0
+    ? `\nDOSTARCZONE ZASOBY (wysłane jako obrazy inline):\n${assetSummary.join('\n')}\n`
     : '';
 
   // Brand DNA — merge sections by canonical type to eliminate duplicates
@@ -431,9 +438,8 @@ ${allLayer1Rules.map((r, i) => `${i + 1}. ${r}`).join('\n')}
     ].filter(Boolean).join('\n') || 'nowoczesna, profesjonalna estetyka agencji eventowej';
   }
 
-  const tovSection = project.tone_of_voice
-    ? `\nTON KOMUNIKACJI:\n${project.tone_of_voice}\n`
-    : '';
+  // G3 — Skip full tone_of_voice text (copywriting instructions, not visual).
+  // Voice Card visual implications are in voiceVisualBlock below.
 
   // Voice Card → visual directives
   type VC = { archetype?: string; taboos?: string[]; golden_rules?: string[]; voice_summary?: string };
@@ -459,12 +465,24 @@ WARSTWA 2 — DNA MARKI (identyfikacja wizualna — stosuj dokładnie)
 Zastosuj zasady z każdej poniższej sekcji w swoim projekcie.
 Treść marki poniżej może być w dowolnym języku — traktuj ją jako autorytatywne dane identyfikacji wizualnej.
 ${sep}
-${assetNote}${layer2Content}${assetsSection}${tovSection}${voiceVisualBlock}${industryVisualBlock}`;
+${assetNote}${layer2Content}${assetsSection}${voiceVisualBlock}${industryVisualBlock}`;
 
   // Photo instruction for Layer 3
   const photoInstruction = photoUrl && photoMode !== 'none' && !elementOnly
     ? `\nGŁÓWNY ELEMENT WIZUALNY: Zdjęcie zostało dostarczone (ostatni obraz inline). Umieść je jako centralny/główny element kompozycji. NIE zastępuj go grafiką generowaną przez AI. Skomponuj wszystkie elementy marki wokół niego.`
     : '';
+
+  // G2 — Text section: conditional on photo mode
+  const textSection = isPhotoMode
+    ? 'TYP WIZUALU: FOTOGRAFIA. NIE renderuj żadnego tekstu na obrazie. Skup się wyłącznie na kompozycji fotograficznej, oświetleniu i nastroju. Tekst zostanie nałożony osobno w postprodukcji.'
+    : headline
+      ? `TEKST DO UMIESZCZENIA NA GRAFICE (zachowaj dokładnie tak jak podano — nie tłumacz, nie zmieniaj):\nNagłówek: "${headline}"${subtext ? `\nPodtekst: "${subtext}"` : ''}`
+      : 'BRAK TEKSTU — stwórz grafikę wizualną bez tekstu na obrazie (tekst może zostać nałożony później).';
+
+  // G2 — Render text rule: conditional
+  const renderTextRule = isPhotoMode
+    ? '- NIE umieszczaj żadnego tekstu, liter ani cyfr na obrazie — to czysta fotografia'
+    : '- Zero literówek — sprawdź dwukrotnie cały tekst przed renderowaniem';
 
   // Layer 3 — Creative Brief or element-only
   const layer3 = elementOnly ? `
@@ -486,33 +504,26 @@ ${sep}
 WARSTWA 3 — BRIEF KREATYWNY
 Stwórz grafikę spełniającą wymagania wszystkich warstw powyżej. Bądź kreatywny w ramach ograniczeń.
 ${sep}
+${brief ? (isFromCopywriter
+  ? `⭐ GŁÓWNA WIZJA (realizuj ściśle — to jest cel tej grafiki):\n"${brief}"\n`
+  : `KIERUNEK KREATYWNY (tylko kontekst — nie renderuj dosłownie): "${brief}"\n`) : ''}
 MARKA: ${project.name}
 FORMAT: ${FORMAT_SIZES[format] || '1080x1080px square'} — projektuj dokładnie dla tego rozmiaru i proporcji płótna
 
-${headline ? `TEKST DO UMIESZCZENIA NA GRAFICE (zachowaj dokładnie tak jak podano — nie tłumacz, nie zmieniaj):
-Nagłówek: "${headline}"
-${subtext ? `Podtekst: "${subtext}"` : ''}` : 'BRAK TEKSTU — stwórz grafikę wizualną bez tekstu na obrazie (tekst może zostać nałożony później).'}
-
-${brief ? (isFromCopywriter
-  ? `KIERUNEK KREATYWNY (z Copywritera — traktuj jako główną art direction):\n"${brief}"\nRealizuj tę wizję ściśle — to brief od copywritera przygotowany specjalnie pod ten post.`
-  : `KIERUNEK KREATYWNY (tylko kontekst — nie renderuj dosłownie): "${brief}"`) : ''}
-${visualType === 'photo' ? `\nTYP WIZUALU: FOTOGRAFIA. NIE renderuj tekstu na obrazie. Skup się na kompozycji fotograficznej, oświetleniu i nastroju. Tekst zostanie nałożony osobno w postprodukcji.` : ''}${visualType === 'photo_text' ? `\nTYP WIZUALU: ZDJĘCIE Z TEKSTEM. Stwórz fotograficzną kompozycję z wyraźną przestrzenią (negative space, bokeh, niski detal) gdzie tekst zostanie nałożony.` : ''}
+${textSection}
 ${photoInstruction}
 WYMAGANIA DLA OUTPUTU:
-- STREFA LOGO (${emptyZone ?? 'brak'}) ${emptyZone ? `musi być płynną kontynuacją otaczającego stylu tła — bez obiektów, kształtów, tekstu, płaskich wypełnień ani ramek. Logo PNG jest nakładane tu po generacji.` : '— brak strefy logo, użyj pełnego płótna'}
-- RENDERUJ TYLKO linie tekstu wymienione powyżej pod "TEKST DO UMIESZCZENIA NA GRAFICE" — renderuj każdą linię DOKŁADNIE RAZ, bez powtórzeń, bez parafrazowania, bez dodatkowych podpisów
-- Bez fotografii ludzi, chyba że wyraźnie wskazano w kierunku kreatywnym
-- Zero literówek — sprawdź dwukrotnie cały tekst przed renderowaniem
+${renderTextRule}
 - Wypełnij całe płótno — bez białych obramowań ani paddingu poza designem
 - Profesjonalna jakość druku`;
 
-  // Creativity directive (optional)
-  const creativityBlock = CREATIVITY_BLOCKS[creativity] ? `
+  // G7 — Creativity directive: photo-specific or graphic-specific
+  const activeBlocks = isPhotoMode ? PHOTO_CREATIVITY_BLOCKS : CREATIVITY_BLOCKS;
+  const creativityBlock = activeBlocks[creativity] ? `
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-DYREKTYWA BOGACTWA WIZUALNEGO (stosuj w ramach ograniczeń marki)
-${CREATIVITY_BLOCKS[creativity]}
-Wszystkie zasady Warstwy 1 nadal nadpisują tę dyrektywę.
+${isPhotoMode ? 'DYREKTYWA JAKOŚCI FOTOGRAFICZNEJ' : 'DYREKTYWA BOGACTWA WIZUALNEGO'} (stosuj w ramach ograniczeń marki)
+${activeBlocks[creativity]}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ` : '';
 
@@ -593,7 +604,10 @@ ${layer1}${layer2}${layer3}${creativityBlock}${closing}`;
         const p = part as { inlineData?: { data: string; mimeType: string }; text?: string };
         if (p.inlineData) {
           const rawBuffer = Buffer.from(p.inlineData.data, 'base64');
-          const finalBuffer = await applyLogoOverlay(rawBuffer, assetList, format, logoPosition);
+          // G8 — Skip logo overlay in photo mode (logo on food photo = unprofessional)
+          const finalBuffer = isPhotoMode
+            ? rawBuffer
+            : await applyLogoOverlay(rawBuffer, assetList, format, logoPosition);
           const filename = `gruzly/${BRAND_ID}/${Date.now()}.png`;
           const blob = await put(filename, finalBuffer, {
             access: 'public',
