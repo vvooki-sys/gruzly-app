@@ -110,7 +110,13 @@ export default function Generator({
       const mapped = PLATFORM_TO_FORMAT[copyData.platform];
       if (mapped) setFormat(mapped);
     }
-    if (copyData.visualType) setCopyVisualType(copyData.visualType);
+    if (copyData.visualType) {
+      setCopyVisualType(copyData.visualType);
+      if (copyData.visualType === 'photo') {
+        setPhotoMode('none');
+        setPhotoUrl('');
+      }
+    }
     setFromCopywriter(true);
     onCopyDataConsumed?.();
     const t = setTimeout(() => setFromCopywriter(false), 4000);
@@ -407,38 +413,42 @@ export default function Generator({
                 </div>
               )}
 
-              {/* 1. Headline — required */}
-              <div>
-                <label className="text-xs font-semibold opacity-50 mb-1.5 block uppercase tracking-wide">
-                  Tekst główny <span className="normal-case opacity-70 font-normal">— nagłówek grafiki</span>
-                </label>
-                <textarea
-                  className={`${inputCls} resize-none font-mono`}
-                  rows={2}
-                  placeholder="np. 23 marca, Warszawa"
-                  value={headline}
-                  onChange={e => setHeadline(e.target.value)}
-                />
-              </div>
+              {copyVisualType !== 'photo' && (
+                <>
+                  {/* 1. Headline — required */}
+                  <div>
+                    <label className="text-xs font-semibold opacity-50 mb-1.5 block uppercase tracking-wide">
+                      Tekst główny <span className="normal-case opacity-70 font-normal">— nagłówek grafiki</span>
+                    </label>
+                    <textarea
+                      className={`${inputCls} resize-none font-mono`}
+                      rows={2}
+                      placeholder="np. 23 marca, Warszawa"
+                      value={headline}
+                      onChange={e => setHeadline(e.target.value)}
+                    />
+                  </div>
 
-              {/* 2. Subtext — optional */}
-              <div>
-                <label className="text-xs font-semibold opacity-50 mb-1.5 block uppercase tracking-wide">
-                  Tekst dodatkowy <span className="normal-case opacity-70 font-normal">— podtytuł, CTA (opcjonalnie)</span>
-                </label>
-                <textarea
-                  className={`${inputCls} resize-none font-mono`}
-                  rows={2}
-                  placeholder="np. Zapisz się teraz →"
-                  value={subtext}
-                  onChange={e => setSubtext(e.target.value)}
-                />
-              </div>
+                  {/* 2. Subtext — optional */}
+                  <div>
+                    <label className="text-xs font-semibold opacity-50 mb-1.5 block uppercase tracking-wide">
+                      Tekst dodatkowy <span className="normal-case opacity-70 font-normal">— podtytuł, CTA (opcjonalnie)</span>
+                    </label>
+                    <textarea
+                      className={`${inputCls} resize-none font-mono`}
+                      rows={2}
+                      placeholder="np. Zapisz się teraz →"
+                      value={subtext}
+                      onChange={e => setSubtext(e.target.value)}
+                    />
+                  </div>
+                </>
+              )}
 
               {/* 3. Brief — optional, AI context only */}
               <div>
                 <label className="text-xs font-semibold opacity-50 mb-1.5 block uppercase tracking-wide">
-                  Brief dla AI <span className="normal-case opacity-70 font-normal">(opcjonalnie)</span>
+                  Zadanie
                 </label>
                 <textarea
                   className={`${inputCls} resize-none`}
@@ -450,41 +460,43 @@ export default function Generator({
               </div>
 
               {/* Photo */}
-              <div>
-                <label className="text-xs font-semibold opacity-50 mb-1.5 block uppercase tracking-wide flex items-center gap-1.5">
-                  <Camera className="h-3 w-3" /> Zdjęcie (opcjonalnie)
-                </label>
-                <div className="rounded-xl border border-teal-deep/10 dark:border-holo-mint/10 bg-white dark:bg-teal-mid p-3 space-y-3">
-                  <div className="flex gap-1.5">
-                    <button onClick={() => { setPhotoMode('none'); setPhotoUrl(''); }}
-                      className={`h-8 px-3 rounded-lg text-xs font-semibold border transition-all ${photoMode === 'none' ? 'border-holo-aqua bg-holo-aqua/10 text-holo-aqua' : 'border-teal-deep/10 dark:border-holo-mint/10 opacity-50 hover:opacity-80'}`}>
-                      Brak
-                    </button>
-                    <button onClick={() => setPhotoMode('upload')}
-                      className={`h-8 px-3 rounded-lg text-xs font-semibold border transition-all ${photoMode !== 'none' ? 'border-holo-aqua bg-holo-aqua/10 text-holo-aqua' : 'border-teal-deep/10 dark:border-holo-mint/10 opacity-50 hover:opacity-80'}`}>
-                      Dodaj zdjęcie
-                    </button>
-                  </div>
-                  {photoMode !== 'none' && (
-                    photoUrl ? (
-                      <div className="flex items-center gap-2">
-                        <img src={photoUrl} className="w-14 h-14 object-cover rounded-lg border border-teal-deep/10 dark:border-holo-mint/10" alt="photo" />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs opacity-50 truncate">Zdjęcie wgrane</p>
+              {copyVisualType !== 'photo' && (
+                <div>
+                  <label className="text-xs font-semibold opacity-50 mb-1.5 block uppercase tracking-wide flex items-center gap-1.5">
+                    <Camera className="h-3 w-3" /> Zdjęcie (opcjonalnie)
+                  </label>
+                  <div className="rounded-xl border border-teal-deep/10 dark:border-holo-mint/10 bg-white dark:bg-teal-mid p-3 space-y-3">
+                    <div className="flex gap-1.5">
+                      <button onClick={() => { setPhotoMode('none'); setPhotoUrl(''); }}
+                        className={`h-8 px-3 rounded-lg text-xs font-semibold border transition-all ${photoMode === 'none' ? 'border-holo-aqua bg-holo-aqua/10 text-holo-aqua' : 'border-teal-deep/10 dark:border-holo-mint/10 opacity-50 hover:opacity-80'}`}>
+                        Brak
+                      </button>
+                      <button onClick={() => setPhotoMode('upload')}
+                        className={`h-8 px-3 rounded-lg text-xs font-semibold border transition-all ${photoMode !== 'none' ? 'border-holo-aqua bg-holo-aqua/10 text-holo-aqua' : 'border-teal-deep/10 dark:border-holo-mint/10 opacity-50 hover:opacity-80'}`}>
+                        Dodaj zdjęcie
+                      </button>
+                    </div>
+                    {photoMode !== 'none' && (
+                      photoUrl ? (
+                        <div className="flex items-center gap-2">
+                          <img src={photoUrl} className="w-14 h-14 object-cover rounded-lg border border-teal-deep/10 dark:border-holo-mint/10" alt="photo" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs opacity-50 truncate">Zdjęcie wgrane</p>
+                          </div>
+                          <button onClick={() => setPhotoUrl('')} className="w-7 h-7 rounded-full border border-red-500/20 flex items-center justify-center text-red-400 hover:bg-red-500/10 transition-colors">
+                            <X className="h-3.5 w-3.5" />
+                          </button>
                         </div>
-                        <button onClick={() => setPhotoUrl('')} className="w-7 h-7 rounded-full border border-red-500/20 flex items-center justify-center text-red-400 hover:bg-red-500/10 transition-colors">
-                          <X className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    ) : (
-                      <label className={`flex items-center justify-center gap-2 h-10 rounded-xl border-2 border-dashed border-teal-deep/20 dark:border-holo-mint/20 cursor-pointer hover:border-holo-mint/50 transition-colors text-sm ${uploadingPhoto ? 'opacity-50' : ''}`}>
-                        {uploadingPhoto ? <><Loader2 className="h-4 w-4 animate-spin" /> Wgrywam...</> : <><Upload className="h-4 w-4" /> Wybierz plik</>}
-                        <input type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} disabled={uploadingPhoto} />
-                      </label>
-                    )
-                  )}
+                      ) : (
+                        <label className={`flex items-center justify-center gap-2 h-10 rounded-xl border-2 border-dashed border-teal-deep/20 dark:border-holo-mint/20 cursor-pointer hover:border-holo-mint/50 transition-colors text-sm ${uploadingPhoto ? 'opacity-50' : ''}`}>
+                          {uploadingPhoto ? <><Loader2 className="h-4 w-4 animate-spin" /> Wgrywam...</> : <><Upload className="h-4 w-4" /> Wybierz plik</>}
+                          <input type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} disabled={uploadingPhoto} />
+                        </label>
+                      )
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Format picker */}
               <div>

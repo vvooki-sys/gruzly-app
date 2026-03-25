@@ -146,22 +146,22 @@ Jeśli zdanie brzmi jak z broszury reklamowej — przepisz je.`;
   const platformData: Record<string, { rule: string; photoFormat: string; wordRanges: [string, string, string] }> = {
     facebook: {
       rule: `Facebook | Celuj w 100-130 słów (twardy limit: 80-150 — policz przed zwróceniem, koryguj jeśli poza zakresem) | 1-3 krótkie akapity | CTA z bezpośrednim linkiem lub zachętą do komentarza/wiadomości — NIGDY "link w bio" | Bez hashtagów`,
-      photoFormat: `Kadr: 1200×630 px (landscape 1.91:1) lub 1080×1080 (kwadrat).`,
+      photoFormat: `Kadr: kwadrat (1:1).`,
       wordRanges: ['80-100', '120-150', '90-120'],
     },
     linkedin: {
       rule: `LinkedIn | Celuj w 130-170 słów (twardy limit: 100-200 — policz przed zwróceniem, koryguj jeśli poza zakresem) | profesjonalny ale ludzki ton | storytelling mile widziany | emoji z umiarem | CTA: zachęta do komentarza, udostępnienia lub przejścia na stronę | Maks. 3 hashtagi na końcu, branżowe`,
-      photoFormat: `Kadr: 1200×627 px (landscape 1.91:1).`,
+      photoFormat: `Kadr: landscape (1.91:1).`,
       wordRanges: ['100-130', '160-200', '120-160'],
     },
     instagram: {
       rule: `Instagram | Celuj w 60-100 słów + hashtagi (twardy limit: 50-120 — policz przed zwróceniem, koryguj jeśli poza zakresem) | chwytliwy pierwszy wiersz (hook) | 5-10 trafnych hashtagów na końcu | CTA: "link w bio", "napisz DM" lub "zapisz post"`,
-      photoFormat: `Kadr: 1080×1350 px (portrait 4:5).`,
+      photoFormat: `Kadr: portrait (4:5).`,
       wordRanges: ['50-70', '90-120', '65-90'],
     },
     general: {
       rule: `Social media | Celuj w 100-130 słów (twardy limit: 80-150 — policz przed zwróceniem, koryguj jeśli poza zakresem) | ton dopasowany do marki | CTA dopasowane do kontekstu | Bez hashtagów, chyba że platforma tego wymaga`,
-      photoFormat: `Kadr: 1080×1080 px (kwadrat).`,
+      photoFormat: `Kadr: kwadrat (1:1).`,
       wordRanges: ['80-100', '120-150', '90-120'],
     },
   };
