@@ -99,7 +99,9 @@ export default function Generator({
 
   // Copywriter data bridge
   const [fromCopywriter, setFromCopywriter] = useState(false);
-  const [copyVisualType, setCopyVisualType] = useState<string | null>(null);
+
+  // Visual type — user can set manually or auto-set from copywriter
+  const [visualType, setVisualType] = useState<'graphic' | 'photo' | 'photo_text'>('graphic');
 
   useEffect(() => {
     if (!copyData) return;
@@ -111,7 +113,7 @@ export default function Generator({
       if (mapped) setFormat(mapped);
     }
     if (copyData.visualType) {
-      setCopyVisualType(copyData.visualType);
+      setVisualType(copyData.visualType);
       if (copyData.visualType === 'photo') {
         setPhotoMode('none');
         setPhotoUrl('');
@@ -139,7 +141,7 @@ export default function Generator({
       const res = await fetch(`/api/brand/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ headline, subtext, brief, format, creativity, photoUrl: photoUrl || undefined, photoMode, visualType: copyVisualType || 'graphic', isFromCopywriter: !!copyVisualType }),
+        body: JSON.stringify({ headline, subtext, brief, format, creativity, photoUrl: photoUrl || undefined, photoMode, visualType, isFromCopywriter: fromCopywriter }),
       });
       const data = await res.json();
       if (data.imageUrls && data.imageUrls.length > 0) {
@@ -401,19 +403,34 @@ export default function Generator({
                   <span>Dane z Copywritera załadowane — headline, brief, CTA, format</span>
                 </div>
               )}
-              {copyVisualType && copyVisualType !== 'graphic' && (
-                <div className="flex items-center gap-2 text-xs opacity-60">
-                  <span>Typ wizualu:</span>
-                  <span className="px-2 py-0.5 rounded-full bg-holo-mint/10 text-holo-mint font-semibold">
-                    {{ photo: 'Zdjęcie', photo_text: 'Zdjęcie + tekst', graphic: 'Grafika' }[copyVisualType]}
-                  </span>
-                  <button onClick={() => setCopyVisualType(null)} className="opacity-40 hover:opacity-100">
-                    <X className="h-3 w-3" />
-                  </button>
+              {/* Visual type picker */}
+              <div>
+                <label className="text-xs font-semibold opacity-50 mb-1.5 block uppercase tracking-wide">Tryb wizualny</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {([
+                    { id: 'graphic' as const, label: 'Grafika' },
+                    { id: 'photo' as const, label: 'Zdjęcie' },
+                    { id: 'photo_text' as const, label: 'Zdj + tekst' },
+                  ]).map(vt => (
+                    <button
+                      key={vt.id}
+                      onClick={() => {
+                        setVisualType(vt.id);
+                        if (vt.id === 'photo') { setPhotoMode('none'); setPhotoUrl(''); }
+                      }}
+                      className={`p-2 rounded-xl text-center border text-xs font-semibold transition-all ${
+                        visualType === vt.id
+                          ? 'border-holo-mint bg-holo-mint/10 text-holo-mint'
+                          : 'border-teal-deep/10 dark:border-holo-mint/10 opacity-50 hover:opacity-80'
+                      }`}
+                    >
+                      {vt.label}
+                    </button>
+                  ))}
                 </div>
-              )}
+              </div>
 
-              {copyVisualType !== 'photo' && (
+              {visualType !== 'photo' && (
                 <>
                   {/* 1. Headline — required */}
                   <div>
@@ -460,7 +477,7 @@ export default function Generator({
               </div>
 
               {/* Photo */}
-              {copyVisualType !== 'photo' && (
+              {visualType !== 'photo' && (
                 <div>
                   <label className="text-xs font-semibold opacity-50 mb-1.5 block uppercase tracking-wide flex items-center gap-1.5">
                     <Camera className="h-3 w-3" /> Zdjęcie (opcjonalnie)

@@ -26,13 +26,31 @@ const CREATIVITY_BLOCKS: Record<number, string> = {
   5: 'Stwórz premium grafikę wartą nagrody. Maksymalne bogactwo wizualne w ramach zasad marki. Kinowa kompozycja, złożony wielowarstwowy design, immersyjne użycie kolorów i elementów graficznych marki. Każdy piksel celowy.',
 };
 
-// G7 — Photo-specific creativity blocks
+// G7 — Photo-specific creativity blocks (industry-neutral — directives describe TECHNIQUE, not subject)
 const PHOTO_CREATIVITY_BLOCKS: Record<number, string> = {
-  1: '',
-  2: 'Subtelna głębia ostrości i ciepłe tony. Naturalna stylizacja.',
-  3: 'Bogate tekstury, kontrastowe oświetlenie, precyzyjna stylizacja food.',
-  4: 'Edytorialna jakość. Dramatic lighting, negatywna przestrzeń, kinowy nastrój.',
-  5: 'Michelin-level food photography. Perfekcyjna kompozycja, każdy detal celowy.',
+  1: `Czysta, minimalna kompozycja fotograficzna.
+Ostrość na głównym obiekcie, neutralne tło, równomierne oświetlenie.
+Bez dodatkowej stylizacji — sam produkt/scena.`,
+  2: `Naturalna kompozycja z kontekstem.
+Główny obiekt ostry, tło w delikatnym bokeh (f/2.8-4).
+Oświetlenie boczne, ciepłe, miękkie cienie.
+Dodaj 1-2 kontekstowe rekwizyty w tle (nieostre, nieprzytłaczające).`,
+  3: `Przemyślana sesja fotograficzna.
+Precyzyjna głębia ostrości — pierwszy plan tack-sharp, tło storytellingowe.
+Oświetlenie modelowane: główne + fill + ewentualny rim.
+Stylizacja: tekstury, materiały, rekwizyty budujące nastrój marki.
+Kolory marki subtelnie obecne w otoczeniu (tło, rekwizyty, oświetlenie).`,
+  4: `Edytorialna jakość — zdjęcie godne magazynu branżowego.
+Dramatic lighting z wyraźnym kierunkiem i cieniami budującymi głębię.
+Negatywna przestrzeń jako element kompozycji.
+Wielowarstwowa scena: pierwszy plan / obiekt / kontekst / tło.
+Detale tekstur widoczne i celowo podkreślone oświetleniem.`,
+  5: `Premium, award-level photography.
+Kinematograficzna kompozycja — każdy element kadru celowy i uzasadniony.
+Perfekcyjna równowaga między ostrością a bokeh.
+Oświetlenie na poziomie Leibovitz/Richardson — dramatyczne, ale naturalne.
+Kolor, światło i kompozycja tworzą spójną narrację emocjonalną.
+Zdjęcie, które zatrzymuje scroll.`,
 };
 
 // ── Logo compositor ───────────────────────────────────────────────────────────
@@ -358,29 +376,35 @@ export async function POST(req: NextRequest) {
   };
   const emptyZone = LOGO_EMPTY_ZONE[logoPosition] ?? LOGO_EMPTY_ZONE['top-left'];
 
-  // Asset usage rules — always present (protects against content leakage from reference images)
-  const assetUsageRules = [
+  // Layer 1 — two separate paths: photo vs graphic
+  const photoLayer1Rules = [
+    'Obrazy referencyjne dostarczają paletę kolorów, styl kompozycji i nastrój. Użyj ich jako inspiracji stylistycznej.',
+    ...(photoAssetsList.length > 0
+      ? ['Zdjęcia produktowe/packshoty marki dostarczone jako inline images MOGĄ być użyte jako wizualne elementy kompozycji.']
+      : []),
+    'NIE umieszczaj żadnego tekstu, liter, cyfr, logo ani watermarków na zdjęciu.',
+    'Wypełnij całe płótno — bez białych obramowań ani paddingu.',
+  ];
+
+  const graphicLayer1Rules = [
     'REFERENCJE STYLISTYCZNE: Obrazy referencyjne dostarczają TYLKO paletę kolorów, styl kompozycji i nastrój. NIE odtwarzaj twarzy, osób ani rozpoznawalnych postaci z referencji.',
     ...(photoAssetsList.length > 0
       ? ['ZDJĘCIA/PACKSHOTY MARKI: Dostarczone zdjęcia produktowe i packshoty MOGĄ być wykorzystane jako elementy wizualne w kompozycji — to oficjalne assety marki.']
       : []),
-    // G1 — Conditional: skip abstract-only rule when brief describes photography or visualType is photo
-    ...((!photoUrl || photoMode === 'none') && !elementOnly && !isPhotoMode
+    ...((!photoUrl || photoMode === 'none') && !elementOnly
       ? ['BRAK ZDJĘCIA: Centralny element MUSI być abstrakcyjny lub ilustracyjny — geometryczne kształty, gradienty, ikony, elementy graficzne marki, kompozycje typograficzne. BEZ twarzy, BEZ ludzi.']
       : []),
-    // G2 — Text rule only in non-photo mode
-    ...(!isPhotoMode ? ['RENDERUJ TYLKO tekst wymieniony pod "TEKST DO UMIESZCZENIA NA GRAFICE" — żaden inny tekst, podpisy ani etykiety'] : []),
-    // G8 + G9 — Logo zone: skip in photo mode, simplified instruction in graphic mode
-    ...(emptyZone && !isPhotoMode
+    'RENDERUJ TYLKO tekst wymieniony pod "TEKST DO UMIESZCZENIA NA GRAFICE" — żaden inny tekst, podpisy ani etykiety',
+    ...(emptyZone
       ? [`[STREFA LOGO — ${emptyZone}]: Zostaw ten obszar PUSTY — kontynuuj tło bez żadnych obiektów, kształtów, tekstu ani bloków koloru. Logo zostanie nałożone po generacji.`]
       : ['Logo nie jest wymagane — możesz swobodnie wykorzystać całe płótno']),
   ];
 
-  // Layer 1 — always present (asset rules + optional brand rules)
+  // Layer 1 — select path + append brand rules
   const brandRuleLines = project.brand_rules
     ? project.brand_rules.split('\n').filter((r: string) => r.trim()).map((r: string) => r.trim())
     : [];
-  const allLayer1Rules = [...assetUsageRules, ...brandRuleLines];
+  const allLayer1Rules = [...(isPhotoMode ? photoLayer1Rules : graphicLayer1Rules), ...brandRuleLines];
   const layer1 = `\n${sep}
 WARSTWA 1 — ZASADY BEZWZGLĘDNE (niepodlegające negocjacji ograniczenia)
 To są twarde limity. Złamanie KTÓREGOKOLWIEK z nich jest niedopuszczalne, niezależnie od briefu.
@@ -408,6 +432,13 @@ ${allLayer1Rules.map((r, i) => `${i + 1}. ${r}`).join('\n')}
     ? `\nDOSTARCZONE ZASOBY (wysłane jako obrazy inline):\n${assetSummary.join('\n')}\n`
     : '';
 
+  // F1 — Filter copy-only sections in photo mode
+  const COPY_KEYWORDS = ['ton', 'tone', 'voice', 'głos', 'komunikac', 'cta', 'call to action', 'wezwani', 'copy', 'tekst', 'treść', 'wartości', 'values'];
+  function isVisualSection(section: { id?: string; title?: string; canonicalType?: string }): boolean {
+    const key = `${section.id || ''} ${section.title || ''} ${section.canonicalType || ''}`.toLowerCase();
+    return !COPY_KEYWORDS.some(kw => key.includes(kw));
+  }
+
   // Brand DNA — merge sections by canonical type to eliminate duplicates
   type RawBrandSec = { id: string; title: string; content: string; order: number; source?: string; icon?: string; type?: string; confidence?: string };
   const rawSections: RawBrandSec[] = project.brand_sections || [];
@@ -415,9 +446,10 @@ ${allLayer1Rules.map((r, i) => `${i + 1}. ${r}`).join('\n')}
 
   if (rawSections.length > 0) {
     const merged = mergeBrandSections(rawSections);
-    console.log(`Brand sections: ${rawSections.length} raw → ${merged.length} merged`);
+    const sectionsForLayer2 = isPhotoMode ? merged.filter(isVisualSection) : merged;
+    console.log(`Brand sections: ${rawSections.length} raw → ${merged.length} merged${isPhotoMode ? ` → ${sectionsForLayer2.length} visual-only` : ''}`);
 
-    layer2Content = merged
+    layer2Content = sectionsForLayer2
       .map(s => {
         const sourceTag = s.sources.length > 1
           ? ` [${s.sources.map(src => ({ brandbook: 'CONFIRMED', manual: 'MANUAL', references: 'FROM REFERENCES', brand_scan: 'AUTO-DETECTED' }[src] || src.toUpperCase())).join(' + ')}]`
@@ -441,22 +473,24 @@ ${allLayer1Rules.map((r, i) => `${i + 1}. ${r}`).join('\n')}
   // G3 — Skip full tone_of_voice text (copywriting instructions, not visual).
   // Voice Card visual implications are in voiceVisualBlock below.
 
-  // Voice Card → visual directives
+  // Voice Card → visual directives (F1 — photo mode gets only archetype as mood hint)
   type VC = { archetype?: string; taboos?: string[]; golden_rules?: string[]; voice_summary?: string };
   const vc: VC | null = (project.voice_card as VC) || null;
-  const voiceVisualBlock = vc?.archetype ? `
-GŁOS MARKI (implikacje wizualne):
-Archetyp: ${vc.archetype} — nastrój wizualny musi pasować do tej osobowości${
-    vc.taboos?.length ? `\nWizualne TABU: ${vc.taboos.slice(0, 4).join('; ')}` : ''
-  }` : '';
+  const voiceVisualBlock = vc?.archetype
+    ? isPhotoMode
+      ? `\nNASTRÓJ MARKI:\nArchetyp: ${vc.archetype} — kompozycja i nastrój zdjęcia muszą pasować do tej osobowości.`
+      : `\nGŁOS MARKI (implikacje wizualne):\nArchetyp: ${vc.archetype} — nastrój wizualny musi pasować do tej osobowości${
+          vc.taboos?.length ? `\nWizualne TABU: ${vc.taboos.slice(0, 4).join('; ')}` : ''
+        }`
+    : '';
 
-  // Industry Rules → visual context
+  // Industry Rules → visual context (F7 — photo mode gets only photo_brief_types, no copy rules)
   type IR = { photo_brief_types?: string[]; banned_cliches?: string[]; language_notes?: string };
   const ir: IR | null = (project.industry_rules as IR) || null;
   const industryVisualBlock = ir?.photo_brief_types?.length ? `
 REGUŁY BRANŻOWE (kontekst wizualny):
-Naturalne typy ujęć w tej branży: ${ir.photo_brief_types.join(', ')}${
-    ir.language_notes ? `\nStyl komunikacji wizualnej: ${ir.language_notes}` : ''
+Naturalne typy ujęć w tej branży: ${ir.photo_brief_types.join(', ')}.${
+    !isPhotoMode && ir.language_notes ? `\nStyl komunikacji wizualnej: ${ir.language_notes}` : ''
   }` : '';
 
   const layer2 = `
@@ -484,7 +518,7 @@ ${assetNote}${layer2Content}${assetsSection}${voiceVisualBlock}${industryVisualB
     ? '- NIE umieszczaj żadnego tekstu, liter ani cyfr na obrazie — to czysta fotografia'
     : '- Zero literówek — sprawdź dwukrotnie cały tekst przed renderowaniem';
 
-  // Layer 3 — Creative Brief or element-only
+  // Layer 3 — three paths: elementOnly / photo / graphic
   const layer3 = elementOnly ? `
 ${sep}
 WARSTWA 3 — GENEROWANIE ELEMENTU
@@ -499,7 +533,18 @@ WYMAGANIA DLA OUTPUTU:
 - Element powinien działać jako centralny punkt skupienia wkomponowany w szablon marki
 - Czysty obiekt, odpowiedni do nałożenia na kolorowe tło
 - Kwadratowa kompozycja, wycentrowany obiekt
-- Styl musi pasować do DNA marki z Warstwy 2` : `
+- Styl musi pasować do DNA marki z Warstwy 2`
+  : isPhotoMode ? `
+${sep}
+WARSTWA 3 — BRIEF FOTOGRAFICZNY
+Zrealizuj poniższą wizję. To jest cel tej grafiki.
+${sep}
+⭐ GŁÓWNA WIZJA:
+"${brief || 'Zdjęcie produktowe/wizerunkowe marki'}"
+
+MARKA: ${project.name}
+FORMAT: ${FORMAT_SIZES[format] || '1080x1080px square'}`
+  : `
 ${sep}
 WARSTWA 3 — BRIEF KREATYWNY
 Stwórz grafikę spełniającą wymagania wszystkich warstw powyżej. Bądź kreatywny w ramach ograniczeń.
@@ -533,7 +578,7 @@ ${sep}
 PRZYPOMNIENIE O PRIORYTETACH: Warstwa 1 > Warstwa 2 > Warstwa 3.
 Jeśli DNA marki koliduje z briefem — DNA marki wygrywa.
 Jeśli zasady bezwzględne kolidują z czymkolwiek — zasady bezwzględne wygrywają.
-Wygeneruj JEDNĄ kompletną, gotową do publikacji grafikę.`;
+Wygeneruj ${isPhotoMode ? 'JEDNO kompletne, gotowe do publikacji zdjęcie' : 'JEDNĄ kompletną, gotową do publikacji grafikę'}.`;
 
   // For elementOnly: bypass brand hierarchy — use standalone no-branding prompt
   const brandColors = elementOnly
@@ -565,6 +610,10 @@ ${brief ? `KIERUNEK WIZUALNY: "${brief}"` : ''}
 ${brandColors ? `UŻYJ TYCH KOLORÓW: ${brandColors}` : 'Użyj harmonijnych, żywych kolorów.'}
 
 OUTPUT: Jedna abstrakcyjna ilustracja — kształty, gradienty, organiczne formy, tekstury. Kwadratowa kompozycja. Zero tekstu. Zero brandingu. Odpowiednia do nałożenia na tło w kolorach marki.`
+    : isPhotoMode
+    ? `Jesteś profesjonalnym fotografem tworzącym zdjęcia do social media.
+Stosuj poniższą trójwarstwową hierarchię instrukcji. Wyższe warstwy nadpisują niższe.
+${layer1}${layer2}${layer3}${creativityBlock}${closing}`
     : `Jesteś profesjonalnym grafikiem tworzącym grafiki do social media.
 Stosuj poniższą trójwarstwową hierarchię instrukcji. Wyższe warstwy nadpisują niższe.
 ${layer1}${layer2}${layer3}${creativityBlock}${closing}`;
