@@ -279,27 +279,19 @@ export async function POST(req: NextRequest) {
     || logoAssets.find(a => a.variant === 'default')
     || logoAssets[0];
 
-  // Reference images: sent as inlineData ONLY when a user photo is provided.
-  // In Creative Mode (no photo), sending refs risks Gemini extracting faces/people
-  // from reference photos and using them as the central graphic element (asset leakage bug).
-  // Without a photo, rely on text-based style description instead.
-  const hasUserPhoto = !!(photoUrl && photoMode !== 'none');
-
+  // Reference images — always send as inlineData so Gemini sees actual style
   const allRefs = assetList.filter(a => a.type === 'reference').slice(0, 5);
   const featuredRefs = allRefs.filter(a => a.is_featured);
   const regularRefs = allRefs.filter(a => !a.is_featured);
 
   const refParts: Array<{ inlineData: { data: string; mimeType: string } } | { text: string }> = [];
-  if (!elementOnly && hasUserPhoto) {
-    // Only send ref inlineData when user has provided a photo — safe context, no face leakage risk
-    refParts.push({ text: '⚠️ TYLKO REFERENCJE STYLISTYCZNE — Te obrazy pokazują paletę kolorów, styl kompozycji i nastrój. NIE odtwarzaj żadnej twarzy, osoby ani treści fotograficznej z nich w wynikowej grafice.' });
-    // Regular refs — extract style only
+  if (!elementOnly && allRefs.length > 0) {
+    refParts.push({ text: '⚠️ REFERENCJE STYLISTYCZNE — Te obrazy pokazują paletę kolorów, styl kompozycji i nastrój. NIE odtwarzaj żadnej twarzy, osoby ani treści fotograficznej z nich w wynikowej grafice. Wyodrębnij TYLKO styl wizualny.' });
     for (const ref of regularRefs) {
       if (ref.url.toLowerCase().endsWith('.svg')) continue;
       const b64 = await urlToBase64(ref.url, true);
       if (b64) refParts.push({ inlineData: b64 });
     }
-    // Featured refs — match this exact style
     if (featuredRefs.length > 0) {
       refParts.push({ text: 'PRIORYTETOWY CEL STYLISTYCZNY — dopasuj dokładnie tę estetykę wizualną, paletę kolorów i nastrój w swoim wyniku:' });
       for (const ref of featuredRefs) {
@@ -310,7 +302,18 @@ export async function POST(req: NextRequest) {
     }
   }
   const imageRefCount = refParts.filter(p => 'inlineData' in p).length;
-  console.log(`Sending refs to Gemini: ${imageRefCount} (${featuredRefs.length} featured, hasUserPhoto=${hasUserPhoto})`);
+
+  // Photo assets (packshots etc.) — always send as inline images
+  const photoAssetsList = assetList.filter(a => a.type === 'photo').slice(0, 3);
+  if (!elementOnly && photoAssetsList.length > 0) {
+    refParts.push({ text: 'ZDJĘCIA / PACKSHOTY MARKI — te produkty/zdjęcia są częścią marki. Możesz je wykorzystać jako elementy wizualne kompozycji:' });
+    for (const p of photoAssetsList) {
+      if (p.url.toLowerCase().endsWith('.svg')) continue;
+      const b64 = await urlToBase64(p.url, true);
+      if (b64) refParts.push({ inlineData: b64 });
+    }
+  }
+  console.log(`Sending to Gemini: ${imageRefCount} refs, ${photoAssetsList.length} photo assets`);
 
   // Brand elements: include as inline images (max 2, skip large SVGs)
   const brandElements = assetList.filter(a => a.type === 'brand-element').slice(0, 2);
@@ -322,7 +325,7 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Photo: include as inline image if provided
+  // User-provided photo: include as inline image
   if (photoUrl && photoMode !== 'none' && !elementOnly) {
     const b64 = await urlToBase64(photoUrl);
     if (b64) imageParts.push({ inlineData: b64 });
@@ -344,11 +347,13 @@ export async function POST(req: NextRequest) {
 
   // Asset usage rules — always present (protects against content leakage from reference images)
   const assetUsageRules = [
-    'KRYTYCZNE — ZAPOBIEGANIE WYCIEKOWI ASSETÓW: Obrazy referencyjne są podane WYŁĄCZNIE jako inspiracja stylistyczna. NIE odtwarzaj, nie kopiuj ani nie wyodrębniaj żadnych twarzy, osób, rozpoznawalnych postaci, konkretnych obiektów, produktów ani scen fotograficznych z obrazów referencyjnych do generowanej grafiki. Referencje dostarczają TYLKO: paletę kolorów, styl kompozycji, podejście typograficzne, nastrój/atmosferę.',
+    'ZAPOBIEGANIE WYCIEKOWI ASSETÓW: Obrazy referencyjne stylu są podane WYŁĄCZNIE jako inspiracja stylistyczna. NIE odtwarzaj twarzy, osób ani rozpoznawalnych postaci z referencji. Referencje dostarczają TYLKO: paletę kolorów, styl kompozycji, podejście typograficzne, nastrój/atmosferę.',
     'NIE używaj twarzy ani wizerunku żadnej osoby z obrazów referencyjnych pod żadnym pozorem',
-    ...((!photoUrl || photoMode === 'none') && !elementOnly
-      ? ['BRAK ZDJĘCIA — ZASADA BEZWZGLĘDNA: Centralny element MUSI być wyłącznie abstrakcyjny lub ilustracyjny — geometryczne kształty, gradienty, ikony, elementy graficzne marki, kompozycje typograficzne. BEZ twarzy, BEZ ludzi, BEZ fotograficznej treści ludzkiej, BEZ scen skopiowanych z referencji. Całkowicie ignoruj treść fotograficzną w obrazach referencyjnych.']
-      : []),
+    ...(photoAssetsList.length > 0
+      ? ['ZDJĘCIA/PACKSHOTY MARKI: Dostarczone zdjęcia produktowe i packshoty MOGĄ być wykorzystane jako elementy wizualne w kompozycji — to oficjalne assety marki.']
+      : (!photoUrl || photoMode === 'none') && !elementOnly
+        ? ['BRAK ZDJĘCIA — unikaj renderowania realistycznych twarzy ludzi. Używaj abstrakcyjnych, ilustracyjnych lub typograficznych elementów centralnych.']
+        : []),
     'RENDERUJ TYLKO tekst wymieniony pod "TEKST DO UMIESZCZENIA NA GRAFICE" — żaden inny tekst, podpisy ani etykiety',
     ...(emptyZone
       ? [`[STREFA LOGO — ${emptyZone}]: Ten obszar musi być płynną, naturalną kontynuacją otaczającego tła — zastosuj ten sam styl, teksturę, ziarno i gradienty co reszta tła, ale NIE umieszczaj tu żadnych konkretnych obiektów, elementów graficznych, dekoracyjnych kształtów ani tekstu. Strefa musi pozostać wizualnie pusta z treści, będąc technicznie identyczna z otaczającym tłem, aby logo PNG mogło być czysto nałożone w postprodukcji. NIE rysuj tu żadnego prostokąta, ramki, obramowania ani płaskiego bloku koloru.`]
@@ -389,10 +394,9 @@ ${allLayer1Rules.map((r, i) => `${i + 1}. ${r}`).join('\n')}
   if (!elementOnly && imageRefCount > 0) {
     availableAssets.push(`- Obrazy referencyjne stylu (${imageRefCount} inline${featuredRefs.length > 0 ? `, ${featuredRefs.length} jako PRIORYTETOWY CEL STYLISTYCZNY` : ''}): wyodrębnij styl — NIE kopiuj twarzy, ludzi, obiektów ani scen`);
   }
-  const photoAssets = assetList.filter(a => a.type === 'photo');
-  photoAssets.forEach(p => {
-    availableAssets.push(`- Photo "${p.filename}"${p.description ? ` — ${p.description}` : ''}: ${p.url}`);
-  });
+  if (photoAssetsList.length > 0) {
+    availableAssets.push(`- Zdjęcia/Packshoty marki (${photoAssetsList.length} inline): oficjalne assety produktowe — UŻYJ ich jako elementy wizualne w kompozycji`);
+  }
   const assetsSection = availableAssets.length > 0
     ? `\nDOSTĘPNE ZASOBY:\n${availableAssets.join('\n')}\n`
     : '';
