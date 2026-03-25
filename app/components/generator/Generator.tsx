@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import {
   Upload, Wand2, Loader2, Download,
   BookmarkPlus, Trash2, Zap,
-  Camera, X, PenLine,
+  Camera, X, PenLine, LayoutGrid,
 } from 'lucide-react';
 import type {
   Project,
@@ -13,6 +13,7 @@ import type {
   CopyToGeneratorData,
 } from '@/lib/types';
 import { PLATFORM_TO_FORMAT } from '@/lib/types';
+import Gallery from './Gallery';
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -84,6 +85,7 @@ export default function Generator({
   const [generating, setGenerating] = useState(false);
   const [selectedGeneration, setSelectedGeneration] = useState<Generation | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [showGallery, setShowGallery] = useState(false);
 
   // Photo state
   const [photoMode, setPhotoMode] = useState<'none' | 'upload' | 'generate' | 'library'>('none');
@@ -215,19 +217,45 @@ export default function Generator({
   // ── Handler: deleteGeneration ──────────────────────────────────────────────
 
   const deleteGeneration = async (genId: number) => {
-    if (!confirm('Usunąć tę grafikę z historii?')) return;
+    if (!window.confirm('Usunąć tę grafikę z historii?')) return;
     setDeletingId(genId);
-    await fetch(`/api/brand/generations?generationId=${genId}`, { method: 'DELETE' });
-    onGenerationsUpdate(generations.filter(g => g.id !== genId));
-    if (selectedGeneration?.id === genId) setSelectedGeneration(null);
-    setDeletingId(null);
+    try {
+      const res = await fetch(`/api/brand/generations?generationId=${genId}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+        alert('Błąd usuwania: ' + (err.error || res.status));
+        return;
+      }
+      onGenerationsUpdate(generations.filter(g => g.id !== genId));
+      if (selectedGeneration?.id === genId) setSelectedGeneration(null);
+    } catch (e) {
+      console.error('Delete error:', e);
+      alert('Błąd połączenia przy usuwaniu');
+    } finally {
+      setDeletingId(null);
+    }
   };
 
+
+  const galleryDelete = async (genId: number) => {
+    const res = await fetch(`/api/brand/generations?generationId=${genId}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error('Delete failed');
+    onGenerationsUpdate(generations.filter(g => g.id !== genId));
+    if (selectedGeneration?.id === genId) setSelectedGeneration(null);
+  };
 
   // ── JSX ────────────────────────────────────────────────────────────────────
 
   return (
     <>
+      {showGallery && (
+        <Gallery
+          generations={generations}
+          onClose={() => setShowGallery(false)}
+          onDelete={galleryDelete}
+        />
+      )}
+
       {/* ── Generator ──────────────────────────────────────────────────────── */}
         <div className="space-y-8">
 
@@ -347,7 +375,18 @@ export default function Generator({
 
             {/* ── RIGHT: Form ────────────────────────────────────────────────── */}
             <div className="space-y-4">
-              <h2 className="font-black text-base">Nowa grafika</h2>
+              <div className="flex items-center justify-between">
+                <h2 className="font-black text-base">Nowa grafika</h2>
+                {generations.length > 0 && (
+                  <button
+                    onClick={() => setShowGallery(true)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border border-teal-deep/10 dark:border-holo-mint/10 opacity-50 hover:opacity-100 hover:border-holo-mint/50 transition-all"
+                    title="Galeria"
+                  >
+                    <LayoutGrid className="h-3.5 w-3.5" /> Galeria ({generations.length})
+                  </button>
+                )}
+              </div>
 
               {/* Copywriter data banner */}
               {fromCopywriter && (
