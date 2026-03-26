@@ -135,17 +135,21 @@ export default function BrandEditor() {
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <header className="glass-nav sticky top-0 z-40 border-b border-teal-deep/10 dark:border-holo-mint/10 bg-offwhite/85 dark:bg-teal-deep/85 px-4 sm:px-6 py-3 flex items-center gap-3">
 
-        <div className="w-8 h-8 bg-offwhite dark:bg-teal-mid rounded-lg flex items-center justify-center overflow-hidden border border-teal-deep/10 dark:border-holo-mint/10 shrink-0">
-          {project.logo_url
-            ? <img src={project.logo_url} alt={project.name} className="w-6 h-6 object-contain" />
-            : <span className="font-black text-sm holo-text">{project.name[0]}</span>
-          }
-        </div>
-
-        <div className="min-w-0 flex-1">
-          <h1 className="font-black text-sm sm:text-base truncate">{project.name}</h1>
-          {project.client_name && <p className="text-xs text-muted truncate">{project.client_name}</p>}
-        </div>
+        <button
+          onClick={() => setTab(isAgency ? 'generate' : 'create')}
+          className="flex items-center gap-3 min-w-0 flex-1 text-left cursor-pointer"
+        >
+          <div className="w-8 h-8 bg-offwhite dark:bg-teal-mid rounded-lg flex items-center justify-center overflow-hidden border border-teal-deep/10 dark:border-holo-mint/10 shrink-0">
+            {project.logo_url
+              ? <img src={project.logo_url} alt={project.name} className="w-6 h-6 object-contain" />
+              : <span className="font-black text-sm holo-text">{project.name[0]}</span>
+            }
+          </div>
+          <div className="min-w-0">
+            <h1 className="font-black text-sm sm:text-base truncate">{project.name}</h1>
+            {project.client_name && <p className="text-xs text-muted truncate">{project.client_name}</p>}
+          </div>
+        </button>
 
         {/* Tabs */}
         <div className="flex gap-1 bg-teal-deep/10 dark:bg-teal-mid rounded-full p-1 shrink-0">
