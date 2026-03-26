@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Poppins } from "next/font/google";
 import DotGrid from "./components/DotGrid";
+import AuthProvider from "./components/AuthProvider";
 import "./globals.css";
 
 const poppins = Poppins({
@@ -32,7 +33,9 @@ export default function RootLayout({
       </head>
       <body className={`${poppins.variable} antialiased`}>
         <DotGrid />
-        {children}
+        <AuthProvider>
+          {children}
+        </AuthProvider>
       </body>
     </html>
   );

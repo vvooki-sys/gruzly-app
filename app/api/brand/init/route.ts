@@ -4,6 +4,26 @@ import { getDb } from '@/lib/db';
 import { BRAND_ID } from '@/lib/constants';
 
 export async function GET() {
+  // Auth tables
+  await getDb()`
+    CREATE TABLE IF NOT EXISTS users (
+      id SERIAL PRIMARY KEY,
+      email TEXT NOT NULL UNIQUE,
+      password_hash TEXT NOT NULL,
+      name TEXT NOT NULL,
+      role VARCHAR(20) NOT NULL DEFAULT 'klient',
+      created_at TIMESTAMP DEFAULT NOW() NOT NULL
+    )
+  `.catch(() => {});
+  await getDb()`
+    CREATE TABLE IF NOT EXISTS sessions (
+      id TEXT PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      expires_at TIMESTAMP NOT NULL,
+      created_at TIMESTAMP DEFAULT NOW() NOT NULL
+    )
+  `.catch(() => {});
+
   // Migrations
   await getDb()`ALTER TABLE projects ADD COLUMN IF NOT EXISTS brand_sections JSONB DEFAULT '[]'::jsonb`.catch(() => {});
   await getDb()`ALTER TABLE projects ADD COLUMN IF NOT EXISTS generation_mode VARCHAR(20) DEFAULT 'creative'`.catch(() => {});
