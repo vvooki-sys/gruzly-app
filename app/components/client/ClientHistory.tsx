@@ -233,7 +233,7 @@ export default function ClientHistory({
 
       {/* ── Grafiki ── */}
       {(section === 'all' || section === 'graphics') && (
-        <div>
+        <div className="lg:order-2">
           <h2 className="font-black text-base mb-4">Grafiki ({filteredGens.length})</h2>
           {filteredGens.length === 0 ? (
             <div className="panel rounded-2xl p-8 text-center">
@@ -282,7 +282,7 @@ export default function ClientHistory({
 
       {/* ── Posty ── */}
       {(section === 'all' || section === 'posts') && (
-        <div>
+        <div className="lg:order-1">
           <h2 className="font-black text-base mb-4">Posty ({filteredCopy.length})</h2>
           {filteredCopy.length === 0 ? (
             <div className="panel rounded-2xl p-8 text-center">

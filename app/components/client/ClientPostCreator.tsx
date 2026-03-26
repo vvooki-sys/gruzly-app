@@ -229,11 +229,11 @@ export default function ClientPostCreator({
         </button>
       </div>
 
-      {/* Main grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_420px] gap-6 lg:gap-8 items-start">
+      {/* Main grid — form LEFT (420px), results RIGHT */}
+      <div className="grid grid-cols-1 lg:grid-cols-[420px_minmax(0,1fr)] gap-6 lg:gap-8 items-start">
 
-        {/* ── LEFT PANEL ── */}
-        <div className="lg:sticky lg:top-[72px] space-y-3">
+        {/* ── RIGHT: Results (flexible) ── */}
+        <div className="lg:sticky lg:top-[72px] space-y-3 lg:order-2 order-1">
           {step === 1 ? (
             <>
               <h2 className="font-black text-base">
@@ -399,8 +399,8 @@ export default function ClientPostCreator({
           )}
         </div>
 
-        {/* ── RIGHT PANEL ── */}
-        <div className="space-y-4">
+        {/* ── LEFT: Form (420px) ── */}
+        <div className="space-y-4 lg:order-1 order-2">
           {step === 1 ? (
             <>
               <h2 className="font-black text-base">Nowy post</h2>
