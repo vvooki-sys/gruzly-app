@@ -405,6 +405,14 @@ export default function ClientPostCreator({
             <>
               <h2 className="font-black text-base">Nowy post</h2>
 
+              {/* Trust badge */}
+              {hasBrandData && (
+                <div className="flex items-center gap-2 text-xs text-holo-mint bg-holo-mint/5 border border-holo-mint/20 px-3 py-2 rounded-xl">
+                  <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+                  <span>Pamiętaj! Gruzly już zna Twoją markę — sposób komunikacji, styl, ton głosu i wiele innych ;-)</span>
+                </div>
+              )}
+
               {/* Task */}
               <div>
                 <label className="text-xs font-semibold text-muted mb-1.5 block uppercase tracking-wide">
@@ -419,14 +427,6 @@ export default function ClientPostCreator({
                   autoFocus
                 />
               </div>
-
-              {/* Trust badge */}
-              {hasBrandData && (
-                <div className="flex items-center gap-2 text-xs text-holo-mint bg-holo-mint/5 border border-holo-mint/20 px-3 py-2 rounded-xl">
-                  <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
-                  <span>AI zna Twoją markę — kolory, styl, ton głosu</span>
-                </div>
-              )}
 
               {/* Platform */}
               <div>
