@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { Trash2, Loader2, Download, CheckCircle2, X, Copy, Check, Search, ArrowUpDown, SlidersHorizontal } from 'lucide-react';
+import { Trash2, Loader2, Download, CheckCircle2, X, Copy, Check, Search, ArrowUpDown, SlidersHorizontal, ChevronDown, ChevronUp } from 'lucide-react';
 import type { Generation, CopyGeneration } from '@/lib/types';
 
 interface Props {
@@ -45,6 +45,7 @@ export default function ClientHistory({
   const [deletingGenId, setDeletingGenId] = useState<number | null>(null);
   const [lightbox, setLightbox] = useState<{ url: string; brief: string } | null>(null);
   const [copiedId, setCopiedId] = useState<number | null>(null);
+  const [expandedPostId, setExpandedPostId] = useState<number | null>(null);
 
   // Filters
   const [search, setSearch] = useState('');
@@ -295,6 +296,8 @@ export default function ClientHistory({
                 const hasSelected = g.selected_variant !== null && g.selected_variant !== undefined;
                 const selectedCopy = hasSelected ? g.variants[g.selected_variant!] : null;
                 const isCopied = copiedId === g.id;
+                const isExpanded = expandedPostId === g.id;
+                const otherVariants = g.variants.filter((_, idx) => idx !== (g.selected_variant ?? -1));
 
                 return (
                   <div key={g.id} className="panel rounded-xl p-4 space-y-3">
@@ -326,16 +329,55 @@ export default function ClientHistory({
                     {selectedCopy && (
                       <div className="bg-offwhite dark:bg-teal-deep rounded-lg px-3 py-2.5 space-y-2">
                         <p className="text-sm leading-relaxed whitespace-pre-line">{selectedCopy.post_copy}</p>
-                        <button
-                          onClick={() => copyText(selectedCopy.post_copy, g.id)}
-                          className={`flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full border transition-all ${
-                            isCopied
-                              ? 'border-holo-mint text-holo-mint bg-holo-mint/10'
-                              : 'border-teal-deep/12 dark:border-holo-mint/20 text-muted hover:opacity-100'
-                          }`}
-                        >
-                          {isCopied ? <><Check className="h-3 w-3" /> Skopiowano</> : <><Copy className="h-3 w-3" /> Kopiuj treść</>}
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => copyText(selectedCopy.post_copy, g.id)}
+                            className={`flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full border transition-all ${
+                              isCopied
+                                ? 'border-holo-mint text-holo-mint bg-holo-mint/10'
+                                : 'border-teal-deep/12 dark:border-holo-mint/20 text-muted hover:opacity-100'
+                            }`}
+                          >
+                            {isCopied ? <><Check className="h-3 w-3" /> Skopiowano</> : <><Copy className="h-3 w-3" /> Kopiuj treść</>}
+                          </button>
+                          {otherVariants.length > 0 && (
+                            <button
+                              onClick={() => setExpandedPostId(isExpanded ? null : g.id)}
+                              className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full border border-teal-deep/12 dark:border-holo-mint/20 text-muted hover:opacity-100 transition-all"
+                            >
+                              {isExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                              {isExpanded ? 'Schowaj' : `Pozostałe warianty (${otherVariants.length})`}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Expanded variants */}
+                    {isExpanded && otherVariants.length > 0 && (
+                      <div className="space-y-2 animate-[fadeIn_0.3s_ease-out]">
+                        {g.variants.map((v, idx) => {
+                          if (idx === g.selected_variant) return null;
+                          const isThisCopied = copiedId === g.id * 1000 + idx;
+                          return (
+                            <div key={idx} className="bg-offwhite dark:bg-teal-deep rounded-lg px-3 py-2.5 space-y-2 border border-teal-deep/5 dark:border-holo-mint/10">
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-bold text-hint">Wariant {idx + 1}</span>
+                              </div>
+                              <p className="text-sm leading-relaxed whitespace-pre-line text-muted">{v.post_copy}</p>
+                              <button
+                                onClick={() => { copyText(v.post_copy, g.id * 1000 + idx); setCopiedId(g.id * 1000 + idx); }}
+                                className={`flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full border transition-all ${
+                                  isThisCopied
+                                    ? 'border-holo-mint text-holo-mint bg-holo-mint/10'
+                                    : 'border-teal-deep/12 dark:border-holo-mint/20 text-muted hover:opacity-100'
+                                }`}
+                              >
+                                {isThisCopied ? <><Check className="h-3 w-3" /> Skopiowano</> : <><Copy className="h-3 w-3" /> Kopiuj</>}
+                              </button>
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
 
