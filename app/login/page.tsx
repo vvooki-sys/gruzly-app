@@ -37,6 +37,7 @@ export default function LoginPage() {
       <DotGrid />
       <div className="relative z-10 w-full max-w-sm mx-4">
         <div className="text-center mb-8">
+          <img src="/gruzly-bear.png" alt="Gruzly" className="w-16 h-16 rounded-2xl mx-auto mb-3 object-cover" />
           <h1 className="text-xl font-black tracking-tight">Gruzly</h1>
           <p className="text-xs opacity-40 mt-1">AI Brand Graphics</p>
         </div>
