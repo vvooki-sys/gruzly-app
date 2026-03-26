@@ -27,35 +27,14 @@ const CREATIVITY_BLOCKS: Record<number, string> = {
   6: 'Arcydzieło. Kinowe światło, filmowa kolorystyka, immersyjna wielowarstwowa kompozycja z wyczuwalną głębią ostrości. Typografia i warstwa wizualna tworzą nierozerwalną całość. Atmosfera, emocja i napięcie w każdym centymetrze kadru. Poziom kampanii globalnych marek — grafika, przy której zatrzymujesz scroll. Każdy piksel jest celowy.',
 };
 
-// G7 — Photo-specific creativity blocks (industry-neutral — directives describe TECHNIQUE, not subject)
+// G7 — Photo creativity blocks — same scale as graphic, applied in photo mode
 const PHOTO_CREATIVITY_BLOCKS: Record<number, string> = {
-  1: `Czysta, minimalna kompozycja fotograficzna.
-Ostrość na głównym obiekcie, neutralne tło, równomierne oświetlenie.
-Bez dodatkowej stylizacji — sam produkt/scena.`,
-  2: `Naturalna kompozycja z kontekstem.
-Główny obiekt ostry, tło w delikatnym bokeh (f/2.8-4).
-Oświetlenie boczne, ciepłe, miękkie cienie.
-Dodaj 1-2 kontekstowe rekwizyty w tle (nieostre, nieprzytłaczające).`,
-  3: `Przemyślana sesja fotograficzna.
-Precyzyjna głębia ostrości — pierwszy plan tack-sharp, tło storytellingowe.
-Oświetlenie modelowane: główne + fill + ewentualny rim.
-Stylizacja: tekstury, materiały, rekwizyty budujące nastrój marki.
-Kolory marki subtelnie obecne w otoczeniu (tło, rekwizyty, oświetlenie).`,
-  4: `Edytorialna jakość — zdjęcie godne magazynu branżowego.
-Dramatic lighting z wyraźnym kierunkiem i cieniami budującymi głębię.
-Negatywna przestrzeń jako element kompozycji.
-Wielowarstwowa scena: pierwszy plan / obiekt / kontekst / tło.
-Detale tekstur widoczne i celowo podkreślone oświetleniem.`,
-  5: `Profesjonalna sesja reklamowa — zdjęcie z kampanii.
-Kinematograficzna kompozycja — każdy element kadru celowy i uzasadniony.
-Perfekcyjna równowaga między ostrością a bokeh.
-Oświetlenie na poziomie Leibovitz/Richardson — dramatyczne, ale naturalne.
-Kolor, światło i kompozycja tworzą spójną narrację emocjonalną.`,
-  6: `Arcydzieło fotograficzne. Zdjęcie, które zatrzymuje scroll.
-Filmowa kolorystyka, immersyjna wielowarstwowa scena z wyczuwalną głębią.
-Każdy element kadru — światło, rekwizyt, tekstura — jest celowy i uzasadniony.
-Atmosfera, emocja i napięcie w każdym centymetrze kadru.
-Poziom kampanii globalnych marek.`,
+  1: 'Minimalistyczna kompozycja. Jedno tło (solid kolor lub prosty dwukolorowy gradient). Tekst wycentrowany z czystą hierarchią. ZERO elementów dekoracyjnych — żadnych kształtów, ikon, patternów, tekstur. Maksimum negatywnej przestrzeni. Czytelność jest jedynym celem.',
+  2: 'Prosty, uporządkowany design. Tło: gradient brandowy (max 3 kolory). Dozwolony JEDEN element dekoracyjny (kształt geometryczny, linia, subtelny pattern). Dozwolona subtelna tekstura (grain, noise). Kompozycja centralna, bezpieczna. Dużo powietrza wokół tekstu.',
+  3: 'Świadoma, precyzyjna kompozycja z minimalną liczbą elementów — ale każdy doskonale umiejscowiony. Asymetryczny layout. Celowe użycie negatywnej przestrzeni jako elementu designu. Typografia z charakterem — zróżnicowane wielkości, kontrastujące grubości. Max 2-3 elementy dekoracyjne, ale rozmieszczone z intencją. Mniej znaczy więcej — ale to "mniej" musi być perfekcyjne.',
+  4: 'Wielowarstwowy kadr z głębią. Elementy na pierwszym i drugim planie, przywołujące wrażenie głębi ostrości. Tło jest aktywnym elementem kompozycji — nie tylko podkład. Tekstury, nakładające się kształty z różną przezroczystością. 4-6 elementów wizualnych współpracujących ze sobą. Kontrasty wielkości w typografii. Świadoma praca ze światłem i cieniem. Każdy element ma swoje miejsce w hierarchii wizualnej.',
+  5: 'Produkcja na poziomie profesjonalnej sesji reklamowej. Wszystko służy konceptowi kreatywnego briefu. Dramatyczne światło, kierunkowe cienie, kinowa kolorystyka. Editorial layout z odważną typografią zintegrowaną z elementami wizualnymi. Dynamiczna, nieszablonowa kompozycja. Głębia i atmosfera w każdym fragmencie kadru. Zero przypadkowości — każdy element ma uzasadnienie.',
+  6: 'Arcydzieło. Kinowe światło, filmowa kolorystyka, immersyjna wielowarstwowa kompozycja z wyczuwalną głębią ostrości. Typografia i warstwa wizualna tworzą nierozerwalną całość. Atmosfera, emocja i napięcie w każdym centymetrze kadru. Poziom kampanii globalnych marek — grafika, przy której zatrzymujesz scroll. Każdy piksel jest celowy.',
 };
 
 // ── Logo compositor ───────────────────────────────────────────────────────────
