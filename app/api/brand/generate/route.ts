@@ -486,11 +486,17 @@ ${allLayer1Rules.map((r, i) => `${i + 1}. ${r}`).join('\n')}
     ? `\nDOSTARCZONE ZASOBY (wysłane jako obrazy inline):\n${assetSummary.join('\n')}\n`
     : '';
 
-  // F1 — Filter copy-only sections in photo mode
-  const COPY_KEYWORDS = ['ton', 'tone', 'voice', 'głos', 'komunikac', 'cta', 'call to action', 'wezwani', 'copy', 'tekst', 'treść', 'wartości', 'values'];
+  // F1 — Filter non-photo sections in photo mode (copy + typography + colors)
+  const PHOTO_EXCLUDE_KEYWORDS = [
+    'ton', 'tone', 'voice', 'głos', 'komunikac',
+    'cta', 'call to action', 'wezwani',
+    'copy', 'tekst', 'treść', 'wartości', 'values',
+    'typo', 'font', 'czcion', 'typography',
+    'kolor', 'color', 'palette', 'paleta',
+  ];
   function isVisualSection(section: { id?: string; title?: string; canonicalType?: string }): boolean {
     const key = `${section.id || ''} ${section.title || ''} ${section.canonicalType || ''}`.toLowerCase();
-    return !COPY_KEYWORDS.some(kw => key.includes(kw));
+    return !PHOTO_EXCLUDE_KEYWORDS.some(kw => key.includes(kw));
   }
 
   // Brand DNA — merge sections by canonical type to eliminate duplicates
