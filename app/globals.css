@@ -70,11 +70,13 @@
 
 /* Utility: subtle elevation for inputs, buttons, smaller boxes */
 .panel-inset {
+  background: var(--color-offwhite);
   box-shadow:
     0 1px 3px 0 rgba(0, 0, 0, 0.04),
     0 0 0 1px rgba(255, 255, 255, 0.06) inset;
 }
 [data-theme="dark"] .panel-inset {
+  background: var(--color-teal-deep);
   box-shadow:
     0 1px 3px 0 rgba(0, 0, 0, 0.2),
     0 0 0 1px rgba(255, 255, 255, 0.04) inset;
