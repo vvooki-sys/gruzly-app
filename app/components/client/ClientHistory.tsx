@@ -228,6 +228,9 @@ export default function ClientHistory({
         )}
       </div>
 
+      {/* ── Two-column layout when showing all ── */}
+      <div className={section === 'all' ? 'grid grid-cols-1 lg:grid-cols-2 gap-6 items-start' : ''}>
+
       {/* ── Grafiki ── */}
       {(section === 'all' || section === 'graphics') && (
         <div>
@@ -238,7 +241,7 @@ export default function ClientHistory({
               <p className="text-sm text-hint">{search ? 'Brak wyników' : 'Wygeneruj pierwszy post — grafiki pojawią się tutaj'}</p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+            <div className={`grid gap-3 ${section === 'all' ? 'grid-cols-2' : 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4'}`}>
               {filteredGens.map(g => {
                 const urls: string[] = JSON.parse(g.image_urls || '[]');
                 const gFormat = g.format.split(':')[0];
@@ -349,6 +352,8 @@ export default function ClientHistory({
           )}
         </div>
       )}
+
+      </div>{/* close two-column wrapper */}
     </div>
   );
 }
