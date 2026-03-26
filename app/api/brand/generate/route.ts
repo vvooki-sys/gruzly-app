@@ -645,9 +645,46 @@ ${brandColors ? `UŻYJ TYCH KOLORÓW: ${brandColors}` : 'Użyj harmonijnych, ży
 
 OUTPUT: Jedna abstrakcyjna ilustracja — kształty, gradienty, organiczne formy, tekstury. Kwadratowa kompozycja. Zero tekstu. Zero brandingu. Odpowiednia do nałożenia na tło w kolorach marki.`
     : isPhotoMode
-    ? `Jesteś profesjonalnym fotografem tworzącym zdjęcia do social media.
-Stosuj poniższą trójwarstwową hierarchię instrukcji. Wyższe warstwy nadpisują niższe.
-${layer1}${layer2}${layer3}${creativityBlock}${closing}`
+    ? (() => {
+      // Flat photo prompt — no layers, no meta-instructions
+      const photoRules = [
+        'Referencje stylistyczne → wyodrębnij paletę, nastrój, styl. NIE kopiuj twarzy, osób, obiektów ani scen.',
+        ...(photoAssetsList.length > 0 ? ['Packshoty/zdjęcia produktowe marki → MOŻESZ użyć w kompozycji.'] : []),
+        'NIE umieszczaj tekstu, liter, cyfr, logo ani watermarków.',
+        'Wypełnij całe płótno — bez białych obramowań.',
+        ...brandRuleLines,
+      ];
+
+      const assetParts: string[] = [];
+      if (imageRefCount > 0) assetParts.push(`Referencje stylu: ${imageRefCount}`);
+      if (photoAssetsList.length > 0) assetParts.push(`Packshoty: ${photoAssetsList.length}`);
+      if (logoAssets.length > 0) assetParts.push(`Logo: ${logoAssets.length} (nakładane po generacji)`);
+      if (brandElements.length > 0) assetParts.push(`Elementy dekoracyjne: ${brandElements.length}`);
+      const assetsLine = assetParts.length > 0 ? `\nDOSTARCZONE ZASOBY (inline):\n${assetParts.join(' · ')}` : '';
+
+      const moodLine = vc?.archetype ? `\nNASTRÓJ: ${vc.archetype}` : '';
+      const photoTypesLine = ir?.photo_brief_types?.length
+        ? `\nTYPY UJĘĆ BRANŻOWYCH: ${ir.photo_brief_types.join(', ')}`
+        : '';
+
+      return `Jesteś profesjonalnym fotografem. Generujesz zdjęcia do social media.
+
+ZASADY BEZWZGLĘDNE:
+${photoRules.map((r, i) => `${i + 1}. ${r}`).join('\n')}
+
+DNA MARKI:
+${layer2Content}
+${assetsLine}
+${moodLine}${photoTypesLine}
+
+⭐ BRIEF:
+"${brief || 'Zdjęcie produktowe/wizerunkowe marki'}"
+
+FORMAT: ${FORMAT_SIZES[format] || '1080x1080px square'}
+
+JAKOŚĆ FOTOGRAFICZNA (${creativity}/6):
+${PHOTO_CREATIVITY_BLOCKS[creativity]}`;
+    })()
     : `Jesteś profesjonalnym grafikiem tworzącym grafiki do social media.
 Stosuj poniższą trójwarstwową hierarchię instrukcji. Wyższe warstwy nadpisują niższe.
 ${layer1}${layer2}${layer3}${creativityBlock}${closing}`;
