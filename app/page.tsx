@@ -13,6 +13,9 @@ import Copywriter from '@/app/components/copywriter/Copywriter';
 import AssetManager from '@/app/components/assets/AssetManager';
 import BrandSettings from '@/app/components/settings/BrandSettings';
 import SetupWizard from '@/app/components/setup-wizard/SetupWizard';
+import ClientPostCreator from '@/app/components/client/ClientPostCreator';
+import ClientHistory from '@/app/components/client/ClientHistory';
+import { ImageIcon, PlusCircle } from 'lucide-react';
 
 export default function BrandEditor() {
   const { user, loading: authLoading, logout } = useAuth();
@@ -23,18 +26,22 @@ export default function BrandEditor() {
   const [generations, setGenerations] = useState<Generation[]>([]);
   const [copyGenerations, setCopyGenerations] = useState<CopyGeneration[]>([]);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState('generate');
+  const [tab, setTab] = useState('');  // Set after auth loaded
   const [showWizard, setShowWizard] = useState(false);
   const [isDark, setIsDark] = useState(true);
   const [toast, setToast] = useState<string | null>(null);
   const [copyData, setCopyData] = useState<CopyToGeneratorData | null>(null);
+  const [initialCopyGen, setInitialCopyGen] = useState<CopyGeneration | null>(null);
 
   const isAgency = user?.role === 'agencja';
 
-  // Redirect to login if not authenticated
+  // Redirect to login if not authenticated; set default tab by role
   useEffect(() => {
     if (!authLoading && !user) {
       router.replace('/login');
+    }
+    if (user && !tab) {
+      setTab(user.role === 'agencja' ? 'generate' : 'create');
     }
   }, [authLoading, user, router]);
 
@@ -103,7 +110,6 @@ export default function BrandEditor() {
     />
   );
 
-  // Client tabs: only Generator + Copywriter
   const TABS = isAgency
     ? [
         { id: 'generate', icon: Wand2, label: 'Generator' },
@@ -112,8 +118,8 @@ export default function BrandEditor() {
         { id: 'settings', icon: Settings, label: 'Ustawienia' },
       ]
     : [
-        { id: 'generate', icon: Wand2, label: 'Generator' },
-        { id: 'copy', icon: PenLine, label: 'Copywriter' },
+        { id: 'create', icon: PlusCircle, label: 'Nowy post' },
+        { id: 'history', icon: ImageIcon, label: 'Moje posty' },
       ];
 
   return (
@@ -238,6 +244,33 @@ export default function BrandEditor() {
             onAssetsUpdate={setAssets}
             showToast={showToast}
             refreshData={refreshData}
+          />
+        )}
+        {tab === 'create' && !isAgency && (
+          <ClientPostCreator
+            project={project}
+            assets={assets}
+            generations={generations}
+            onGenerationsUpdate={setGenerations}
+            copyGenerations={copyGenerations}
+            onCopyGenerationsUpdate={setCopyGenerations}
+            showToast={showToast}
+            refreshData={refreshData}
+            initialCopyGeneration={initialCopyGen}
+            onInitialConsumed={() => setInitialCopyGen(null)}
+          />
+        )}
+        {tab === 'history' && !isAgency && (
+          <ClientHistory
+            generations={generations}
+            onGenerationsUpdate={setGenerations}
+            copyGenerations={copyGenerations}
+            onCopyGenerationsUpdate={setCopyGenerations}
+            showToast={showToast}
+            onLoadCopy={(gen) => {
+              setInitialCopyGen(gen);
+              setTab('create');
+            }}
           />
         )}
       </div>
