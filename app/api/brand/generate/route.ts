@@ -372,7 +372,9 @@ export async function POST(req: NextRequest) {
       if (b64) refParts.push({ inlineData: b64 });
     }
   }
-  console.log(`Sending to Gemini: ${imageRefCount} refs, ${photoAssetsList.length} photo assets`);
+  console.log(`[ASSETS] DB total: ${assetList.length} | type=reference: ${assetList.filter(a => a.type === 'reference').length} | allRefs (after slice): ${allRefs.length} | featured: ${featuredRefs.length} | regular: ${regularRefs.length}`);
+  console.log(`[ASSETS] Converted to base64: refs=${imageRefCount}, packshots=${photoAssetsList.filter(p => !p.url.toLowerCase().endsWith('.svg')).length}`);
+  allRefs.forEach((r, i) => console.log(`[REF ${i}] ${r.filename || r.url.split('/').pop()} | featured=${!!r.is_featured} | svg=${r.url.toLowerCase().endsWith('.svg')}`));
 
   // Brand elements: include as inline images (max 2, skip large SVGs)
   const brandElements = assetList.filter(a => a.type === 'brand-element').slice(0, 2);
