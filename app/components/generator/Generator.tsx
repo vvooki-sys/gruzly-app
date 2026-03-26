@@ -100,8 +100,11 @@ export default function Generator({
   // Copywriter data bridge
   const [fromCopywriter, setFromCopywriter] = useState(false);
 
-  // Visual type — auto-set from copywriter, fallback to 'graphic' (regex detection on backend)
-  const [visualType, setVisualType] = useState<'graphic' | 'photo' | 'photo_text'>('graphic');
+  // Visual type — auto-set from copywriter, fallback to 'photo' default
+  // NOTE: 'graphic' and 'photo_text' hidden behind flag, will return later
+  const ENABLE_GRAPHIC_MODES = false;
+  const [visualType, setVisualType] = useState<'graphic' | 'photo' | 'photo_text'>('photo');
+  const [logoOnPhoto, setLogoOnPhoto] = useState(false);
 
   useEffect(() => {
     if (!copyData) return;
@@ -113,11 +116,18 @@ export default function Generator({
       if (mapped) setFormat(mapped);
     }
     if (copyData.visualType) {
-      setVisualType(copyData.visualType);
+      if (ENABLE_GRAPHIC_MODES) {
+        setVisualType(copyData.visualType);
+      } else {
+        setVisualType('photo');
+      }
       if (copyData.visualType === 'photo') {
         setPhotoMode('none');
         setPhotoUrl('');
       }
+    }
+    if (copyData.logoOnPhoto !== undefined) {
+      setLogoOnPhoto(copyData.logoOnPhoto);
     }
     setFromCopywriter(true);
     onCopyDataConsumed?.();
@@ -141,7 +151,7 @@ export default function Generator({
       const res = await fetch(`/api/brand/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ headline, subtext, brief, format, creativity, photoUrl: photoUrl || undefined, photoMode, visualType, isFromCopywriter: fromCopywriter }),
+        body: JSON.stringify({ headline, subtext, brief, format, creativity, photoUrl: photoUrl || undefined, photoMode, visualType, logoOnPhoto, isFromCopywriter: fromCopywriter }),
       });
       const data = await res.json();
       if (data.imageUrls && data.imageUrls.length > 0) {
@@ -403,7 +413,40 @@ export default function Generator({
                   <span>Dane z Copywritera załadowane — headline, brief, CTA, format</span>
                 </div>
               )}
-              {visualType !== 'photo' && (
+
+              {/* Visual type picker — photo modes */}
+              <div>
+                <label className="text-xs font-semibold opacity-50 mb-1.5 block uppercase tracking-wide">Typ wizualu do posta</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => { setVisualType('photo'); setLogoOnPhoto(false); }}
+                    className={`p-3 rounded-xl text-center border text-xs font-semibold transition-all ${
+                      visualType === 'photo' && !logoOnPhoto
+                        ? 'border-holo-mint bg-holo-mint/10 text-holo-mint'
+                        : 'border-teal-deep/10 dark:border-holo-mint/10 opacity-50 hover:opacity-80'
+                    }`}
+                  >
+                    <span className="block text-base mb-0.5">📷</span>
+                    <span className="block">Zdjęcie</span>
+                    <span className="block opacity-60 font-normal">Fotografia bez tekstu</span>
+                  </button>
+                  <button
+                    onClick={() => { setVisualType('photo'); setLogoOnPhoto(true); }}
+                    className={`p-3 rounded-xl text-center border text-xs font-semibold transition-all ${
+                      logoOnPhoto
+                        ? 'border-holo-mint bg-holo-mint/10 text-holo-mint'
+                        : 'border-teal-deep/10 dark:border-holo-mint/10 opacity-50 hover:opacity-80'
+                    }`}
+                  >
+                    <span className="block text-base mb-0.5">📷</span>
+                    <span className="block">Zdjęcie</span>
+                    <span className="block opacity-60 font-normal">+ logo marki</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Text fields — hidden when graphic modes disabled */}
+              {ENABLE_GRAPHIC_MODES && visualType !== 'photo' && (
                 <>
                   {/* 1. Headline — required */}
                   <div>
@@ -449,8 +492,8 @@ export default function Generator({
                 />
               </div>
 
-              {/* Photo */}
-              {visualType !== 'photo' && (
+              {/* Photo — only shown for graphic modes */}
+              {ENABLE_GRAPHIC_MODES && visualType !== 'photo' && (
                 <div>
                   <label className="text-xs font-semibold opacity-50 mb-1.5 block uppercase tracking-wide flex items-center gap-1.5">
                     <Camera className="h-3 w-3" /> Zdjęcie (opcjonalnie)

@@ -106,6 +106,7 @@ export interface CopyToGeneratorData {
   cta?: string;
   visualBrief: string;
   visualType: 'graphic' | 'photo' | 'photo_text';
+  logoOnPhoto?: boolean;
   platform: string;
 }
 

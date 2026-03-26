@@ -22,20 +22,31 @@ const FORMATS = [
   { id: 'general', label: 'Ogólny', icon: '📝' },
 ];
 
-const VISUAL_TYPES = [
+// NOTE: 'graphic' and 'photo_text' hidden behind flag, will return later
+const ENABLE_GRAPHIC_MODES = false;
+
+const VISUAL_TYPES_ALL = [
   { id: 'graphic' as const, icon: Image, label: 'Grafika', desc: 'Ilustracja, typografia, tekst na grafice' },
   { id: 'photo' as const, icon: Camera, label: 'Zdjęcie', desc: 'Fotografia bez tekstu' },
   { id: 'photo_text' as const, icon: Type, label: 'Zdjęcie + tekst', desc: 'Foto z nałożonym tekstem' },
 ];
 
+const VISUAL_TYPES_PHOTO = [
+  { id: 'photo' as const, icon: Camera, label: 'Zdjęcie', desc: 'Fotografia bez tekstu' },
+  { id: 'photo_logo' as const, icon: Camera, label: 'Zdjęcie', desc: '+ logo marki' },
+];
+
+const VISUAL_TYPES = ENABLE_GRAPHIC_MODES ? VISUAL_TYPES_ALL : VISUAL_TYPES_PHOTO;
+
 const FORMAT_LABELS: Record<string, string> = { facebook: '📘 Facebook', instagram: '📸 Instagram', linkedin: '💼 LinkedIn', general: '📝 Ogólny' };
-const VISUAL_LABELS: Record<string, string> = { graphic: 'Grafika', photo: 'Zdjęcie', photo_text: 'Zdjęcie + tekst' };
+const VISUAL_LABELS: Record<string, string> = { graphic: 'Grafika', photo: 'Zdjęcie', photo_text: 'Zdjęcie + tekst', photo_logo: 'Zdjęcie + logo' };
 
 export default function Copywriter({ project, copyGenerations, onCopyGenerationsUpdate, showToast, onUseCopy }: CopywriterProps) {
   const [task, setTask] = useState('');
   const [briefFile, setBriefFile] = useState<File | null>(null);
   const [format, setFormat] = useState('facebook');
-  const [visualType, setVisualType] = useState<'graphic' | 'photo' | 'photo_text'>('graphic');
+  const [visualType, setVisualType] = useState<'graphic' | 'photo' | 'photo_text'>('photo');
+  const [logoOnPhoto, setLogoOnPhoto] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [results, setResults] = useState<CopyVariant[]>([]);
   const [concept, setConcept] = useState('');
@@ -155,7 +166,12 @@ export default function Copywriter({ project, copyGenerations, onCopyGenerations
     setCurrentVisualType(gen.visual_type);
     setTask(gen.task);
     setFormat(gen.format);
-    setVisualType(gen.visual_type as 'graphic' | 'photo' | 'photo_text');
+    if (ENABLE_GRAPHIC_MODES) {
+      setVisualType(gen.visual_type as 'graphic' | 'photo' | 'photo_text');
+    } else {
+      setVisualType('photo');
+      setLogoOnPhoto(false);
+    }
   };
 
   // Which variants to render and which generation they belong to
@@ -222,13 +238,23 @@ export default function Copywriter({ project, copyGenerations, onCopyGenerations
           {/* Visual type */}
           <div>
             <label className="text-xs font-semibold opacity-50 mb-1.5 block uppercase tracking-wide">Typ wizuala do posta</label>
-            <div className="grid grid-cols-3 gap-2">
+            <div className={`grid gap-2 ${ENABLE_GRAPHIC_MODES ? 'grid-cols-3' : 'grid-cols-2'}`}>
               {VISUAL_TYPES.map(vt => {
-                const active = visualType === vt.id;
+                const isPhotoLogo = vt.id === 'photo_logo';
+                const active = ENABLE_GRAPHIC_MODES
+                  ? visualType === vt.id
+                  : isPhotoLogo ? logoOnPhoto : !logoOnPhoto;
                 return (
                   <button
                     key={vt.id}
-                    onClick={() => setVisualType(vt.id)}
+                    onClick={() => {
+                      if (ENABLE_GRAPHIC_MODES) {
+                        setVisualType(vt.id as 'graphic' | 'photo' | 'photo_text');
+                      } else {
+                        setVisualType('photo');
+                        setLogoOnPhoto(isPhotoLogo);
+                      }
+                    }}
                     className={`py-3 rounded-xl border-2 transition-all flex flex-col items-center gap-1.5 ${
                       active
                         ? 'border-holo-mint bg-holo-mint/10 text-holo-mint'
@@ -399,7 +425,7 @@ export default function Copywriter({ project, copyGenerations, onCopyGenerations
                         </button>
                       )}
                       <button
-                        onClick={() => onUseCopy?.({ headline: r.headline || '', subtext: r.subtext || '', cta: r.cta, visualBrief: r.visual_brief || '', visualType: currentVisualType as 'graphic' | 'photo' | 'photo_text', platform: format })}
+                        onClick={() => onUseCopy?.({ headline: r.headline || '', subtext: r.subtext || '', cta: r.cta, visualBrief: r.visual_brief || '', visualType: (ENABLE_GRAPHIC_MODES ? currentVisualType : 'photo') as 'graphic' | 'photo' | 'photo_text', logoOnPhoto, platform: format })}
                         className="flex-1 h-8 bg-teal-deep/5 dark:bg-teal-deep hover:bg-holo-mint/20 hover:border-holo-mint border border-teal-deep/10 dark:border-holo-mint/10 rounded-full text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors"
                       >
                         <Wand2 className="h-3 w-3" /> Użyj w generatorze
