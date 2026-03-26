@@ -13,7 +13,7 @@ interface CopywriterProps {
 }
 
 const inputCls =
-  'w-full bg-offwhite dark:bg-teal-deep text-teal-deep dark:text-offwhite rounded-xl px-4 py-3 text-sm border border-teal-deep/15 dark:border-holo-mint/10 focus:border-holo-mint outline-none transition-colors panel-inset';
+  'w-full text-teal-deep dark:text-offwhite rounded-xl px-4 py-3 text-sm border border-teal-deep/15 dark:border-holo-mint/10 focus:border-holo-mint outline-none transition-colors panel-inset';
 
 const FORMATS = [
   { id: 'facebook', label: 'Facebook', icon: '📘' },

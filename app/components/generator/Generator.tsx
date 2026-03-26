@@ -148,7 +148,7 @@ export default function Generator({
   const graphicModeAssetCount = Math.min(references.length, 5) + Math.min(packshots.length, 3);
   const brandSections = ((project as unknown as Record<string, unknown>).brand_sections || []) as Array<{ title: string; content: string }>;
 
-  const inputCls = 'w-full bg-offwhite dark:bg-teal-deep text-teal-deep dark:text-offwhite rounded-xl px-4 py-3 text-sm border border-teal-deep/15 dark:border-holo-mint/10 focus:border-holo-mint outline-none transition-colors panel-inset';
+  const inputCls = 'w-full text-teal-deep dark:text-offwhite rounded-xl px-4 py-3 text-sm border border-teal-deep/15 dark:border-holo-mint/10 focus:border-holo-mint outline-none transition-colors panel-inset';
 
   // ── Handler: generate ──────────────────────────────────────────────────────
 
@@ -461,7 +461,7 @@ export default function Generator({
                   Zadanie
                 </label>
                 <textarea
-                  className="w-full bg-offwhite dark:bg-teal-deep text-teal-deep dark:text-offwhite rounded-xl px-4 py-3 text-sm border-2 border-holo-mint/30 dark:border-holo-mint/20 focus:border-holo-mint outline-none transition-colors resize-none panel-inset"
+                  className="w-full text-teal-deep dark:text-offwhite rounded-xl px-4 py-3 text-sm border-2 border-holo-mint/30 dark:border-holo-mint/20 focus:border-holo-mint outline-none transition-colors resize-none panel-inset"
                   rows={5}
                   placeholder="Opisz nastrój, styl, co ma pokazywać grafika. Copywriter może wygenerować to automatycznie."
                   value={brief}

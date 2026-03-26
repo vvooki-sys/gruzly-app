@@ -349,7 +349,7 @@ export default function BrandSettings({
               <label className="text-xs font-semibold opacity-50 uppercase tracking-wide block mb-1">Nazwa marki *</label>
               <input
                 type="text"
-                className="w-full bg-offwhite dark:bg-teal-deep rounded-xl px-3 py-2 text-sm font-bold border border-teal-deep/15 dark:border-holo-mint/10 focus:border-holo-mint outline-none transition-colors panel-inset"
+                className="w-full rounded-xl px-3 py-2 text-sm font-bold border border-teal-deep/15 dark:border-holo-mint/10 focus:border-holo-mint outline-none transition-colors panel-inset"
                 value={editName}
                 onChange={e => setEditName(e.target.value)}
                 onBlur={() => saveProjectMeta()}
@@ -359,7 +359,7 @@ export default function BrandSettings({
               <label className="text-xs font-semibold opacity-50 uppercase tracking-wide block mb-1">Klient</label>
               <input
                 type="text"
-                className="w-full bg-offwhite dark:bg-teal-deep rounded-xl px-3 py-2 text-sm border border-teal-deep/15 dark:border-holo-mint/10 focus:border-holo-mint outline-none transition-colors panel-inset"
+                className="w-full rounded-xl px-3 py-2 text-sm border border-teal-deep/15 dark:border-holo-mint/10 focus:border-holo-mint outline-none transition-colors panel-inset"
                 placeholder="Opcjonalnie"
                 value={editClientName}
                 onChange={e => setEditClientName(e.target.value)}
@@ -373,7 +373,7 @@ export default function BrandSettings({
         <div>
           <label className="text-xs font-semibold opacity-50 uppercase tracking-wide block mb-1">Opis projektu</label>
           <textarea
-            className="w-full bg-offwhite dark:bg-teal-deep rounded-xl px-3 py-2 text-sm border border-teal-deep/15 dark:border-holo-mint/10 focus:border-holo-mint outline-none transition-colors panel-inset resize-none"
+            className="w-full rounded-xl px-3 py-2 text-sm border border-teal-deep/15 dark:border-holo-mint/10 focus:border-holo-mint outline-none transition-colors panel-inset resize-none"
             rows={2}
             placeholder="Krótki opis, cel projektu, notatki..."
             value={editDescription}

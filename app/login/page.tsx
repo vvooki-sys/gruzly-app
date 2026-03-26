@@ -47,7 +47,7 @@ export default function LoginPage() {
             <label className="text-xs opacity-50 mb-1.5 block font-semibold uppercase tracking-wide">Email</label>
             <input
               type="email"
-              className="w-full bg-offwhite dark:bg-teal-deep rounded-xl px-3 py-2.5 text-sm border border-teal-deep/15 dark:border-holo-mint/10 focus:border-holo-mint outline-none transition-colors panel-inset"
+              className="w-full rounded-xl px-3 py-2.5 text-sm border border-teal-deep/15 dark:border-holo-mint/10 focus:border-holo-mint outline-none transition-colors panel-inset"
               placeholder="twoj@email.pl"
               value={email}
               onChange={e => setEmail(e.target.value)}
@@ -59,7 +59,7 @@ export default function LoginPage() {
             <label className="text-xs opacity-50 mb-1.5 block font-semibold uppercase tracking-wide">Hasło</label>
             <input
               type="password"
-              className="w-full bg-offwhite dark:bg-teal-deep rounded-xl px-3 py-2.5 text-sm border border-teal-deep/15 dark:border-holo-mint/10 focus:border-holo-mint outline-none transition-colors panel-inset"
+              className="w-full rounded-xl px-3 py-2.5 text-sm border border-teal-deep/15 dark:border-holo-mint/10 focus:border-holo-mint outline-none transition-colors panel-inset"
               placeholder="••••••••"
               value={password}
               onChange={e => setPassword(e.target.value)}
