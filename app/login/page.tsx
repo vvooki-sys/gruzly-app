@@ -39,12 +39,12 @@ export default function LoginPage() {
         <div className="text-center mb-8">
           <img src="/gruzly-bear.png" alt="Gruzly" className="w-16 h-16 rounded-2xl mx-auto mb-3 object-cover" />
           <h1 className="text-xl font-black tracking-tight">Gruzly</h1>
-          <p className="text-xs opacity-40 mt-1">AI Brand Graphics</p>
+          <p className="text-xs text-muted mt-1">AI Brand Graphics</p>
         </div>
 
         <form onSubmit={handleSubmit} className="panel rounded-2xl p-6 space-y-4">
           <div>
-            <label className="text-xs opacity-50 mb-1.5 block font-semibold uppercase tracking-wide">Email</label>
+            <label className="text-xs text-muted mb-1.5 block font-semibold uppercase tracking-wide">Email</label>
             <input
               type="email"
               className="w-full rounded-xl px-3 py-2.5 text-sm border border-teal-deep/15 dark:border-holo-mint/10 focus:border-holo-mint outline-none transition-colors panel-inset"
@@ -56,7 +56,7 @@ export default function LoginPage() {
             />
           </div>
           <div>
-            <label className="text-xs opacity-50 mb-1.5 block font-semibold uppercase tracking-wide">Hasło</label>
+            <label className="text-xs text-muted mb-1.5 block font-semibold uppercase tracking-wide">Hasło</label>
             <input
               type="password"
               className="w-full rounded-xl px-3 py-2.5 text-sm border border-teal-deep/15 dark:border-holo-mint/10 focus:border-holo-mint outline-none transition-colors panel-inset"

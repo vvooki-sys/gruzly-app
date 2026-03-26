@@ -148,7 +148,7 @@ export default function Generator({
   const graphicModeAssetCount = Math.min(references.length, 5) + Math.min(packshots.length, 3);
   const brandSections = ((project as unknown as Record<string, unknown>).brand_sections || []) as Array<{ title: string; content: string }>;
 
-  const inputCls = 'w-full text-teal-deep dark:text-offwhite rounded-xl px-4 py-3 text-sm border border-teal-deep/15 dark:border-holo-mint/10 focus:border-holo-mint outline-none transition-colors panel-inset';
+  const inputCls = 'w-full text-teal-deep dark:text-offwhite rounded-xl px-4 py-3 text-sm border border-teal-deep/15 dark:border-holo-mint/20 focus:border-holo-mint outline-none transition-colors panel-inset';
 
   // ── Handler: generate ──────────────────────────────────────────────────────
 
@@ -299,7 +299,7 @@ export default function Generator({
                       <div className="w-16 h-16 mx-auto rounded-full holo-gradient flex items-center justify-center">
                         <Loader2 className="h-7 w-7 animate-spin text-teal-deep" />
                       </div>
-                      <p className="text-sm opacity-50 font-medium">Generuję grafikę...</p>
+                      <p className="text-sm text-muted font-medium">Generuję grafikę...</p>
                     </div>
                   </div>
                 ) : selectedGeneration ? (
@@ -311,13 +311,13 @@ export default function Generator({
                     })()}
 
                     {/* Actions */}
-                    <div className="p-3 flex items-center gap-2 border-t border-teal-deep/10 dark:border-holo-mint/10">
+                    <div className="p-3 flex items-center gap-2 border-t border-teal-deep/12 dark:border-holo-mint/20">
                       <button
                         onClick={() => {
                           const urls: string[] = JSON.parse(selectedGeneration.image_urls || '[]');
                           if (urls[0]) window.open(urls[0], '_blank');
                         }}
-                        className="flex-1 h-9 bg-teal-deep/5 dark:bg-teal-deep hover:bg-teal-deep/10 dark:hover:bg-teal-deep/80 border border-teal-deep/10 dark:border-holo-mint/10 rounded-full text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors"
+                        className="flex-1 h-9 bg-teal-deep/5 dark:bg-teal-deep hover:bg-teal-deep/10 dark:hover:bg-teal-deep/80 border border-teal-deep/12 dark:border-holo-mint/20 rounded-full text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors"
                       >
                         <Download className="h-3.5 w-3.5" /> Pobierz
                       </button>
@@ -343,16 +343,16 @@ export default function Generator({
                     </div>
 
                     {/* Details */}
-                    <div className="px-4 pb-4 space-y-2 border-t border-teal-deep/10 dark:border-holo-mint/10 pt-3">
-                      <p className="text-xs font-bold opacity-30 uppercase tracking-wide">Szczegóły</p>
-                      <div className="text-xs space-y-1 opacity-50">
+                    <div className="px-4 pb-4 space-y-2 border-t border-teal-deep/12 dark:border-holo-mint/20 pt-3">
+                      <p className="text-xs font-bold text-hint uppercase tracking-wide">Szczegóły</p>
+                      <div className="text-xs space-y-1 text-muted">
                         <p><span className="opacity-60">Tekst:</span> {selectedGeneration.brief}</p>
                         <p><span className="opacity-60">Format:</span> {getFormatLabel(selectedGeneration.format)}</p>
                         <p><span className="opacity-60">Data:</span> {new Date(selectedGeneration.created_at).toLocaleString('pl-PL')}</p>
                       </div>
                       <details className="mt-2">
-                        <summary className="text-xs opacity-30 cursor-pointer hover:opacity-60 transition-opacity">Pokaż prompt systemowy</summary>
-                        <p className="mt-2 text-xs opacity-40 leading-relaxed bg-offwhite dark:bg-teal-deep rounded-xl p-3 whitespace-pre-wrap">{selectedGeneration.prompt}</p>
+                        <summary className="text-xs text-hint cursor-pointer hover:opacity-60 transition-opacity">Pokaż prompt systemowy</summary>
+                        <p className="mt-2 text-xs text-muted leading-relaxed bg-offwhite dark:bg-teal-deep rounded-xl p-3 whitespace-pre-wrap">{selectedGeneration.prompt}</p>
                       </details>
                     </div>
 
@@ -392,7 +392,7 @@ export default function Generator({
                   <div className={`${FORMAT_ASPECT[format] || 'aspect-square'} flex items-center justify-center`}>
                     <div className="text-center space-y-3">
                       <div className="text-5xl mb-3">🧱</div>
-                      <p className="text-sm opacity-30">Wygeneruj grafikę lub kliknij w historię</p>
+                      <p className="text-sm text-hint">Wygeneruj grafikę lub kliknij w historię</p>
                     </div>
                   </div>
                 )}
@@ -406,7 +406,7 @@ export default function Generator({
                 {generations.length > 0 && (
                   <button
                     onClick={() => setShowGallery(true)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border border-teal-deep/10 dark:border-holo-mint/10 opacity-50 hover:opacity-100 hover:border-holo-mint/50 transition-all"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border border-teal-deep/12 dark:border-holo-mint/20 opacity-50 hover:opacity-100 hover:border-holo-mint/50 transition-all"
                     title="Galeria"
                   >
                     <LayoutGrid className="h-3.5 w-3.5" /> Galeria ({generations.length})
@@ -427,7 +427,7 @@ export default function Generator({
                 <>
                   {/* 1. Headline — required */}
                   <div>
-                    <label className="text-xs font-semibold opacity-50 mb-1.5 block uppercase tracking-wide">
+                    <label className="text-xs font-semibold text-muted mb-1.5 block uppercase tracking-wide">
                       Tekst główny <span className="normal-case opacity-70 font-normal">— nagłówek grafiki</span>
                     </label>
                     <textarea
@@ -441,7 +441,7 @@ export default function Generator({
 
                   {/* 2. Subtext — optional */}
                   <div>
-                    <label className="text-xs font-semibold opacity-50 mb-1.5 block uppercase tracking-wide">
+                    <label className="text-xs font-semibold text-muted mb-1.5 block uppercase tracking-wide">
                       Tekst dodatkowy <span className="normal-case opacity-70 font-normal">— podtytuł, CTA (opcjonalnie)</span>
                     </label>
                     <textarea
@@ -472,26 +472,26 @@ export default function Generator({
               {/* Photo — only shown for graphic modes */}
               {ENABLE_GRAPHIC_MODES && visualType !== 'photo' && (
                 <div>
-                  <label className="text-xs font-semibold opacity-50 mb-1.5 block uppercase tracking-wide flex items-center gap-1.5">
+                  <label className="text-xs font-semibold text-muted mb-1.5 block uppercase tracking-wide flex items-center gap-1.5">
                     <Camera className="h-3 w-3" /> Zdjęcie (opcjonalnie)
                   </label>
-                  <div className="rounded-xl border border-teal-deep/10 dark:border-holo-mint/10 bg-white dark:bg-teal-mid p-3 space-y-3">
+                  <div className="rounded-xl border border-teal-deep/12 dark:border-holo-mint/20 bg-white dark:bg-teal-mid p-3 space-y-3">
                     <div className="flex gap-1.5">
                       <button onClick={() => { setPhotoMode('none'); setPhotoUrl(''); }}
-                        className={`h-8 px-3 rounded-lg text-xs font-semibold border transition-all ${photoMode === 'none' ? 'border-holo-aqua bg-holo-aqua/10 text-holo-aqua' : 'border-teal-deep/10 dark:border-holo-mint/10 opacity-50 hover:opacity-80'}`}>
+                        className={`h-8 px-3 rounded-lg text-xs font-semibold border transition-all ${photoMode === 'none' ? 'border-holo-aqua bg-holo-aqua/10 text-holo-aqua' : 'border-teal-deep/12 dark:border-holo-mint/20 opacity-50 hover:opacity-80'}`}>
                         Brak
                       </button>
                       <button onClick={() => setPhotoMode('upload')}
-                        className={`h-8 px-3 rounded-lg text-xs font-semibold border transition-all ${photoMode !== 'none' ? 'border-holo-aqua bg-holo-aqua/10 text-holo-aqua' : 'border-teal-deep/10 dark:border-holo-mint/10 opacity-50 hover:opacity-80'}`}>
+                        className={`h-8 px-3 rounded-lg text-xs font-semibold border transition-all ${photoMode !== 'none' ? 'border-holo-aqua bg-holo-aqua/10 text-holo-aqua' : 'border-teal-deep/12 dark:border-holo-mint/20 opacity-50 hover:opacity-80'}`}>
                         Dodaj zdjęcie
                       </button>
                     </div>
                     {photoMode !== 'none' && (
                       photoUrl ? (
                         <div className="flex items-center gap-2">
-                          <img src={photoUrl} className="w-14 h-14 object-cover rounded-lg border border-teal-deep/10 dark:border-holo-mint/10" alt="photo" />
+                          <img src={photoUrl} className="w-14 h-14 object-cover rounded-lg border border-teal-deep/12 dark:border-holo-mint/20" alt="photo" />
                           <div className="flex-1 min-w-0">
-                            <p className="text-xs opacity-50 truncate">Zdjęcie wgrane</p>
+                            <p className="text-xs text-muted truncate">Zdjęcie wgrane</p>
                           </div>
                           <button onClick={() => setPhotoUrl('')} className="w-7 h-7 rounded-full border border-red-500/20 flex items-center justify-center text-red-400 hover:bg-red-500/10 transition-colors">
                             <X className="h-3.5 w-3.5" />
@@ -510,7 +510,7 @@ export default function Generator({
 
               {/* Format picker */}
               <div>
-                <label className="text-xs font-semibold opacity-50 mb-1.5 block uppercase tracking-wide">Format</label>
+                <label className="text-xs font-semibold text-muted mb-1.5 block uppercase tracking-wide">Format</label>
                 <div className="grid grid-cols-2 gap-2">
                   {FORMATS.map(f => (
                     <button
@@ -519,11 +519,11 @@ export default function Generator({
                       className={`p-3 rounded-xl text-left border text-sm transition-all panel-inset ${
                         format === f.value
                           ? 'border-holo-mint bg-holo-mint/10 text-holo-mint'
-                          : 'border-teal-deep/10 dark:border-holo-mint/10 bg-white dark:bg-teal-mid opacity-60 hover:opacity-100'
+                          : 'border-teal-deep/12 dark:border-holo-mint/20 bg-white dark:bg-teal-mid opacity-60 hover:opacity-100'
                       }`}
                     >
                       <div className="font-bold text-xs">{f.label}</div>
-                      <div className="text-xs opacity-50 mt-0.5">{f.size}</div>
+                      <div className="text-xs text-muted mt-0.5">{f.size}</div>
                     </button>
                   ))}
                 </div>
@@ -531,14 +531,14 @@ export default function Generator({
 
               {/* Visual type picker — photo modes */}
               <div>
-                <label className="text-xs font-semibold opacity-50 mb-1.5 block uppercase tracking-wide">Typ wizualu do posta</label>
+                <label className="text-xs font-semibold text-muted mb-1.5 block uppercase tracking-wide">Typ wizualu do posta</label>
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     onClick={() => { setVisualType('photo'); setLogoOnPhoto(false); }}
                     className={`p-3 rounded-xl text-center border text-xs font-semibold transition-all panel-inset ${
                       visualType === 'photo' && !logoOnPhoto
                         ? 'border-holo-mint bg-holo-mint/10 text-holo-mint'
-                        : 'border-teal-deep/10 dark:border-holo-mint/10 opacity-50 hover:opacity-80'
+                        : 'border-teal-deep/12 dark:border-holo-mint/20 opacity-50 hover:opacity-80'
                     }`}
                   >
                     <span className="block text-base mb-0.5">📷</span>
@@ -550,7 +550,7 @@ export default function Generator({
                     className={`p-3 rounded-xl text-center border text-xs font-semibold transition-all panel-inset ${
                       logoOnPhoto
                         ? 'border-holo-mint bg-holo-mint/10 text-holo-mint'
-                        : 'border-teal-deep/10 dark:border-holo-mint/10 opacity-50 hover:opacity-80'
+                        : 'border-teal-deep/12 dark:border-holo-mint/20 opacity-50 hover:opacity-80'
                     }`}
                   >
                     <span className="block text-base mb-0.5">📷</span>
@@ -591,9 +591,9 @@ export default function Generator({
               <div className={`rounded-xl p-4 text-xs space-y-1 border transition-colors panel-inset ${
                 brandSections.length > 0 || project.brand_analysis
                   ? 'border-holo-mint/20 bg-holo-mint/5'
-                  : 'border-teal-deep/10 dark:border-holo-mint/10 bg-white dark:bg-teal-mid'
+                  : 'border-teal-deep/12 dark:border-holo-mint/20 bg-white dark:bg-teal-mid'
               }`}>
-                <p className={`font-bold mb-1.5 ${brandSections.length > 0 || project.brand_analysis ? 'text-holo-mint' : 'opacity-50'}`}>
+                <p className={`font-bold mb-1.5 ${brandSections.length > 0 || project.brand_analysis ? 'text-holo-mint' : 'text-muted'}`}>
                   {brandSections.length > 0
                     ? `${brandSections.length} sekcji brandowych`
                     : project.brand_analysis
@@ -601,9 +601,9 @@ export default function Generator({
                       : 'Brak analizy — przejdź do Kontekst marki'}
                 </p>
                 {brandSections.length > 0 && (
-                  <p className="opacity-50">{brandSections.slice(0, 3).map(s => s.title).join(', ')}{brandSections.length > 3 ? ` +${brandSections.length - 3} więcej` : ''}</p>
+                  <p className="text-muted">{brandSections.slice(0, 3).map(s => s.title).join(', ')}{brandSections.length > 3 ? ` +${brandSections.length - 3} więcej` : ''}</p>
                 )}
-                <p className="opacity-30">
+                <p className="text-hint">
                   {visualType === 'photo'
                     ? packshots.length > 0
                       ? `${photoModeAssetCount} packshot${photoModeAssetCount !== 1 ? 'ów' : ''} załączanych`
@@ -621,8 +621,8 @@ export default function Generator({
           {generations.length > 0 && (
             <div>
               <div className="flex items-center justify-between mb-3">
-                <p className="text-xs font-bold opacity-30 uppercase tracking-wide">Historia ({generations.length})</p>
-                <div className="flex gap-1 bg-offwhite dark:bg-teal-deep rounded-lg p-0.5 border border-teal-deep/10 dark:border-holo-mint/10">
+                <p className="text-xs font-bold text-hint uppercase tracking-wide">Historia ({generations.length})</p>
+                <div className="flex gap-1 bg-offwhite dark:bg-teal-deep rounded-lg p-0.5 border border-teal-deep/12 dark:border-holo-mint/20">
                   <button
                     onClick={() => setHistoryView('grid')}
                     className={`w-7 h-7 rounded-md flex items-center justify-center transition-all ${
@@ -659,16 +659,16 @@ export default function Generator({
                         className={`group rounded-xl cursor-pointer border overflow-hidden transition-all ${
                           isActive
                             ? 'border-holo-mint ring-2 ring-holo-mint/30'
-                            : 'border-teal-deep/10 dark:border-holo-mint/10 hover:border-holo-mint/30'
+                            : 'border-teal-deep/12 dark:border-holo-mint/20 hover:border-holo-mint/30'
                         }`}
                       >
                         <div className={`${FORMAT_ASPECT[gFormat] || 'aspect-square'} bg-offwhite dark:bg-teal-deep overflow-hidden relative`}>
                           {urls[0] && <img src={urls[0]} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />}
                           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                           <div className="absolute top-1.5 left-1.5 flex gap-1">
-                            <span className="text-[10px] font-bold text-white bg-black/40 backdrop-blur-sm px-1.5 py-0.5 rounded-md">{getFormatLabel(g.format)}</span>
+                            <span className="text-xs font-bold text-white bg-black/40 backdrop-blur-sm px-1.5 py-0.5 rounded-md">{getFormatLabel(g.format)}</span>
                             {CREATIVITY_LABELS[gCreativity] && (
-                              <span className="text-[10px] font-bold text-white bg-black/40 backdrop-blur-sm px-1.5 py-0.5 rounded-md">{CREATIVITY_LABELS[gCreativity].name}</span>
+                              <span className="text-xs font-bold text-white bg-black/40 backdrop-blur-sm px-1.5 py-0.5 rounded-md">{CREATIVITY_LABELS[gCreativity].name}</span>
                             )}
                           </div>
                           <div className="absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
@@ -683,7 +683,7 @@ export default function Generator({
                         </div>
                         <div className="px-2.5 py-2 bg-white dark:bg-teal-mid">
                           <p className="text-xs font-semibold truncate">{gHeadline}</p>
-                          <p className="text-[10px] opacity-30 mt-0.5">{new Date(g.created_at).toLocaleString('pl-PL', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+                          <p className="text-xs text-hint mt-0.5">{new Date(g.created_at).toLocaleString('pl-PL', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
                         </div>
                       </div>
                     );
@@ -707,30 +707,30 @@ export default function Generator({
                         className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer border transition-all ${
                           isActive
                             ? 'border-holo-mint bg-holo-mint/5'
-                            : 'border-teal-deep/10 dark:border-holo-mint/10 hover:border-holo-mint/30 bg-white dark:bg-teal-mid'
+                            : 'border-teal-deep/12 dark:border-holo-mint/20 hover:border-holo-mint/30 bg-white dark:bg-teal-mid'
                         }`}
                       >
-                        <div className={`w-14 h-14 rounded-lg overflow-hidden border-2 shrink-0 transition-colors ${isActive ? 'border-holo-mint' : 'border-teal-deep/10 dark:border-holo-mint/10'}`}>
+                        <div className={`w-14 h-14 rounded-lg overflow-hidden border-2 shrink-0 transition-colors ${isActive ? 'border-holo-mint' : 'border-teal-deep/12 dark:border-holo-mint/20'}`}>
                           {urls[0] && <img src={urls[0]} alt="" className="w-full h-full object-cover" />}
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="font-bold text-sm truncate">{gHeadline}</p>
-                          {gSubtext && <p className="text-xs opacity-40 truncate mt-0.5">{gSubtext}</p>}
+                          {gSubtext && <p className="text-xs text-muted truncate mt-0.5">{gSubtext}</p>}
                         </div>
                         <div className="hidden sm:flex items-center gap-1.5 shrink-0">
-                          <span className="text-xs opacity-30">{getFormatLabel(g.format)}</span>
+                          <span className="text-xs text-hint">{getFormatLabel(g.format)}</span>
                           {isFast && (
                             <span className="flex items-center gap-0.5 text-xs text-holo-yellow">
                               <Zap className="h-3 w-3" /> Szybki
                             </span>
                           )}
                           {CREATIVITY_LABELS[gCreativity] && (
-                            <span className="text-[10px] opacity-30 px-1.5 py-0.5 rounded-md border border-current/10">
+                            <span className="text-xs text-hint px-1.5 py-0.5 rounded-md border border-current/10">
                               {CREATIVITY_LABELS[gCreativity].name}
                             </span>
                           )}
                         </div>
-                        <span className="hidden md:block text-xs opacity-25 whitespace-nowrap shrink-0">
+                        <span className="hidden md:block text-xs text-hint whitespace-nowrap shrink-0">
                           {new Date(g.created_at).toLocaleString('pl-PL', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                         </span>
                         <div className="flex gap-1 shrink-0" onClick={e => e.stopPropagation()}>

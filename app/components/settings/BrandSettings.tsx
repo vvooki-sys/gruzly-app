@@ -307,7 +307,7 @@ export default function BrandSettings({
 
       {/* ── Brand Identity ── */}
       <div className="panel rounded-2xl p-5 space-y-4">
-        <p className="text-xs font-bold opacity-30 uppercase tracking-wide">Identyfikacja marki</p>
+        <p className="text-xs font-bold text-hint uppercase tracking-wide">Identyfikacja marki</p>
 
         {/* Icon + Name row */}
         <div className="flex items-start gap-4">
@@ -346,20 +346,20 @@ export default function BrandSettings({
           {/* Name + Client */}
           <div className="flex-1 space-y-2">
             <div>
-              <label className="text-xs font-semibold opacity-50 uppercase tracking-wide block mb-1">Nazwa marki *</label>
+              <label className="text-xs font-semibold text-muted uppercase tracking-wide block mb-1">Nazwa marki *</label>
               <input
                 type="text"
-                className="w-full rounded-xl px-3 py-2 text-sm font-bold border border-teal-deep/15 dark:border-holo-mint/10 focus:border-holo-mint outline-none transition-colors panel-inset"
+                className="w-full rounded-xl px-3 py-2 text-sm font-bold border border-teal-deep/15 dark:border-holo-mint/20 focus:border-holo-mint outline-none transition-colors panel-inset"
                 value={editName}
                 onChange={e => setEditName(e.target.value)}
                 onBlur={() => saveProjectMeta()}
               />
             </div>
             <div>
-              <label className="text-xs font-semibold opacity-50 uppercase tracking-wide block mb-1">Klient</label>
+              <label className="text-xs font-semibold text-muted uppercase tracking-wide block mb-1">Klient</label>
               <input
                 type="text"
-                className="w-full rounded-xl px-3 py-2 text-sm border border-teal-deep/15 dark:border-holo-mint/10 focus:border-holo-mint outline-none transition-colors panel-inset"
+                className="w-full rounded-xl px-3 py-2 text-sm border border-teal-deep/15 dark:border-holo-mint/20 focus:border-holo-mint outline-none transition-colors panel-inset"
                 placeholder="Opcjonalnie"
                 value={editClientName}
                 onChange={e => setEditClientName(e.target.value)}
@@ -371,9 +371,9 @@ export default function BrandSettings({
 
         {/* Description */}
         <div>
-          <label className="text-xs font-semibold opacity-50 uppercase tracking-wide block mb-1">Opis projektu</label>
+          <label className="text-xs font-semibold text-muted uppercase tracking-wide block mb-1">Opis projektu</label>
           <textarea
-            className="w-full rounded-xl px-3 py-2 text-sm border border-teal-deep/15 dark:border-holo-mint/10 focus:border-holo-mint outline-none transition-colors panel-inset resize-none"
+            className="w-full rounded-xl px-3 py-2 text-sm border border-teal-deep/15 dark:border-holo-mint/20 focus:border-holo-mint outline-none transition-colors panel-inset resize-none"
             rows={2}
             placeholder="Krótki opis, cel projektu, notatki..."
             value={editDescription}
@@ -384,7 +384,7 @@ export default function BrandSettings({
 
         {/* Logo position grid */}
         <div>
-          <label className="text-xs font-semibold opacity-50 uppercase tracking-wide block mb-2">Pozycja logo</label>
+          <label className="text-xs font-semibold text-muted uppercase tracking-wide block mb-2">Pozycja logo</label>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 36px)', gap: '4px' }}>
             {[
               ['top-left', 'top-center', 'top-right'],
@@ -441,14 +441,14 @@ export default function BrandSettings({
         const mergedSections = mergeBrandSections(brandSections);
         return (
           <div className="space-y-2">
-            <p className="text-xs font-bold opacity-30 uppercase tracking-wide">Sekcje marki ({mergedSections.length})</p>
+            <p className="text-xs font-bold text-hint uppercase tracking-wide">Sekcje marki ({mergedSections.length})</p>
             {mergedSections.map(section => (
               <div
                 key={section.id}
                 className={`rounded-xl border p-4 ${
                   section.type === 'custom'
                     ? 'border-holo-peach/30 bg-holo-peach/5'
-                    : 'border-teal-deep/10 dark:border-holo-mint/10 bg-white dark:bg-teal-mid'
+                    : 'border-teal-deep/12 dark:border-holo-mint/20 bg-white dark:bg-teal-mid'
                 }`}
               >
                 <div className="flex items-start justify-between gap-2">
@@ -460,14 +460,14 @@ export default function BrandSettings({
                         <SourceBadges sources={section.sources} />
                       </div>
                       {editingSectionId !== section.id && (
-                        <p className="text-xs opacity-50 mt-0.5 line-clamp-2">{section.primaryContent}</p>
+                        <p className="text-xs text-muted mt-0.5 line-clamp-2">{section.primaryContent}</p>
                       )}
                     </div>
                   </div>
                   <div className="flex gap-1 shrink-0">
                     <button
                       onClick={() => { setEditingSectionId(section.id); setEditingSectionContent(section.primaryContent); }}
-                      className="h-7 px-2.5 bg-teal-deep/5 dark:bg-teal-deep hover:bg-holo-mint/10 border border-teal-deep/10 dark:border-holo-mint/10 rounded-lg text-xs font-medium transition-colors"
+                      className="h-7 px-2.5 bg-teal-deep/5 dark:bg-teal-deep hover:bg-holo-mint/10 border border-teal-deep/12 dark:border-holo-mint/20 rounded-lg text-xs font-medium transition-colors"
                     >
                       Edytuj
                     </button>
@@ -483,7 +483,7 @@ export default function BrandSettings({
                 {editingSectionId === section.id && (
                   <div className="mt-3 space-y-2">
                     <textarea
-                      className="w-full bg-offwhite dark:bg-teal-deep text-teal-deep dark:text-offwhite border border-teal-deep/15 dark:border-holo-mint/10 focus:border-holo-mint rounded-xl px-3 py-2 text-sm resize-none outline-none transition-colors"
+                      className="w-full bg-offwhite dark:bg-teal-deep text-teal-deep dark:text-offwhite border border-teal-deep/15 dark:border-holo-mint/20 focus:border-holo-mint rounded-xl px-3 py-2 text-sm resize-none outline-none transition-colors"
                       rows={4}
                       value={editingSectionContent}
                       onChange={e => setEditingSectionContent(e.target.value)}
@@ -515,7 +515,7 @@ export default function BrandSettings({
               Voice Card
               {voiceCard && <span className="text-xs font-normal px-2 py-0.5 rounded-full bg-holo-mint/20 text-holo-mint">Aktywna</span>}
             </p>
-            <p className="text-xs opacity-40 mt-0.5">Profil głosu marki — wstrzykiwany automatycznie do każdego generowania copy</p>
+            <p className="text-xs text-muted mt-0.5">Profil głosu marki — wstrzykiwany automatycznie do każdego generowania copy</p>
           </div>
           {voiceCard && (
             <div className="flex gap-1.5 shrink-0">
@@ -559,7 +559,7 @@ export default function BrandSettings({
             {/* Dimensions */}
             {voiceCard.dimensions && (
               <div className="space-y-2">
-                <p className="text-xs font-bold opacity-30 uppercase tracking-wide">Wymiary głosu</p>
+                <p className="text-xs font-bold text-hint uppercase tracking-wide">Wymiary głosu</p>
                 {(['formality', 'warmth', 'humor', 'authority', 'directness'] as const).map(dim => {
                   const d = voiceCard.dimensions?.[dim];
                   if (!d) return null;
@@ -567,13 +567,13 @@ export default function BrandSettings({
                   return (
                     <div key={dim} className="space-y-0.5">
                       <div className="flex items-center gap-2">
-                        <span className="text-xs w-28 opacity-50">{labels[dim]}</span>
+                        <span className="text-xs w-28 text-muted">{labels[dim]}</span>
                         <div className="flex-1 h-1.5 bg-teal-deep/10 dark:bg-teal-deep/40 rounded-full overflow-hidden">
                           <div className="h-full bg-holo-mint rounded-full transition-all" style={{ width: `${(d.score / 10) * 100}%` }} />
                         </div>
-                        <span className="text-xs font-mono opacity-40 w-6 text-right">{d.score}</span>
+                        <span className="text-xs font-mono text-muted w-6 text-right">{d.score}</span>
                       </div>
-                      {d.description && <p className="text-xs opacity-40 pl-30 ml-[7.5rem]">{d.description}</p>}
+                      {d.description && <p className="text-xs text-muted pl-30 ml-[7.5rem]">{d.description}</p>}
                     </div>
                   );
                 })}
@@ -583,7 +583,7 @@ export default function BrandSettings({
             {/* Golden Rules */}
             {voiceCard.golden_rules && voiceCard.golden_rules.length > 0 && (
               <div className="space-y-1.5">
-                <p className="text-xs font-bold opacity-30 uppercase tracking-wide">Złote reguły</p>
+                <p className="text-xs font-bold text-hint uppercase tracking-wide">Złote reguły</p>
                 {voiceCard.golden_rules.map((r, i) => (
                   <div key={i} className="flex gap-2 text-xs">
                     <span className="text-holo-mint font-bold shrink-0">{i + 1}.</span>
@@ -596,7 +596,7 @@ export default function BrandSettings({
             {/* Taboos */}
             {voiceCard.taboos && voiceCard.taboos.length > 0 && (
               <div className="space-y-1.5">
-                <p className="text-xs font-bold opacity-30 uppercase tracking-wide">Tabu</p>
+                <p className="text-xs font-bold text-hint uppercase tracking-wide">Tabu</p>
                 <div className="flex flex-wrap gap-1.5">
                   {voiceCard.taboos.map((t, i) => (
                     <span key={i} className="text-xs px-2 py-0.5 rounded-full bg-red-500/10 text-red-400 border border-red-500/20">{t}</span>
@@ -610,7 +610,7 @@ export default function BrandSettings({
               <div className="grid grid-cols-2 gap-3">
                 {voiceCard.vocabulary?.signature_phrases?.length && (
                   <div className="space-y-1">
-                    <p className="text-xs font-bold opacity-30 uppercase tracking-wide">Charakterystyczne</p>
+                    <p className="text-xs font-bold text-hint uppercase tracking-wide">Charakterystyczne</p>
                     <div className="flex flex-wrap gap-1">
                       {voiceCard.vocabulary.signature_phrases.slice(0, 6).map((p, i) => (
                         <span key={i} className="text-xs px-1.5 py-0.5 rounded bg-holo-mint/10 text-holo-mint">&quot;{p}&quot;</span>
@@ -620,7 +620,7 @@ export default function BrandSettings({
                 )}
                 {voiceCard.vocabulary?.forbidden_words?.length && (
                   <div className="space-y-1">
-                    <p className="text-xs font-bold opacity-30 uppercase tracking-wide">Zabronione słowa</p>
+                    <p className="text-xs font-bold text-hint uppercase tracking-wide">Zabronione słowa</p>
                     <div className="flex flex-wrap gap-1">
                       {voiceCard.vocabulary.forbidden_words.slice(0, 6).map((w, i) => (
                         <span key={i} className="text-xs px-1.5 py-0.5 rounded bg-red-500/10 text-red-400 line-through">{w}</span>
@@ -648,13 +648,13 @@ export default function BrandSettings({
         {/* Input: no card yet (or regenerating) */}
         {!voiceCard && (
           <div className="space-y-3">
-            <div className="text-xs opacity-50 bg-teal-deep/5 rounded-xl p-3 space-y-1">
+            <div className="text-xs text-muted bg-teal-deep/5 rounded-xl p-3 space-y-1">
               <p className="font-bold">Jak to działa:</p>
               <p>Wklej 5-20 tekstów marki (posty social, maile, opisy kampanii). Każdy tekst oddziel linią <code className="bg-teal-deep/20 px-1 rounded">---</code></p>
               <p>LLM przeanalizuje i wygeneruje profil głosu: archetype, reguły, tabu, słownictwo.</p>
             </div>
             <textarea
-              className="w-full bg-offwhite dark:bg-teal-deep text-teal-deep dark:text-offwhite border border-teal-deep/15 dark:border-holo-mint/10 focus:border-holo-mint rounded-xl px-4 py-3 text-sm resize-none outline-none transition-colors font-mono"
+              className="w-full bg-offwhite dark:bg-teal-deep text-teal-deep dark:text-offwhite border border-teal-deep/15 dark:border-holo-mint/20 focus:border-holo-mint rounded-xl px-4 py-3 text-sm resize-none outline-none transition-colors font-mono"
               rows={10}
               placeholder={`Przykładowy post marki z Facebooka\n---\nInny post lub fragment maila\n---\nOpis kampanii lub treść ze strony www\n---\n(minimum 3 próbki, rekomendowane 10+)`}
               value={voiceSamples}
@@ -671,7 +671,7 @@ export default function BrandSettings({
               }
             </button>
             {voiceSamples.split('\n---\n').filter(s => s.trim()).length > 0 && (
-              <p className="text-xs opacity-40 text-center">{voiceSamples.split('\n---\n').filter(s => s.trim()).length} próbek · min. 3 wymagane</p>
+              <p className="text-xs text-muted text-center">{voiceSamples.split('\n---\n').filter(s => s.trim()).length} próbek · min. 3 wymagane</p>
             )}
           </div>
         )}
@@ -685,7 +685,7 @@ export default function BrandSettings({
               Reguły branżowe
               {industryRules && <span className="text-xs font-normal px-2 py-0.5 rounded-full bg-holo-mint/20 text-holo-mint">Aktywne</span>}
             </p>
-            <p className="text-xs opacity-40 mt-0.5">Klisze branżowe, typy ujęć foto, specyfika języka — generowane per branża</p>
+            <p className="text-xs text-muted mt-0.5">Klisze branżowe, typy ujęć foto, specyfika języka — generowane per branża</p>
           </div>
           {industryRules && (
             <div className="flex gap-1.5 shrink-0">
@@ -727,7 +727,7 @@ export default function BrandSettings({
             {/* Banned cliches */}
             {industryRules.banned_cliches?.length > 0 && (
               <div className="space-y-1.5">
-                <p className="text-xs font-bold opacity-30 uppercase tracking-wide">Zakazane klisze branżowe</p>
+                <p className="text-xs font-bold text-hint uppercase tracking-wide">Zakazane klisze branżowe</p>
                 <div className="flex flex-wrap gap-1.5">
                   {industryRules.banned_cliches.map((c, i) => (
                     <span key={i} className="text-xs px-2 py-0.5 rounded-full bg-red-500/10 text-red-400 border border-red-500/20">{c}</span>
@@ -739,7 +739,7 @@ export default function BrandSettings({
             {/* Banned marketing words */}
             {industryRules.banned_marketing_words?.length > 0 && (
               <div className="space-y-1.5">
-                <p className="text-xs font-bold opacity-30 uppercase tracking-wide">Zakazane słowa marketingowe</p>
+                <p className="text-xs font-bold text-hint uppercase tracking-wide">Zakazane słowa marketingowe</p>
                 <div className="flex flex-wrap gap-1.5">
                   {industryRules.banned_marketing_words.map((w, i) => (
                     <span key={i} className="text-xs px-1.5 py-0.5 rounded bg-red-500/10 text-red-400 line-through">{w}</span>
@@ -751,7 +751,7 @@ export default function BrandSettings({
             {/* Photo brief types */}
             {industryRules.photo_brief_types?.length > 0 && (
               <div className="space-y-1.5">
-                <p className="text-xs font-bold opacity-30 uppercase tracking-wide">Typy ujęć fotograficznych</p>
+                <p className="text-xs font-bold text-hint uppercase tracking-wide">Typy ujęć fotograficznych</p>
                 <div className="space-y-1">
                   {industryRules.photo_brief_types.map((t, i) => (
                     <div key={i} className="flex gap-2 text-xs">
@@ -766,14 +766,14 @@ export default function BrandSettings({
             {/* Language notes */}
             {industryRules.language_notes && (
               <div className="space-y-1.5">
-                <p className="text-xs font-bold opacity-30 uppercase tracking-wide">Specyfika języka</p>
+                <p className="text-xs font-bold text-hint uppercase tracking-wide">Specyfika języka</p>
                 <p className="text-xs opacity-60 leading-relaxed">{industryRules.language_notes}</p>
               </div>
             )}
 
             {/* Generated date */}
             {industryRules.generated_at && (
-              <p className="text-xs opacity-20">Wygenerowano: {new Date(industryRules.generated_at).toLocaleDateString('pl-PL')}</p>
+              <p className="text-xs text-hint">Wygenerowano: {new Date(industryRules.generated_at).toLocaleDateString('pl-PL')}</p>
             )}
           </div>
         )}
@@ -781,7 +781,7 @@ export default function BrandSettings({
         {/* No rules yet */}
         {!industryRules && (
           <div className="space-y-3">
-            <div className="text-xs opacity-50 bg-teal-deep/5 rounded-xl p-3 space-y-1">
+            <div className="text-xs text-muted bg-teal-deep/5 rounded-xl p-3 space-y-1">
               <p className="font-bold">Jak to działa:</p>
               <p>System analizuje branżę marki i generuje reguły copywriterskie: klisze do unikania, typy ujęć fotograficznych, specyfikę języka.</p>
               <p>Reguły są wstrzykiwane automatycznie do każdego generowania copy.</p>
@@ -798,7 +798,7 @@ export default function BrandSettings({
                 }
               </button>
             ) : (
-              <p className="text-xs opacity-30 text-center py-2">Najpierw wykonaj skan marki (Analiza marki), aby wygenerować reguły branżowe.</p>
+              <p className="text-xs text-hint text-center py-2">Najpierw wykonaj skan marki (Analiza marki), aby wygenerować reguły branżowe.</p>
             )}
           </div>
         )}
@@ -812,7 +812,7 @@ export default function BrandSettings({
               Reguły copywriterskie branżowe
               {industryCopyRules && <span className="text-xs font-normal px-2 py-0.5 rounded-full bg-holo-mint/20 text-holo-mint">Aktywne</span>}
             </p>
-            <p className="text-xs opacity-40 mt-0.5">Zakazane wzorce z pozytywnymi zamiennikami, zakazane słowa, specyfika języka</p>
+            <p className="text-xs text-muted mt-0.5">Zakazane wzorce z pozytywnymi zamiennikami, zakazane słowa, specyfika języka</p>
           </div>
           {industryCopyRules && (
             <div className="flex gap-1.5 shrink-0">
@@ -850,7 +850,7 @@ export default function BrandSettings({
             {/* Banned patterns with substitutes */}
             {industryCopyRules.banned_patterns?.length > 0 && (
               <div className="space-y-2">
-                <p className="text-xs font-bold opacity-30 uppercase tracking-wide">Zakazane wzorce → zamienniki</p>
+                <p className="text-xs font-bold text-hint uppercase tracking-wide">Zakazane wzorce → zamienniki</p>
                 <div className="space-y-2">
                   {industryCopyRules.banned_patterns.map((bp, i) => (
                     <div key={i} className="rounded-xl bg-teal-deep/5 dark:bg-teal-deep/30 p-2.5 space-y-1">
@@ -865,7 +865,7 @@ export default function BrandSettings({
             {/* Banned words */}
             {industryCopyRules.banned_words?.length > 0 && (
               <div className="space-y-1.5">
-                <p className="text-xs font-bold opacity-30 uppercase tracking-wide">Zakazane słowa</p>
+                <p className="text-xs font-bold text-hint uppercase tracking-wide">Zakazane słowa</p>
                 <div className="flex flex-wrap gap-1.5">
                   {industryCopyRules.banned_words.map((w, i) => (
                     <span key={i} className="text-xs px-1.5 py-0.5 rounded bg-red-500/10 text-red-400 line-through">{w}</span>
@@ -877,7 +877,7 @@ export default function BrandSettings({
             {/* Writing guideline */}
             {industryCopyRules.writing_guideline && (
               <div className="space-y-1.5">
-                <p className="text-xs font-bold opacity-30 uppercase tracking-wide">Jak pisać w tej branży</p>
+                <p className="text-xs font-bold text-hint uppercase tracking-wide">Jak pisać w tej branży</p>
                 <p className="text-xs opacity-60 leading-relaxed">{industryCopyRules.writing_guideline}</p>
               </div>
             )}
@@ -886,7 +886,7 @@ export default function BrandSettings({
 
         {/* Empty state */}
         {!industryCopyRules && (
-          <div className="text-xs opacity-50 bg-teal-deep/5 rounded-xl p-3 space-y-1">
+          <div className="text-xs text-muted bg-teal-deep/5 rounded-xl p-3 space-y-1">
             <p className="font-bold">Czym się różni od &quot;Reguł branżowych&quot;?</p>
             <p>Reguły branżowe wyżej są auto-generowane (klisze, typy zdjęć). Ta sekcja pozwala ręcznie zdefiniować zakazane wzorce copywriterskie z konkretnymi zamiennikami — lepszą kontrolę nad jakością copy.</p>
             <p className="mt-2">Wklej JSON przez &quot;Edytuj JSON&quot; lub użyj API <code className="bg-teal-deep/10 px-1 rounded">PATCH /api/brand/industry-copy-rules</code></p>
@@ -898,7 +898,7 @@ export default function BrandSettings({
       <div className="rounded-2xl border-2 border-red-500/30 bg-red-500/5 p-4 space-y-2">
         <div>
           <p className="text-sm font-bold text-red-400">⚠️ Zasady obowiązkowe (Do&apos;s &amp; Don&apos;ts)</p>
-          <p className="text-xs opacity-50 mt-0.5">Każda zasada w osobnej linii. Gemini traktuje je jako absolutne ograniczenia.</p>
+          <p className="text-xs text-muted mt-0.5">Każda zasada w osobnej linii. Gemini traktuje je jako absolutne ograniczenia.</p>
         </div>
         <textarea
           className="w-full bg-offwhite dark:bg-teal-deep text-teal-deep dark:text-offwhite border border-red-500/20 rounded-xl px-4 py-3 text-sm resize-none focus:border-red-400 outline-none font-mono transition-colors"

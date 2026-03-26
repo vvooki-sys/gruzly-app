@@ -59,7 +59,7 @@ export default function StepLogo({ project, assets, onAssetsUpdate, onProjectUpd
     <div className="space-y-4">
       <div>
         <h2 className="text-lg font-black">🏷 Logo marki</h2>
-        <p className="text-sm opacity-50 mt-1">
+        <p className="text-sm text-muted mt-1">
           Wgraj logo w SVG (najlepiej) lub PNG/WebP. System wygeneruje warianty na jasne i ciemne tło.
         </p>
       </div>
@@ -74,7 +74,7 @@ export default function StepLogo({ project, assets, onAssetsUpdate, onProjectUpd
                 <div className="h-20 rounded-xl bg-white border border-gray-200 flex items-center justify-center p-3">
                   <img src={lightLogo.url} alt="Jasne tło" className="max-h-full max-w-full object-contain" />
                 </div>
-                <p className="text-[10px] text-center opacity-40">Na jasne tło</p>
+                <p className="text-xs text-center text-muted">Na jasne tło</p>
               </div>
             )}
             {darkLogo && (
@@ -82,12 +82,12 @@ export default function StepLogo({ project, assets, onAssetsUpdate, onProjectUpd
                 <div className="h-20 rounded-xl bg-gray-900 border border-gray-700 flex items-center justify-center p-3">
                   <img src={darkLogo.url} alt="Ciemne tło" className="max-h-full max-w-full object-contain" />
                 </div>
-                <p className="text-[10px] text-center opacity-40">Na ciemne tło</p>
+                <p className="text-xs text-center text-muted">Na ciemne tło</p>
               </div>
             )}
           </div>
           {svgAsset && (
-            <p className="text-[10px] opacity-30">Źródło: {svgAsset.filename}</p>
+            <p className="text-xs text-hint">Źródło: {svgAsset.filename}</p>
           )}
           {autoInverted === false && !darkLogo && (
             <p className="text-xs text-holo-yellow">
@@ -98,7 +98,7 @@ export default function StepLogo({ project, assets, onAssetsUpdate, onProjectUpd
       )}
 
       {/* Upload area */}
-      <div className="rounded-xl border border-teal-deep/10 dark:border-holo-mint/10 bg-white dark:bg-teal-mid p-4 space-y-3">
+      <div className="rounded-xl border border-teal-deep/10 dark:border-holo-mint/20 bg-white dark:bg-teal-mid p-4 space-y-3">
         <input
           ref={fileRef}
           type="file"
@@ -118,7 +118,7 @@ export default function StepLogo({ project, assets, onAssetsUpdate, onProjectUpd
               <p className="text-xs font-bold opacity-50 group-hover:opacity-80 transition-opacity">
                 {lightLogo || darkLogo ? 'Wgraj nowe logo' : 'Wgraj logo'}
               </p>
-              <p className="text-[10px] opacity-30">SVG, PNG lub WebP</p>
+              <p className="text-xs text-hint">SVG, PNG lub WebP</p>
             </div>
           </button>
         ) : (
@@ -142,7 +142,7 @@ export default function StepLogo({ project, assets, onAssetsUpdate, onProjectUpd
                 className={`h-20 rounded-xl border-2 transition-all flex flex-col items-center justify-center gap-1 ${
                   selectedBg === 'light'
                     ? 'border-holo-mint bg-white shadow-md'
-                    : 'border-teal-deep/10 dark:border-holo-mint/10 bg-white hover:border-holo-mint/40'
+                    : 'border-teal-deep/10 dark:border-holo-mint/20 bg-white hover:border-holo-mint/40'
                 }`}
               >
                 <div className="w-8 h-8 rounded-lg bg-gray-100 border border-gray-200 flex items-center justify-center">
@@ -156,7 +156,7 @@ export default function StepLogo({ project, assets, onAssetsUpdate, onProjectUpd
                 className={`h-20 rounded-xl border-2 transition-all flex flex-col items-center justify-center gap-1 ${
                   selectedBg === 'dark'
                     ? 'border-holo-mint bg-gray-900 shadow-md'
-                    : 'border-teal-deep/10 dark:border-holo-mint/10 bg-gray-900 hover:border-holo-mint/40'
+                    : 'border-teal-deep/10 dark:border-holo-mint/20 bg-gray-900 hover:border-holo-mint/40'
                 }`}
               >
                 <div className="w-8 h-8 rounded-lg bg-gray-800 border border-gray-600 flex items-center justify-center">
@@ -184,7 +184,7 @@ export default function StepLogo({ project, assets, onAssetsUpdate, onProjectUpd
       </div>
 
       <div className="bg-holo-mint/5 border border-holo-mint/10 rounded-xl px-3 py-2">
-        <p className="text-xs opacity-50">
+        <p className="text-xs text-muted">
           💡 System automatycznie skonwertuje SVG do PNG (na potrzeby AI). Jeśli logo jest jednokolorowe — spróbuje też stworzyć wariant na drugie tło przez inwersję kolorów.
         </p>
       </div>

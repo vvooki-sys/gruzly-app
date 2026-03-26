@@ -231,15 +231,15 @@ export default function StepBrandScan({
     <div className="space-y-4">
       <div>
         <h2 className="text-lg font-black">🌐 Brand Scan</h2>
-        <p className="text-sm opacity-50 mt-1">
+        <p className="text-sm text-muted mt-1">
           Podaj adres www i/lub wgraj brandbook PDF. AI wyciągnie kolory, fonty, styl i więcej.
           Jeśli podasz oba — brandbook ma priorytet przy rozbieżnościach.
         </p>
       </div>
 
       {/* URL scan */}
-      <div className="rounded-xl border border-teal-deep/10 dark:border-holo-mint/10 bg-white dark:bg-teal-mid p-4 space-y-3">
-        <p className="text-xs font-bold opacity-50 uppercase tracking-wide">Strona internetowa</p>
+      <div className="rounded-xl border border-teal-deep/10 dark:border-holo-mint/20 bg-white dark:bg-teal-mid p-4 space-y-3">
+        <p className="text-xs font-bold text-muted uppercase tracking-wide">Strona internetowa</p>
         <div className="flex gap-2">
           <input
             type="url"
@@ -247,7 +247,7 @@ export default function StepBrandScan({
             value={url}
             onChange={e => setUrl(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && scanBrand()}
-            className="flex-1 bg-offwhite dark:bg-teal-deep rounded-xl px-3 py-2 text-sm border border-teal-deep/15 dark:border-holo-mint/10 focus:border-holo-mint outline-none transition-colors"
+            className="flex-1 bg-offwhite dark:bg-teal-deep rounded-xl px-3 py-2 text-sm border border-teal-deep/15 dark:border-holo-mint/20 focus:border-holo-mint outline-none transition-colors"
             disabled={scanning}
           />
           <button
@@ -282,9 +282,9 @@ export default function StepBrandScan({
       </div>
 
       {/* Brandbook */}
-      <div className="rounded-xl border border-teal-deep/10 dark:border-holo-mint/10 bg-white dark:bg-teal-mid p-4 space-y-3">
+      <div className="rounded-xl border border-teal-deep/10 dark:border-holo-mint/20 bg-white dark:bg-teal-mid p-4 space-y-3">
         <div className="flex items-center justify-between">
-          <p className="text-xs font-bold opacity-50 uppercase tracking-wide">Brandbook (PDF)</p>
+          <p className="text-xs font-bold text-muted uppercase tracking-wide">Brandbook (PDF)</p>
           <label className="cursor-pointer h-7 px-3 rounded-full border border-teal-deep/15 dark:border-holo-mint/15 text-xs font-semibold flex items-center gap-1.5 hover:border-holo-mint/50 transition-colors opacity-70 hover:opacity-100">
             <Upload className="h-3 w-3" />
             {brandbookAsset ? 'Zmień' : 'Wgraj PDF'}
@@ -308,13 +308,13 @@ export default function StepBrandScan({
             </button>
           </div>
         ) : (
-          <p className="text-xs opacity-30">Opcjonalnie — AI wyciągnie z brandbooka kolory, fonty i zasady</p>
+          <p className="text-xs text-hint">Opcjonalnie — AI wyciągnie z brandbooka kolory, fonty i zasady</p>
         )}
       </div>
 
       {!url && !brandbookAsset && !scanResult && (
         <div className="bg-holo-mint/5 border border-holo-mint/10 rounded-xl px-3 py-2">
-          <p className="text-xs opacity-50">
+          <p className="text-xs text-muted">
             💡 Podaj przynajmniej jedno źródło (www lub brandbook) żeby AI mogło zbudować bazę marki.
             Możesz też pominąć ten krok i uzupełnić ręcznie.
           </p>

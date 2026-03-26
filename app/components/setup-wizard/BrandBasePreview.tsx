@@ -21,11 +21,11 @@ export default function BrandBasePreview({ sections, logos }: BrandBasePreviewPr
 
   return (
     <div className="space-y-3">
-      <p className="text-xs font-bold opacity-30 uppercase tracking-wide">Analiza marki</p>
+      <p className="text-xs font-bold text-hint uppercase tracking-wide">Analiza marki</p>
 
       {/* Logo preview */}
       {logos.length > 0 && (
-        <div className="rounded-xl border border-teal-deep/10 dark:border-holo-mint/10 p-3 space-y-2">
+        <div className="rounded-xl border border-teal-deep/10 dark:border-holo-mint/20 p-3 space-y-2">
           <p className="text-xs font-bold flex items-center gap-1.5">
             <span>🏷</span> Logo
           </p>
@@ -46,7 +46,7 @@ export default function BrandBasePreview({ sections, logos }: BrandBasePreviewPr
 
       {/* Sections */}
       {sections.length === 0 && logos.length === 0 && (
-        <div className="text-center py-8 opacity-30">
+        <div className="text-center py-8 text-hint">
           <p className="text-3xl mb-2">🧱</p>
           <p className="text-xs">Analiza marki jest pusta</p>
           <p className="text-xs opacity-60">Przejdź przez kolejne kroki żeby ją wypełnić</p>
@@ -56,20 +56,20 @@ export default function BrandBasePreview({ sections, logos }: BrandBasePreviewPr
       {sections.map(section => (
         <div
           key={section.id}
-          className="rounded-xl border border-teal-deep/10 dark:border-holo-mint/10 p-3 space-y-1 animate-in fade-in duration-300"
+          className="rounded-xl border border-teal-deep/10 dark:border-holo-mint/20 p-3 space-y-1 animate-in fade-in duration-300"
         >
           <div className="flex items-center justify-between">
             <p className="text-xs font-bold flex items-center gap-1.5">
               <span>{section.icon}</span> {section.title}
             </p>
-            <span className="text-[10px] opacity-30 uppercase">{section.source}</span>
+            <span className="text-xs text-hint uppercase">{section.source}</span>
           </div>
           <p className="text-xs opacity-60 whitespace-pre-line line-clamp-4">{section.content}</p>
         </div>
       ))}
 
       {(sections.length > 0 || logos.length > 0) && (
-        <p className="text-[10px] text-center opacity-20">
+        <p className="text-xs text-center text-hint">
           {sections.length} {sections.length === 1 ? 'sekcja' : sections.length < 5 ? 'sekcje' : 'sekcji'}
           {logos.length > 0 && ` + ${logos.length} logo`}
         </p>

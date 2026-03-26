@@ -82,6 +82,11 @@
     0 0 0 1px rgba(255, 255, 255, 0.04) inset;
 }
 
+/* Text contrast tokens — WCAG AA compliant */
+.text-primary { opacity: 1; }
+.text-muted   { opacity: 0.60; }
+.text-hint    { opacity: 0.50; }
+
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }

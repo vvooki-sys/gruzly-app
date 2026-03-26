@@ -111,7 +111,7 @@ export default function Gallery({
 
       {/* Header */}
       <div className="border-b border-teal-deep/10 dark:border-holo-mint/10 bg-offwhite/85 dark:bg-teal-deep/85 backdrop-blur-sm px-4 sm:px-6 py-3 flex items-center gap-3 shrink-0">
-        <h2 className="font-black text-base flex-1">Galeria <span className="font-normal opacity-40 text-sm">({tiles.length})</span></h2>
+        <h2 className="font-black text-base flex-1">Galeria <span className="font-normal text-muted text-sm">({tiles.length})</span></h2>
         <button
           onClick={onClose}
           className="w-9 h-9 rounded-full flex items-center justify-center border border-teal-deep/15 dark:border-holo-mint/15 hover:border-holo-mint/50 transition-colors opacity-50 hover:opacity-100"
@@ -124,7 +124,7 @@ export default function Gallery({
       <div className="px-4 sm:px-6 py-3 flex flex-wrap items-center gap-2 border-b border-teal-deep/5 dark:border-holo-mint/5 shrink-0">
         {/* Search */}
         <div className="relative flex-1 min-w-[200px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 opacity-30" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-hint" />
           <input
             type="text"
             value={search}
@@ -136,7 +136,7 @@ export default function Gallery({
 
         {/* Sort */}
         <div className="flex items-center gap-1">
-          <ArrowUpDown className="h-3.5 w-3.5 opacity-30" />
+          <ArrowUpDown className="h-3.5 w-3.5 text-hint" />
           {(['newest', 'oldest', 'format'] as const).map(s => (
             <button
               key={s}
@@ -144,7 +144,7 @@ export default function Gallery({
               className={`px-2.5 py-1.5 rounded-full text-xs font-medium transition-all ${
                 sort === s
                   ? 'bg-teal-deep/10 dark:bg-holo-mint/10 text-teal-deep dark:text-holo-mint font-semibold'
-                  : 'opacity-40 hover:opacity-70'
+                  : 'text-muted hover:opacity-100'
               }`}
             >
               {{ newest: 'Najnowsze', oldest: 'Najstarsze', format: 'Format' }[s]}
@@ -155,11 +155,11 @@ export default function Gallery({
         {/* Format filter */}
         {formats.length > 1 && (
           <div className="flex items-center gap-1">
-            <SlidersHorizontal className="h-3.5 w-3.5 opacity-30" />
+            <SlidersHorizontal className="h-3.5 w-3.5 text-hint" />
             <button
               onClick={() => setFilterFormat(null)}
               className={`px-2.5 py-1.5 rounded-full text-xs font-medium transition-all ${
-                !filterFormat ? 'bg-teal-deep/10 dark:bg-holo-mint/10 font-semibold' : 'opacity-40 hover:opacity-70'
+                !filterFormat ? 'bg-teal-deep/10 dark:bg-holo-mint/10 font-semibold' : 'text-muted hover:opacity-100'
               }`}
             >
               Wszystkie
@@ -169,7 +169,7 @@ export default function Gallery({
                 key={f}
                 onClick={() => setFilterFormat(f === filterFormat ? null : f)}
                 className={`px-2.5 py-1.5 rounded-full text-xs font-medium transition-all ${
-                  filterFormat === f ? 'bg-teal-deep/10 dark:bg-holo-mint/10 font-semibold' : 'opacity-40 hover:opacity-70'
+                  filterFormat === f ? 'bg-teal-deep/10 dark:bg-holo-mint/10 font-semibold' : 'text-muted hover:opacity-100'
                 }`}
               >
                 {FORMAT_LABELS[f] ?? f}
@@ -182,7 +182,7 @@ export default function Gallery({
       {/* Grid */}
       <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4">
         {tiles.length === 0 ? (
-          <div className="text-center py-20 opacity-30 text-sm">
+          <div className="text-center py-20 text-hint text-sm">
             {search ? 'Brak wyników dla tego wyszukiwania' : 'Brak grafik w historii'}
           </div>
         ) : (
@@ -206,7 +206,7 @@ export default function Gallery({
                   {/* Overlay on hover */}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-3">
                     <p className="text-white text-xs font-semibold truncate mb-1">{headline}</p>
-                    <div className="flex items-center gap-1.5 text-white/60 text-[10px]">
+                    <div className="flex items-center gap-1.5 text-white/60 text-xs">
                       <span>{FORMAT_LABELS[baseFormat] ?? baseFormat}</span>
                       <span>·</span>
                       <span>{new Date(tile.generation.created_at).toLocaleDateString('pl-PL')}</span>

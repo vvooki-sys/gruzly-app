@@ -13,7 +13,7 @@ interface AssetManagerProps {
 }
 
 const inputCls =
-  'w-full bg-offwhite dark:bg-teal-deep text-teal-deep dark:text-offwhite rounded-xl px-4 py-3 text-sm border border-teal-deep/15 dark:border-holo-mint/10 focus:border-holo-mint outline-none transition-colors';
+  'w-full bg-offwhite dark:bg-teal-deep text-teal-deep dark:text-offwhite rounded-xl px-4 py-3 text-sm border border-teal-deep/15 dark:border-holo-mint/20 focus:border-holo-mint outline-none transition-colors';
 
 export default function AssetManager({
   project,
@@ -200,16 +200,16 @@ export default function AssetManager({
         const logos = assets.filter((a) => a.type === 'logo');
         return (
           <div className="panel rounded-2xl p-4 space-y-3">
-            <p className="text-xs font-bold opacity-40 uppercase tracking-wide">
+            <p className="text-xs font-bold text-muted uppercase tracking-wide">
               Logo ({logos.length})
             </p>
             {logos.length === 0 && (
-              <p className="text-xs opacity-30">Brak logo — dodaj wariant</p>
+              <p className="text-xs text-hint">Brak logo — dodaj wariant</p>
             )}
             <div className="space-y-2">
               {logos.map((a) => (
                 <div key={a.id} className="flex items-center gap-3">
-                  <div className="w-16 h-10 rounded-lg bg-teal-deep/5 dark:bg-teal-deep/30 border border-teal-deep/10 dark:border-holo-mint/10 flex items-center justify-center overflow-hidden shrink-0">
+                  <div className="w-16 h-10 rounded-lg bg-teal-deep/5 dark:bg-teal-deep/30 border border-teal-deep/10 dark:border-holo-mint/20 flex items-center justify-center overflow-hidden shrink-0">
                     <img
                       src={a.url}
                       className="max-w-full max-h-full object-contain"
@@ -243,11 +243,11 @@ export default function AssetManager({
         const elements = assets.filter((a) => a.type === 'brand-element');
         return (
           <div className="panel rounded-2xl p-4 space-y-3">
-            <p className="text-xs font-bold opacity-40 uppercase tracking-wide">
+            <p className="text-xs font-bold text-muted uppercase tracking-wide">
               Elementy graficzne ({elements.length})
             </p>
             {elements.length === 0 && (
-              <p className="text-xs opacity-30">
+              <p className="text-xs text-hint">
                 Brak elementów — dodaj bloba, sticker, ikonę, teksturę…
               </p>
             )}
@@ -255,9 +255,9 @@ export default function AssetManager({
               {elements.map((a) => (
                 <div
                   key={a.id}
-                  className="flex items-center gap-2 p-2 rounded-xl border border-teal-deep/10 dark:border-holo-mint/10"
+                  className="flex items-center gap-2 p-2 rounded-xl border border-teal-deep/10 dark:border-holo-mint/20"
                 >
-                  <div className="w-12 h-12 rounded-lg bg-teal-deep/5 dark:bg-teal-deep/30 border border-teal-deep/10 dark:border-holo-mint/10 flex items-center justify-center overflow-hidden shrink-0">
+                  <div className="w-12 h-12 rounded-lg bg-teal-deep/5 dark:bg-teal-deep/30 border border-teal-deep/10 dark:border-holo-mint/20 flex items-center justify-center overflow-hidden shrink-0">
                     <img
                       src={a.url}
                       className="max-w-full max-h-full object-contain"
@@ -267,7 +267,7 @@ export default function AssetManager({
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-semibold truncate">{a.filename}</p>
                     {a.description && (
-                      <p className="text-xs opacity-40 truncate">{a.description}</p>
+                      <p className="text-xs text-muted truncate">{a.description}</p>
                     )}
                   </div>
                   <button
@@ -288,11 +288,11 @@ export default function AssetManager({
         const photos = assets.filter((a) => a.type === 'photo');
         return (
           <div className="panel rounded-2xl p-4 space-y-3">
-            <p className="text-xs font-bold opacity-40 uppercase tracking-wide">
+            <p className="text-xs font-bold text-muted uppercase tracking-wide">
               Zdjęcia / Packshoty ({photos.length})
             </p>
             {photos.length === 0 && (
-              <p className="text-xs opacity-30">
+              <p className="text-xs text-hint">
                 Brak zdjęć — dodaj packshot, lifestyle photo…
               </p>
             )}
@@ -300,7 +300,7 @@ export default function AssetManager({
               {photos.map((a) => (
                 <div
                   key={a.id}
-                  className="relative aspect-square rounded-xl overflow-hidden border border-teal-deep/10 dark:border-holo-mint/10 group"
+                  className="relative aspect-square rounded-xl overflow-hidden border border-teal-deep/10 dark:border-holo-mint/20 group"
                 >
                   <img
                     src={a.url}
@@ -331,7 +331,7 @@ export default function AssetManager({
         const refs = assets.filter((a) => a.type === 'reference');
         return (
           <div className="panel rounded-2xl p-4 space-y-3">
-            <p className="text-xs font-bold opacity-40 uppercase tracking-wide">
+            <p className="text-xs font-bold text-muted uppercase tracking-wide">
               Brandbook & Referencje
             </p>
             {brandbook ? (
@@ -339,7 +339,7 @@ export default function AssetManager({
                 <span className="text-2xl">📄</span>
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-semibold truncate">{brandbook.filename}</p>
-                  <p className="text-xs opacity-40">Brandbook PDF</p>
+                  <p className="text-xs text-muted">Brandbook PDF</p>
                 </div>
                 <button
                   className="w-8 h-8 rounded-full border border-red-500/20 flex items-center justify-center opacity-40 hover:opacity-100 hover:text-red-400 transition-all"
@@ -349,18 +349,18 @@ export default function AssetManager({
                 </button>
               </div>
             ) : (
-              <p className="text-xs opacity-30">
+              <p className="text-xs text-hint">
                 Brak brandbooka — użyj Kontekst marki do analizy grafik referencyjnych
               </p>
             )}
             {refs.length > 0 && (
               <div>
-                <p className="text-xs opacity-40 mb-2">Referencje ({refs.length}/5)</p>
+                <p className="text-xs text-muted mb-2">Referencje ({refs.length}/5)</p>
                 <div className="grid grid-cols-5 gap-1.5">
                   {refs.map((a) => (
                     <div
                       key={a.id}
-                      className={`relative aspect-square rounded-lg overflow-hidden border group ${a.is_featured ? 'border-holo-mint' : 'border-teal-deep/10 dark:border-holo-mint/10'}`}
+                      className={`relative aspect-square rounded-lg overflow-hidden border group ${a.is_featured ? 'border-holo-mint' : 'border-teal-deep/10 dark:border-holo-mint/20'}`}
                     >
                       <img
                         src={a.url}

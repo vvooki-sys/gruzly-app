@@ -107,7 +107,7 @@ export default function StepVoice({ project, sections, onSectionUpdate, showToas
     <div className="space-y-4">
       <div>
         <h2 className="text-lg font-black">🗣 Ton głosu</h2>
-        <p className="text-sm opacity-50 mt-1">
+        <p className="text-sm text-muted mt-1">
           Jak marka mówi? Wybierz sposób określenia tonu głosu.
         </p>
       </div>
@@ -115,7 +115,7 @@ export default function StepVoice({ project, sections, onSectionUpdate, showToas
       {existingTov && (
         <div className="rounded-xl border border-holo-mint/20 bg-holo-mint/5 p-3">
           <p className="text-xs font-bold text-holo-mint mb-1">✓ Ton głosu już ustalony</p>
-          <p className="text-xs opacity-60 whitespace-pre-line line-clamp-4">{existingTov.content}</p>
+          <p className="text-xs text-muted whitespace-pre-line line-clamp-4">{existingTov.content}</p>
         </div>
       )}
 
@@ -133,11 +133,11 @@ export default function StepVoice({ project, sections, onSectionUpdate, showToas
             className={`flex-1 rounded-xl border p-3 text-left transition-all ${
               mode === m.id
                 ? 'border-holo-mint/50 bg-holo-mint/5'
-                : 'border-teal-deep/10 dark:border-holo-mint/10 opacity-50 hover:opacity-80'
+                : 'border-teal-deep/10 dark:border-holo-mint/20 opacity-50 hover:opacity-80'
             } ${'disabled' in m && m.disabled ? 'opacity-20 cursor-not-allowed' : ''}`}
           >
             <p className="text-xs font-bold">{m.label}</p>
-            <p className="text-[10px] opacity-50 mt-0.5">{m.desc}</p>
+            <p className="text-xs text-muted mt-0.5">{m.desc}</p>
           </button>
         ))}
       </div>
@@ -146,7 +146,7 @@ export default function StepVoice({ project, sections, onSectionUpdate, showToas
       {mode === 'manual' && (
         <div className="space-y-2">
           <textarea
-            className="w-full bg-offwhite dark:bg-teal-deep rounded-xl px-3 py-2.5 text-sm border border-teal-deep/15 dark:border-holo-mint/10 focus:border-holo-mint outline-none transition-colors resize-none"
+            className="w-full bg-offwhite dark:bg-teal-deep rounded-xl px-3 py-2.5 text-sm border border-teal-deep/15 dark:border-holo-mint/20 focus:border-holo-mint outline-none transition-colors resize-none"
             rows={5}
             placeholder="Opisz ton głosu marki, np.: Marka komunikuje się bezpośrednio, ciepło, z humorem. Używa krótkich zdań. Unika korporacyjnego żargonu. Zwraca się per Ty..."
             value={manualTov}
@@ -165,14 +165,14 @@ export default function StepVoice({ project, sections, onSectionUpdate, showToas
       {mode === 'samples' && (
         <div className="space-y-2">
           <textarea
-            className="w-full bg-offwhite dark:bg-teal-deep rounded-xl px-3 py-2.5 text-sm border border-teal-deep/15 dark:border-holo-mint/10 focus:border-holo-mint outline-none transition-colors resize-none font-mono"
+            className="w-full bg-offwhite dark:bg-teal-deep rounded-xl px-3 py-2.5 text-sm border border-teal-deep/15 dark:border-holo-mint/20 focus:border-holo-mint outline-none transition-colors resize-none font-mono"
             rows={8}
             placeholder={`Wklej minimum 3 próbki tekstu marki oddzielone linią ---\n\nPrzykładowy post na FB o nowym produkcie...\n---\nKolejny post z Instagrama...\n---\nTrzeci tekst ze strony www...`}
             value={samples}
             onChange={e => setSamples(e.target.value)}
           />
           <div className="flex items-center justify-between">
-            <p className="text-[10px] opacity-30">
+            <p className="text-xs text-hint">
               {samples.split('\n---\n').filter(s => s.trim()).length} / 3 próbek (minimum)
             </p>
             <button
@@ -191,7 +191,7 @@ export default function StepVoice({ project, sections, onSectionUpdate, showToas
 
       {mode === 'auto' && (
         <div className="space-y-2">
-          <p className="text-xs opacity-50">
+          <p className="text-xs text-muted">
             AI wygeneruje ton głosu na podstawie danych zebranych w Brand Scan
             ({sections.filter(s => s.id !== 'ton_glosu').length} sekcji dostępnych).
           </p>

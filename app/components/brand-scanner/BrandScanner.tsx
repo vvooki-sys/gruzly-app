@@ -99,7 +99,7 @@ function ScanProgress({ isScanning, socialLinks }: {
       <div className="flex gap-1">
         {SCAN_STEPS.map((s, i) => (
           <div key={s.id} className={`flex-1 h-0.5 rounded-full transition-all duration-500 ${
-            i < step ? 'opacity-100' : i === step ? 'opacity-70 animate-pulse' : 'opacity-20'
+            i < step ? 'opacity-100' : i === step ? 'opacity-70 animate-pulse' : 'text-hint'
           }`} style={{ background: i <= step ? '#00a589' : 'rgba(255,255,255,0.3)' }} title={s.label} />
         ))}
       </div>
@@ -379,13 +379,13 @@ export default function BrandScanner({
       <h2 className="font-black text-base">Kontekst marki</h2>
 
       {/* ANALIZA MARKI -- trigger */}
-      <div className="rounded-2xl border border-teal-deep/10 dark:border-holo-mint/10 bg-white dark:bg-teal-mid p-4 space-y-3">
+      <div className="rounded-2xl border border-teal-deep/12 dark:border-holo-mint/20 bg-white dark:bg-teal-mid p-4 space-y-3">
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <div>
             <p className="text-sm font-bold">
               {brandSections.length > 0 ? `✅ Analiza marki — ${brandSections.length} sekcji` : '🔍 Analiza marki'}
             </p>
-            <p className="text-xs opacity-40 mt-0.5">Wgraj brandbook lub analizuj z grafik referencyjnych</p>
+            <p className="text-xs text-muted mt-0.5">Wgraj brandbook lub analizuj z grafik referencyjnych</p>
           </div>
           <button
             onClick={analyzeBrand}
@@ -407,9 +407,9 @@ export default function BrandScanner({
         )}
 
         {/* Brandbook */}
-        <div className="border-t border-teal-deep/10 dark:border-holo-mint/10 pt-3">
+        <div className="border-t border-teal-deep/12 dark:border-holo-mint/20 pt-3">
           <div className="flex items-center justify-between gap-2 mb-2">
-            <p className="text-xs font-semibold opacity-50 uppercase tracking-wide">Brandbook (PDF)</p>
+            <p className="text-xs font-semibold text-muted uppercase tracking-wide">Brandbook (PDF)</p>
             <label className="cursor-pointer h-7 px-3 rounded-full border border-teal-deep/15 dark:border-holo-mint/15 text-xs font-semibold flex items-center gap-1.5 hover:border-holo-mint/50 transition-colors opacity-70 hover:opacity-100 shrink-0">
               <Upload className="h-3 w-3" />
               {brandbookAsset ? 'Zmień' : 'Wgraj PDF'}
@@ -431,16 +431,16 @@ export default function BrandScanner({
               </div>
             </div>
           ) : (
-            <p className="text-xs opacity-30">Wgraj brandbook — AI wyciągnie z niego kolory, fonty i zasady automatycznie</p>
+            <p className="text-xs text-hint">Wgraj brandbook — AI wyciągnie z niego kolory, fonty i zasady automatycznie</p>
           )}
         </div>
       </div>
 
       {/* BRAND SCAN */}
-      <div className="rounded-2xl border border-teal-deep/10 dark:border-holo-mint/10 bg-white dark:bg-teal-mid p-4 space-y-3">
+      <div className="rounded-2xl border border-teal-deep/12 dark:border-holo-mint/20 bg-white dark:bg-teal-mid p-4 space-y-3">
         <div>
           <p className="text-sm font-bold">🌐 Brand Scan</p>
-          <p className="text-xs opacity-40 mt-0.5">Podaj URL strony — AI automatycznie wyciągnie Brand DNA</p>
+          <p className="text-xs text-muted mt-0.5">Podaj URL strony — AI automatycznie wyciągnie Brand DNA</p>
         </div>
         <div className="flex gap-2">
           <input
@@ -449,7 +449,7 @@ export default function BrandScanner({
             value={brandScanUrl}
             onChange={e => setBrandScanUrl(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && scanBrand()}
-            className="flex-1 bg-offwhite dark:bg-teal-deep text-teal-deep dark:text-offwhite border border-teal-deep/15 dark:border-holo-mint/10 focus:border-holo-mint rounded-xl px-3 py-2 text-sm outline-none transition-colors"
+            className="flex-1 bg-offwhite dark:bg-teal-deep text-teal-deep dark:text-offwhite border border-teal-deep/15 dark:border-holo-mint/20 focus:border-holo-mint rounded-xl px-3 py-2 text-sm outline-none transition-colors"
             disabled={brandScanLoading}
           />
           <button
@@ -474,31 +474,31 @@ export default function BrandScanner({
         )}
 
         {brandScanResult && (
-          <div className="border-t border-teal-deep/10 dark:border-holo-mint/10 pt-3 space-y-3">
+          <div className="border-t border-teal-deep/12 dark:border-holo-mint/20 pt-3 space-y-3">
             {/* Colors */}
             {(brandScanResult.primaryColor || brandScanResult.secondaryColor || brandScanResult.accentColor) && (
               <div className="space-y-1">
-                <p className="text-xs font-semibold opacity-40 uppercase tracking-wide">Kolory</p>
+                <p className="text-xs font-semibold text-muted uppercase tracking-wide">Kolory</p>
                 <div className="flex gap-2 flex-wrap">
                   {brandScanResult.primaryColor && (
                     <div className="flex items-center gap-1.5">
                       <div className="h-5 w-5 rounded-full border border-white/20 shrink-0" style={{ backgroundColor: brandScanResult.primaryColor }} />
                       <span className="text-xs font-mono opacity-60">{brandScanResult.primaryColor}</span>
-                      <span className="text-xs opacity-30">główny</span>
+                      <span className="text-xs text-hint">główny</span>
                     </div>
                   )}
                   {brandScanResult.secondaryColor && (
                     <div className="flex items-center gap-1.5">
                       <div className="h-5 w-5 rounded-full border border-white/20 shrink-0" style={{ backgroundColor: brandScanResult.secondaryColor }} />
                       <span className="text-xs font-mono opacity-60">{brandScanResult.secondaryColor}</span>
-                      <span className="text-xs opacity-30">dodatkowy</span>
+                      <span className="text-xs text-hint">dodatkowy</span>
                     </div>
                   )}
                   {brandScanResult.accentColor && (
                     <div className="flex items-center gap-1.5">
                       <div className="h-5 w-5 rounded-full border border-white/20 shrink-0" style={{ backgroundColor: brandScanResult.accentColor }} />
                       <span className="text-xs font-mono opacity-60">{brandScanResult.accentColor}</span>
-                      <span className="text-xs opacity-30">akcent</span>
+                      <span className="text-xs text-hint">akcent</span>
                     </div>
                   )}
                 </div>
@@ -509,19 +509,19 @@ export default function BrandScanner({
             <div className="flex gap-3 flex-wrap">
               {brandScanResult.visualStyle && (
                 <div className="flex items-center gap-1.5">
-                  <span className="text-xs opacity-40">Styl:</span>
+                  <span className="text-xs text-muted">Styl:</span>
                   <span className="text-xs font-semibold bg-holo-mint/10 text-holo-mint px-2 py-0.5 rounded-full">{brandScanResult.visualStyle}</span>
                 </div>
               )}
               {brandScanResult.toneOfVoice && (
                 <div className="flex items-center gap-1.5">
-                  <span className="text-xs opacity-40">Ton:</span>
+                  <span className="text-xs text-muted">Ton:</span>
                   <span className="text-xs font-semibold bg-holo-peach/10 text-holo-peach px-2 py-0.5 rounded-full">{brandScanResult.toneOfVoice}</span>
                 </div>
               )}
               {brandScanResult.industry && (
                 <div className="flex items-center gap-1.5">
-                  <span className="text-xs opacity-40">Branża:</span>
+                  <span className="text-xs text-muted">Branża:</span>
                   <span className="text-xs font-semibold opacity-70">{brandScanResult.industry}</span>
                 </div>
               )}
@@ -530,13 +530,13 @@ export default function BrandScanner({
             {/* Fonts */}
             {(brandScanResult.headingFont || brandScanResult.bodyFont || brandScanResult.fonts?.length > 0) && (
               <div className="space-y-1">
-                <p className="text-xs font-semibold opacity-40 uppercase tracking-wide">Fonty</p>
+                <p className="text-xs font-semibold text-muted uppercase tracking-wide">Fonty</p>
                 <div className="flex gap-3 flex-wrap text-xs">
                   {brandScanResult.headingFont && (
-                    <span><span className="opacity-40">Nagłówki:</span> <span className="font-semibold">{brandScanResult.headingFont}</span></span>
+                    <span><span className="text-muted">Nagłówki:</span> <span className="font-semibold">{brandScanResult.headingFont}</span></span>
                   )}
                   {brandScanResult.bodyFont && brandScanResult.bodyFont !== brandScanResult.headingFont && (
-                    <span><span className="opacity-40">Treść:</span> <span className="font-semibold">{brandScanResult.bodyFont}</span></span>
+                    <span><span className="text-muted">Treść:</span> <span className="font-semibold">{brandScanResult.bodyFont}</span></span>
                   )}
                 </div>
               </div>
@@ -545,10 +545,10 @@ export default function BrandScanner({
             {/* Keywords */}
             {brandScanResult.brandKeywords?.length > 0 && (
               <div className="space-y-1">
-                <p className="text-xs font-semibold opacity-40 uppercase tracking-wide">Słowa kluczowe</p>
+                <p className="text-xs font-semibold text-muted uppercase tracking-wide">Słowa kluczowe</p>
                 <div className="flex gap-1.5 flex-wrap">
                   {brandScanResult.brandKeywords.map((kw: string, i: number) => (
-                    <span key={i} className="text-xs bg-teal-deep/5 dark:bg-teal-deep border border-teal-deep/10 dark:border-holo-mint/10 px-2 py-0.5 rounded-full">{kw}</span>
+                    <span key={i} className="text-xs bg-teal-deep/5 dark:bg-teal-deep border border-teal-deep/12 dark:border-holo-mint/20 px-2 py-0.5 rounded-full">{kw}</span>
                   ))}
                 </div>
               </div>
@@ -557,7 +557,7 @@ export default function BrandScanner({
             {/* Brand values */}
             {brandScanResult.brandValues?.length > 0 && (
               <div className="space-y-1">
-                <p className="text-xs font-semibold opacity-40 uppercase tracking-wide">Wartości marki</p>
+                <p className="text-xs font-semibold text-muted uppercase tracking-wide">Wartości marki</p>
                 <div className="flex gap-1.5 flex-wrap">
                   {brandScanResult.brandValues.map((v: string, i: number) => (
                     <span key={i} className="text-xs bg-holo-yellow/10 text-holo-yellow border border-holo-yellow/20 px-2 py-0.5 rounded-full">{v}</span>
@@ -571,13 +571,13 @@ export default function BrandScanner({
               <div className="grid grid-cols-2 gap-2">
                 {brandScanResult.targetAudience && (
                   <div className="bg-teal-deep/5 dark:bg-teal-deep rounded-xl px-3 py-2">
-                    <p className="text-xs opacity-40 mb-0.5">Grupa docelowa</p>
+                    <p className="text-xs text-muted mb-0.5">Grupa docelowa</p>
                     <p className="text-xs font-semibold">{brandScanResult.targetAudience}</p>
                   </div>
                 )}
                 {brandScanResult.photoStyle && (
                   <div className="bg-teal-deep/5 dark:bg-teal-deep rounded-xl px-3 py-2">
-                    <p className="text-xs opacity-40 mb-0.5">Styl zdjęć</p>
+                    <p className="text-xs text-muted mb-0.5">Styl zdjęć</p>
                     <p className="text-xs font-semibold">{brandScanResult.photoStyle}</p>
                   </div>
                 )}
@@ -587,10 +587,10 @@ export default function BrandScanner({
             {/* CTA examples */}
             {brandScanResult.ctaExamples?.length > 0 && (
               <div className="space-y-1">
-                <p className="text-xs font-semibold opacity-40 uppercase tracking-wide">Przykłady CTA</p>
+                <p className="text-xs font-semibold text-muted uppercase tracking-wide">Przykłady CTA</p>
                 <div className="flex gap-1.5 flex-wrap">
                   {brandScanResult.ctaExamples.map((cta: string, i: number) => (
-                    <span key={i} className="text-xs bg-teal-deep/5 dark:bg-teal-deep border border-teal-deep/10 dark:border-holo-mint/10 px-2 py-0.5 rounded-full italic opacity-70">&quot;{cta}&quot;</span>
+                    <span key={i} className="text-xs bg-teal-deep/5 dark:bg-teal-deep border border-teal-deep/12 dark:border-holo-mint/20 px-2 py-0.5 rounded-full italic opacity-70">&quot;{cta}&quot;</span>
                   ))}
                 </div>
               </div>
@@ -599,15 +599,15 @@ export default function BrandScanner({
             {/* Social media analysis */}
             {brandScanResult.socialMediaAnalysis && (
               <div className="bg-teal-deep/5 dark:bg-teal-deep rounded-xl px-3 py-2 space-y-1">
-                <p className="text-xs font-semibold opacity-40 uppercase tracking-wide">Social media</p>
+                <p className="text-xs font-semibold text-muted uppercase tracking-wide">Social media</p>
                 {brandScanResult.socialMediaAnalysis.tone && (
-                  <p className="text-xs"><span className="opacity-40">Ton: </span><span className="font-semibold">{brandScanResult.socialMediaAnalysis.tone}</span></p>
+                  <p className="text-xs"><span className="text-muted">Ton: </span><span className="font-semibold">{brandScanResult.socialMediaAnalysis.tone}</span></p>
                 )}
                 {brandScanResult.socialMediaAnalysis.languageStyle && (
                   <p className="text-xs opacity-60">{brandScanResult.socialMediaAnalysis.languageStyle}</p>
                 )}
                 {brandScanResult.socialMediaAnalysis.commonTopics && brandScanResult.socialMediaAnalysis.commonTopics.length > 0 && (
-                  <p className="text-xs"><span className="opacity-40">Tematy: </span>{brandScanResult.socialMediaAnalysis.commonTopics.join(', ')}</p>
+                  <p className="text-xs"><span className="text-muted">Tematy: </span>{brandScanResult.socialMediaAnalysis.commonTopics.join(', ')}</p>
                 )}
               </div>
             )}
@@ -631,7 +631,7 @@ export default function BrandScanner({
         <div className="rounded-2xl border border-holo-lavender/20 bg-holo-lavender/5 p-4 space-y-3">
           <div>
             <p className="text-sm font-bold">📖 Brand Book</p>
-            <p className="text-xs opacity-40 mt-0.5">Wygeneruj piękną stronę z Brand Guidelines gotową do udostępnienia</p>
+            <p className="text-xs text-muted mt-0.5">Wygeneruj piękną stronę z Brand Guidelines gotową do udostępnienia</p>
           </div>
           <div className="flex gap-2">
             <button

@@ -13,7 +13,7 @@ interface CopywriterProps {
 }
 
 const inputCls =
-  'w-full text-teal-deep dark:text-offwhite rounded-xl px-4 py-3 text-sm border border-teal-deep/15 dark:border-holo-mint/10 focus:border-holo-mint outline-none transition-colors panel-inset';
+  'w-full text-teal-deep dark:text-offwhite rounded-xl px-4 py-3 text-sm border border-teal-deep/15 dark:border-holo-mint/20 focus:border-holo-mint outline-none transition-colors panel-inset';
 
 const FORMATS = [
   { id: 'facebook', label: 'Facebook', icon: '📘' },
@@ -197,7 +197,7 @@ export default function Copywriter({ project, copyGenerations, onCopyGenerations
               <div className="flex items-center justify-center" style={{ minHeight: 'calc(100vh - 180px)' }}>
                 <div className="text-center space-y-3">
                   <div className="text-5xl mb-3">✍️</div>
-                  <p className="text-sm opacity-20">Tutaj powstanie pomysł na Twoją komunikację</p>
+                  <p className="text-sm text-hint">Tutaj powstanie pomysł na Twoją komunikację</p>
                 </div>
               </div>
             ) : (
@@ -219,7 +219,7 @@ export default function Copywriter({ project, copyGenerations, onCopyGenerations
                       className={`border rounded-xl p-4 space-y-3 transition-all ${
                         isSelected
                           ? 'border-holo-mint ring-1 ring-holo-mint/30 bg-holo-mint/5'
-                          : 'border-teal-deep/10 dark:border-holo-mint/10'
+                          : 'border-teal-deep/12 dark:border-holo-mint/20'
                       }`}
                     >
                       <div className="flex items-center gap-2">
@@ -231,19 +231,19 @@ export default function Copywriter({ project, copyGenerations, onCopyGenerations
                             <CheckCircle2 className="h-3.5 w-3.5" /> Wybrany
                           </span>
                         )}
-                        {r.rationale && <span className="text-xs opacity-30 italic flex-1 truncate">{r.rationale}</span>}
+                        {r.rationale && <span className="text-xs text-hint italic flex-1 truncate">{r.rationale}</span>}
                       </div>
 
                       {/* Post copy */}
                       <div className="space-y-1.5">
                         <div className="flex items-center justify-between">
-                          <p className="text-xs font-bold opacity-40 uppercase tracking-wide">Treść posta</p>
+                          <p className="text-xs font-bold text-muted uppercase tracking-wide">Treść posta</p>
                           <button
                             onClick={() => copyTextFn(r.post_copy, i)}
                             className={`flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full border transition-all ${
                               copiedIdx === i
                                 ? 'border-holo-mint text-holo-mint bg-holo-mint/10'
-                                : 'border-teal-deep/10 dark:border-holo-mint/10 opacity-50 hover:opacity-90 hover:border-holo-mint/40'
+                                : 'border-teal-deep/12 dark:border-holo-mint/20 opacity-50 hover:opacity-90 hover:border-holo-mint/40'
                             }`}
                           >
                             {copiedIdx === i ? <><Check className="h-3 w-3" /> Skopiowano</> : <><Copy className="h-3 w-3" /> Kopiuj</>}
@@ -254,7 +254,7 @@ export default function Copywriter({ project, copyGenerations, onCopyGenerations
 
                       {/* Visual brief */}
                       <div className="space-y-1.5 border-l-2 border-holo-lavender/30 pl-3">
-                        <p className="text-xs font-bold opacity-40 uppercase tracking-wide">
+                        <p className="text-xs font-bold text-muted uppercase tracking-wide">
                           {currentVisualType === 'graphic' ? '🎨 Brief dla grafika' : '📷 Brief dla fotografa'}
                         </p>
                         <p className="text-xs opacity-60 leading-relaxed">{r.visual_brief}</p>
@@ -263,7 +263,7 @@ export default function Copywriter({ project, copyGenerations, onCopyGenerations
                       {/* Headline/subtext */}
                       {currentVisualType !== 'photo' && (r.headline || r.subtext) && (
                         <div className="space-y-1 bg-offwhite dark:bg-teal-deep rounded-lg px-3 py-2">
-                          <p className="text-[10px] font-bold opacity-30 uppercase tracking-wide">
+                          <p className="text-xs font-bold text-hint uppercase tracking-wide">
                             {currentVisualType === 'photo_text' ? 'Tekst na zdjęcie' : 'Tekst na grafikę'}
                           </p>
                           {r.headline && <p className="text-sm font-bold">{r.headline}</p>}
@@ -288,7 +288,7 @@ export default function Copywriter({ project, copyGenerations, onCopyGenerations
                         )}
                         <button
                           onClick={() => onUseCopy?.({ headline: r.headline || '', subtext: r.subtext || '', cta: r.cta, visualBrief: r.visual_brief || '', visualType: (ENABLE_GRAPHIC_MODES ? currentVisualType : 'photo') as 'graphic' | 'photo' | 'photo_text', logoOnPhoto, platform: format })}
-                          className="flex-1 h-8 bg-teal-deep/5 dark:bg-teal-deep hover:bg-holo-mint/20 hover:border-holo-mint border border-teal-deep/10 dark:border-holo-mint/10 rounded-full text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors"
+                          className="flex-1 h-8 bg-teal-deep/5 dark:bg-teal-deep hover:bg-holo-mint/20 hover:border-holo-mint border border-teal-deep/12 dark:border-holo-mint/20 rounded-full text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors"
                         >
                           <Wand2 className="h-3 w-3" /> Użyj w generatorze
                         </button>
@@ -321,7 +321,7 @@ export default function Copywriter({ project, copyGenerations, onCopyGenerations
           </div>
 
           {/* Brief file */}
-          <label className="cursor-pointer w-full h-12 border border-dashed border-teal-deep/10 dark:border-holo-mint/10 hover:border-holo-mint/30 rounded-xl flex items-center justify-center gap-2 text-xs opacity-50 hover:opacity-80 transition-all">
+          <label className="cursor-pointer w-full h-12 border border-dashed border-teal-deep/12 dark:border-holo-mint/20 hover:border-holo-mint/30 rounded-xl flex items-center justify-center gap-2 text-xs opacity-50 hover:opacity-80 transition-all">
             <Upload className="h-3.5 w-3.5" />
             {briefFile ? `📄 ${briefFile.name}` : 'Opcjonalnie: wgraj brief (PDF, DOCX, TXT)'}
             <input
@@ -343,7 +343,7 @@ export default function Copywriter({ project, copyGenerations, onCopyGenerations
                   className={`flex-1 py-2 rounded-xl text-xs font-bold border transition-all panel-inset ${
                     format === f.id
                       ? 'border-holo-mint bg-holo-mint/10 text-holo-mint'
-                      : 'border-teal-deep/10 dark:border-holo-mint/10 opacity-70 hover:opacity-100'
+                      : 'border-teal-deep/12 dark:border-holo-mint/20 opacity-70 hover:opacity-100'
                   }`}
                 >
                   {f.icon} {f.label}
@@ -380,7 +380,7 @@ export default function Copywriter({ project, copyGenerations, onCopyGenerations
                   >
                     <vt.icon className={`h-5 w-5 ${active ? '' : 'opacity-50'}`} />
                     <span className={`text-xs font-bold ${active ? '' : 'opacity-60'}`}>{vt.label}</span>
-                    <span className={`text-[10px] text-center leading-tight px-1 ${active ? 'opacity-60' : 'opacity-30'}`}>{vt.desc}</span>
+                    <span className={`text-xs text-center leading-tight px-1 ${active ? 'opacity-60' : 'text-hint'}`}>{vt.desc}</span>
                   </button>
                 );
               })}
@@ -391,7 +391,7 @@ export default function Copywriter({ project, copyGenerations, onCopyGenerations
           {showPrompt && (
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <label className="text-xs font-semibold opacity-50 uppercase tracking-wide">Prompt (edytowalny)</label>
+                <label className="text-xs font-semibold text-muted uppercase tracking-wide">Prompt (edytowalny)</label>
                 <button
                   onClick={() => setShowPrompt(false)}
                   className="text-xs opacity-40 hover:opacity-80 transition-opacity"
@@ -472,18 +472,18 @@ export default function Copywriter({ project, copyGenerations, onCopyGenerations
                     className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer border transition-all ${
                       isActive
                         ? 'border-holo-mint bg-holo-mint/5'
-                        : 'border-teal-deep/10 dark:border-holo-mint/10 hover:border-holo-mint/30 bg-white dark:bg-teal-mid'
+                        : 'border-teal-deep/12 dark:border-holo-mint/20 hover:border-holo-mint/30 bg-white dark:bg-teal-mid'
                     }`}
                   >
                     <div className="flex-1 min-w-0">
                       <p className="font-bold text-sm truncate">{g.task || 'Bez opisu'}</p>
                       <div className="flex items-center gap-2 mt-0.5">
-                        <span className="text-xs opacity-40">{FORMAT_LABELS[g.format] || g.format}</span>
-                        <span className="text-xs opacity-30">·</span>
-                        <span className="text-xs opacity-40">{VISUAL_LABELS[g.visual_type] || g.visual_type}</span>
+                        <span className="text-xs text-muted">{FORMAT_LABELS[g.format] || g.format}</span>
+                        <span className="text-xs text-hint">·</span>
+                        <span className="text-xs text-muted">{VISUAL_LABELS[g.visual_type] || g.visual_type}</span>
                         {hasSelected && (
                           <>
-                            <span className="text-xs opacity-30">·</span>
+                            <span className="text-xs text-hint">·</span>
                             <span className="text-xs text-holo-mint font-semibold flex items-center gap-0.5">
                               <CheckCircle2 className="h-3 w-3" /> W{(g.selected_variant ?? 0) + 1}
                             </span>
@@ -491,12 +491,12 @@ export default function Copywriter({ project, copyGenerations, onCopyGenerations
                         )}
                       </div>
                     </div>
-                    <span className="text-xs opacity-25 whitespace-nowrap shrink-0">
+                    <span className="text-xs text-hint whitespace-nowrap shrink-0">
                       {new Date(g.created_at).toLocaleDateString('pl-PL')}
                     </span>
                     <button
                       onClick={e => { e.stopPropagation(); deleteGeneration(g.id); }}
-                      className="w-7 h-7 rounded-full flex items-center justify-center border border-teal-deep/10 dark:border-holo-mint/10 opacity-30 hover:opacity-80 hover:border-red-400/50 hover:text-red-400 transition-all shrink-0"
+                      className="w-7 h-7 rounded-full flex items-center justify-center border border-teal-deep/12 dark:border-holo-mint/20 opacity-30 hover:opacity-80 hover:border-red-400/50 hover:text-red-400 transition-all shrink-0"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>

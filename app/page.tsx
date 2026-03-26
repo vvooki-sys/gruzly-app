@@ -138,7 +138,7 @@ export default function BrandEditor() {
 
         <div className="min-w-0 flex-1">
           <h1 className="font-black text-sm sm:text-base truncate">{project.name}</h1>
-          {project.client_name && <p className="text-xs opacity-40 truncate">{project.client_name}</p>}
+          {project.client_name && <p className="text-xs text-muted truncate">{project.client_name}</p>}
         </div>
 
         {/* Tabs */}
@@ -156,7 +156,7 @@ export default function BrandEditor() {
         </div>
 
         {/* Role badge */}
-        <span className={`h-8 px-2.5 rounded-full flex items-center justify-center gap-1 border text-[10px] font-semibold shrink-0 ${
+        <span className={`h-8 px-2.5 rounded-full flex items-center justify-center gap-1 border text-xs font-semibold shrink-0 ${
           isAgency
             ? 'border-holo-mint/30 bg-holo-mint/10 text-holo-mint'
             : 'border-holo-peach/30 bg-holo-peach/10 text-holo-peach'

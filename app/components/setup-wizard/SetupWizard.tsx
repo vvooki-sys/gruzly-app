@@ -87,13 +87,13 @@ export default function SetupWizard({
   return (
     <div className="min-h-screen bg-offwhite dark:bg-teal-deep text-teal-deep dark:text-offwhite">
       {/* Header */}
-      <header className="glass-nav sticky top-0 z-40 border-b border-teal-deep/10 dark:border-holo-mint/10 bg-offwhite/85 dark:bg-teal-deep/85 px-4 sm:px-6 py-3">
+      <header className="glass-nav sticky top-0 z-40 border-b border-teal-deep/10 dark:border-holo-mint/20 bg-offwhite/85 dark:bg-teal-deep/85 px-4 sm:px-6 py-3">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
             <img src="/gruzly-bear.png" alt="Gruzly" className="w-8 h-8 rounded-lg object-cover" />
             <div>
               <span className="font-black text-sm">Analiza marki</span>
-              <span className="text-xs opacity-40 ml-2">{project.name}</span>
+              <span className="text-xs text-muted ml-2">{project.name}</span>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -107,7 +107,7 @@ export default function SetupWizard({
                     ? 'holo-gradient text-teal-deep shadow-sm'
                     : i < step
                       ? 'opacity-70 bg-holo-mint/10 text-holo-mint'
-                      : 'opacity-30'
+                      : 'text-hint'
                 }`}
               >
                 <span>{s.icon}</span>
@@ -207,7 +207,7 @@ export default function SetupWizard({
 
           {/* Right panel — live preview */}
           <div className="lg:col-span-2">
-            <div className="sticky top-20 rounded-2xl border border-teal-deep/10 dark:border-holo-mint/10 bg-white dark:bg-teal-mid p-4">
+            <div className="sticky top-20 rounded-2xl border border-teal-deep/10 dark:border-holo-mint/20 bg-white dark:bg-teal-mid p-4">
               <BrandBasePreview sections={sections} logos={logos} />
             </div>
           </div>
