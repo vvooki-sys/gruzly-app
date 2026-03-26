@@ -650,6 +650,7 @@ export default function Generator({
                     const isActive = selectedGeneration?.id === g.id;
                     const gHeadline = g.brief.split(' | ')[0];
                     const gFormat = g.format.split(':')[0];
+                    const gCreativity = parseInt(g.format.match(/:c(\d)/)?.[1] || '2');
 
                     return (
                       <div
@@ -664,8 +665,11 @@ export default function Generator({
                         <div className={`${FORMAT_ASPECT[gFormat] || 'aspect-square'} bg-offwhite dark:bg-teal-deep overflow-hidden relative`}>
                           {urls[0] && <img src={urls[0]} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />}
                           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                          <div className="absolute top-1.5 left-1.5">
+                          <div className="absolute top-1.5 left-1.5 flex gap-1">
                             <span className="text-[10px] font-bold text-white bg-black/40 backdrop-blur-sm px-1.5 py-0.5 rounded-md">{getFormatLabel(g.format)}</span>
+                            {CREATIVITY_LABELS[gCreativity] && (
+                              <span className="text-[10px] font-bold text-white bg-black/40 backdrop-blur-sm px-1.5 py-0.5 rounded-md">{CREATIVITY_LABELS[gCreativity].name}</span>
+                            )}
                           </div>
                           <div className="absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
                             <button
