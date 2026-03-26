@@ -447,22 +447,22 @@ export default function ClientPostCreator({
               {/* Logo toggle */}
               <button
                 onClick={() => setLogoOnPhoto(!logoOnPhoto)}
-                className="flex items-center gap-3 w-full"
-              >
-                <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${
+                className={`w-full py-3 px-4 rounded-xl border-2 transition-all flex items-center justify-center gap-2.5 text-sm font-semibold panel-inset ${
                   logoOnPhoto
-                    ? 'border-holo-mint bg-holo-mint/20'
-                    : 'border-white/20 hover:border-white/40'
+                    ? 'border-holo-mint bg-holo-mint/10 text-holo-mint'
+                    : 'border-teal-deep/12 dark:border-holo-mint/20 text-muted hover:border-holo-mint/40'
+                }`}
+              >
+                <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all shrink-0 ${
+                  logoOnPhoto ? 'border-holo-mint bg-holo-mint' : 'border-current/30'
                 }`}>
                   {logoOnPhoto && (
                     <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                      <path d="M2.5 6L5 8.5L9.5 3.5" stroke="rgb(var(--holo-mint))" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                      <path d="M2.5 6L5 8.5L9.5 3.5" stroke="#1A1A1F" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
                   )}
                 </div>
-                <span className={`text-sm ${logoOnPhoto ? 'text-holo-mint font-semibold' : 'text-muted'}`}>
-                  Dodaj logo marki na grafikę
-                </span>
+                Dodaj logo marki na grafikę
               </button>
 
               {/* CTA */}
