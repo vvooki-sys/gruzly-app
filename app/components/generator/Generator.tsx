@@ -414,37 +414,6 @@ export default function Generator({
                 </div>
               )}
 
-              {/* Visual type picker — photo modes */}
-              <div>
-                <label className="text-xs font-semibold opacity-50 mb-1.5 block uppercase tracking-wide">Typ wizualu do posta</label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    onClick={() => { setVisualType('photo'); setLogoOnPhoto(false); }}
-                    className={`p-3 rounded-xl text-center border text-xs font-semibold transition-all ${
-                      visualType === 'photo' && !logoOnPhoto
-                        ? 'border-holo-mint bg-holo-mint/10 text-holo-mint'
-                        : 'border-teal-deep/10 dark:border-holo-mint/10 opacity-50 hover:opacity-80'
-                    }`}
-                  >
-                    <span className="block text-base mb-0.5">📷</span>
-                    <span className="block">Zdjęcie</span>
-                    <span className="block opacity-60 font-normal">Fotografia bez tekstu</span>
-                  </button>
-                  <button
-                    onClick={() => { setVisualType('photo'); setLogoOnPhoto(true); }}
-                    className={`p-3 rounded-xl text-center border text-xs font-semibold transition-all ${
-                      logoOnPhoto
-                        ? 'border-holo-mint bg-holo-mint/10 text-holo-mint'
-                        : 'border-teal-deep/10 dark:border-holo-mint/10 opacity-50 hover:opacity-80'
-                    }`}
-                  >
-                    <span className="block text-base mb-0.5">📷</span>
-                    <span className="block">Zdjęcie</span>
-                    <span className="block opacity-60 font-normal">+ logo marki</span>
-                  </button>
-                </div>
-              </div>
-
               {/* Text fields — hidden when graphic modes disabled */}
               {ENABLE_GRAPHIC_MODES && visualType !== 'photo' && (
                 <>
@@ -478,7 +447,7 @@ export default function Generator({
                 </>
               )}
 
-              {/* 3. Brief — optional, AI context only */}
+              {/* Zadanie (brief) */}
               <div>
                 <label className="text-xs font-semibold opacity-50 mb-1.5 block uppercase tracking-wide">
                   Zadanie
@@ -549,6 +518,37 @@ export default function Generator({
                       <div className="text-xs opacity-50 mt-0.5">{f.size}</div>
                     </button>
                   ))}
+                </div>
+              </div>
+
+              {/* Visual type picker — photo modes */}
+              <div>
+                <label className="text-xs font-semibold opacity-50 mb-1.5 block uppercase tracking-wide">Typ wizualu do posta</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => { setVisualType('photo'); setLogoOnPhoto(false); }}
+                    className={`p-3 rounded-xl text-center border text-xs font-semibold transition-all ${
+                      visualType === 'photo' && !logoOnPhoto
+                        ? 'border-holo-mint bg-holo-mint/10 text-holo-mint'
+                        : 'border-teal-deep/10 dark:border-holo-mint/10 opacity-50 hover:opacity-80'
+                    }`}
+                  >
+                    <span className="block text-base mb-0.5">📷</span>
+                    <span className="block">Zdjęcie</span>
+                    <span className="block opacity-60 font-normal">Fotografia bez tekstu</span>
+                  </button>
+                  <button
+                    onClick={() => { setVisualType('photo'); setLogoOnPhoto(true); }}
+                    className={`p-3 rounded-xl text-center border text-xs font-semibold transition-all ${
+                      logoOnPhoto
+                        ? 'border-holo-mint bg-holo-mint/10 text-holo-mint'
+                        : 'border-teal-deep/10 dark:border-holo-mint/10 opacity-50 hover:opacity-80'
+                    }`}
+                  >
+                    <span className="block text-base mb-0.5">📷</span>
+                    <span className="block">Zdjęcie</span>
+                    <span className="block opacity-60 font-normal">+ logo marki</span>
+                  </button>
                 </div>
               </div>
 
