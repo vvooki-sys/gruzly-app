@@ -22,6 +22,21 @@ async function ensureAuthTables() {
       created_at TIMESTAMP DEFAULT NOW() NOT NULL
     )
   `.catch(() => {});
+
+  // Auto-seed if users table is empty
+  const count = await getDb()`SELECT COUNT(*)::int as c FROM users`;
+  if (count[0].c === 0) {
+    const seedUsers = [
+      { email: 'lukasz.gumowski@plej.pl', name: 'Łukasz Gumowski', role: 'agencja', password: 'MaczfitBear#91' },
+      { email: 'marcin.rossa@creait.me', name: 'Marcin Rossa', role: 'agencja', password: 'CreAItFlow$47' },
+      { email: 'klient@creait.me', name: 'Klient CreAIt', role: 'klient', password: 'BrandView&23' },
+    ];
+    for (const u of seedUsers) {
+      const hash = await bcrypt.hash(u.password, 10);
+      await getDb()`INSERT INTO users (email, password_hash, name, role) VALUES (${u.email}, ${hash}, ${u.name}, ${u.role}) ON CONFLICT (email) DO NOTHING`.catch(() => {});
+    }
+    console.log('[AUTH] Auto-seeded users table');
+  }
 }
 
 export async function POST(req: NextRequest) {
