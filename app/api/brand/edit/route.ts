@@ -35,14 +35,23 @@ export async function POST(req: NextRequest) {
     ? `⚠️ OBOWIĄZKOWE ZASADY MARKI — BEZWZGLĘDNE OGRANICZENIA:\n${(project.brand_rules as string).split('\n').map((r: string, i: number) => r.trim() ? `${i + 1}. ${r.trim()}` : '').filter(Boolean).join('\n')}\n\n`
     : '';
 
-  const editPrompt = `Edytuj tę grafikę zgodnie z poniższą instrukcją. Zachowaj wszystkie niezmienione elementy dokładnie tak, jak są.
+  // Wstrzykuj kontekst marki TYLKO gdy edycja dotyczy elementów brandowych
+  const brandKeywords = /\b(kolor|color|marka|brand|logo|styl|style|ton|tone|nastrój|mood|overlay|tekst|text|napis|tło|background|paleta|palette|font|czcion|typo)\b/i;
+  const needsBrandContext = brandKeywords.test(instruction);
 
-${mandatoryBlock}Marka: ${project.name}
-Kolory: ${project.color_palette || 'dark navy, coral accent'}
+  const brandContext = needsBrandContext
+    ? `\nMarka: ${project.name}\nKolory: ${project.color_palette || 'dark navy, coral accent'}\n`
+    : '';
 
+  const editPrompt = `Edytuj tę grafikę zgodnie z poniższą instrukcją.
+Zachowaj wszystkie niezmienione elementy dokładnie tak, jak są.
+${mandatoryBlock}${brandContext}
 INSTRUKCJA: ${instruction}
 
-Zachowaj ogólny układ, styl i branding. Zmień tylko to, co jest wskazane w instrukcji.`;
+ZASADY:
+- Zmień TYLKO to, co jest wskazane w instrukcji — nic więcej.
+- NIE dodawaj żadnych nowych elementów (tekst, logo, ramki, watermarki, naklejki), chyba że instrukcja tego wyraźnie wymaga.
+- Zachowaj ogólny układ, styl i kompozycję niezmienionej części obrazu.`;
 
   const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_KEY!);
   const model = genAI.getGenerativeModel({ model: GEMINI_MODEL });
