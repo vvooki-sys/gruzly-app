@@ -352,7 +352,7 @@ export default function BrandSettings({
                 className="w-full bg-offwhite dark:bg-teal-deep rounded-xl px-3 py-2 text-sm font-bold border border-teal-deep/15 dark:border-holo-mint/10 focus:border-holo-mint outline-none transition-colors"
                 value={editName}
                 onChange={e => setEditName(e.target.value)}
-                onBlur={saveProjectMeta}
+                onBlur={() => saveProjectMeta()}
               />
             </div>
             <div>
@@ -363,7 +363,7 @@ export default function BrandSettings({
                 placeholder="Opcjonalnie"
                 value={editClientName}
                 onChange={e => setEditClientName(e.target.value)}
-                onBlur={saveProjectMeta}
+                onBlur={() => saveProjectMeta()}
               />
             </div>
           </div>
@@ -378,7 +378,7 @@ export default function BrandSettings({
             placeholder="Krótki opis, cel projektu, notatki..."
             value={editDescription}
             onChange={e => setEditDescription(e.target.value)}
-            onBlur={saveProjectMeta}
+            onBlur={() => saveProjectMeta()}
           />
         </div>
 
