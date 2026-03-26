@@ -338,47 +338,61 @@ export async function POST(req: NextRequest) {
     || logoAssets.find(a => a.variant === 'default')
     || logoAssets[0];
 
-  // Reference images — always send as inlineData so Gemini sees actual style
+  // ── Asset selection: photo mode vs graphic mode ──
   const allRefs = assetList.filter(a => a.type === 'reference').slice(0, 5);
   const featuredRefs = allRefs.filter(a => a.is_featured);
   const regularRefs = allRefs.filter(a => !a.is_featured);
+  const photoAssetsList = assetList.filter(a => a.type === 'photo').slice(0, 3);
+  const brandElements = assetList.filter(a => a.type === 'brand-element').slice(0, 2);
 
   const refParts: Array<{ inlineData: { data: string; mimeType: string } } | { text: string }> = [];
-  if (!elementOnly && allRefs.length > 0) {
-    refParts.push({ text: '⚠️ REFERENCJE STYLISTYCZNE — Te obrazy pokazują paletę kolorów, styl kompozycji i nastrój. NIE odtwarzaj żadnej twarzy, osoby ani treści fotograficznej z nich w wynikowej grafice. Wyodrębnij TYLKO styl wizualny.' });
-    for (const ref of regularRefs) {
-      if (ref.url.toLowerCase().endsWith('.svg')) continue;
-      const b64 = await urlToBase64(ref.url, true);
-      if (b64) refParts.push({ inlineData: b64 });
-    }
-    if (featuredRefs.length > 0) {
-      refParts.push({ text: 'PRIORYTETOWY CEL STYLISTYCZNY — dopasuj dokładnie tę estetykę wizualną, paletę kolorów i nastrój w swoim wyniku:' });
-      for (const ref of featuredRefs) {
+
+  if (isPhotoMode && !elementOnly) {
+    // PHOTO MODE: packshots first (max 3), then references only if no packshots
+    if (photoAssetsList.length > 0) {
+      refParts.push({ text: 'PACKSHOTY / ZDJĘCIA PRODUKTOWE MARKI — użyj w kompozycji:' });
+      for (const p of photoAssetsList) {
+        if (p.url.toLowerCase().endsWith('.svg')) continue;
+        const b64 = await urlToBase64(p.url, true);
+        if (b64) refParts.push({ inlineData: b64 });
+      }
+    } else if (allRefs.length > 0) {
+      // Fallback: references only when no packshots
+      refParts.push({ text: 'REFERENCJE STYLISTYCZNE — wyodrębnij paletę, nastrój, styl:' });
+      const refsToSend = [...featuredRefs, ...regularRefs].slice(0, 3);
+      for (const ref of refsToSend) {
         if (ref.url.toLowerCase().endsWith('.svg')) continue;
         const b64 = await urlToBase64(ref.url, true);
         if (b64) refParts.push({ inlineData: b64 });
       }
     }
-  }
-  const imageRefCount = refParts.filter(p => 'inlineData' in p).length;
-
-  // Photo assets (packshots etc.) — always send as inline images
-  const photoAssetsList = assetList.filter(a => a.type === 'photo').slice(0, 3);
-  if (!elementOnly && photoAssetsList.length > 0) {
-    refParts.push({ text: 'ZDJĘCIA / PACKSHOTY MARKI — te produkty/zdjęcia są częścią marki. Możesz je wykorzystać jako elementy wizualne kompozycji:' });
-    for (const p of photoAssetsList) {
-      if (p.url.toLowerCase().endsWith('.svg')) continue;
-      const b64 = await urlToBase64(p.url, true);
-      if (b64) refParts.push({ inlineData: b64 });
+    // Photo mode: NO brand-elements, NO logo images
+  } else if (!elementOnly) {
+    // GRAPHIC MODE: references + packshots + brand-elements (existing behavior)
+    if (allRefs.length > 0) {
+      refParts.push({ text: '⚠️ REFERENCJE STYLISTYCZNE — Te obrazy pokazują paletę kolorów, styl kompozycji i nastrój. NIE odtwarzaj żadnej twarzy, osoby ani treści fotograficznej z nich w wynikowej grafice. Wyodrębnij TYLKO styl wizualny.' });
+      for (const ref of regularRefs) {
+        if (ref.url.toLowerCase().endsWith('.svg')) continue;
+        const b64 = await urlToBase64(ref.url, true);
+        if (b64) refParts.push({ inlineData: b64 });
+      }
+      if (featuredRefs.length > 0) {
+        refParts.push({ text: 'PRIORYTETOWY CEL STYLISTYCZNY — dopasuj dokładnie tę estetykę wizualną, paletę kolorów i nastrój w swoim wyniku:' });
+        for (const ref of featuredRefs) {
+          if (ref.url.toLowerCase().endsWith('.svg')) continue;
+          const b64 = await urlToBase64(ref.url, true);
+          if (b64) refParts.push({ inlineData: b64 });
+        }
+      }
     }
-  }
-  console.log(`[ASSETS] DB total: ${assetList.length} | type=reference: ${assetList.filter(a => a.type === 'reference').length} | allRefs (after slice): ${allRefs.length} | featured: ${featuredRefs.length} | regular: ${regularRefs.length}`);
-  console.log(`[ASSETS] Converted to base64: refs=${imageRefCount}, packshots=${photoAssetsList.filter(p => !p.url.toLowerCase().endsWith('.svg')).length}`);
-  allRefs.forEach((r, i) => console.log(`[REF ${i}] ${r.filename || r.url.split('/').pop()} | featured=${!!r.is_featured} | svg=${r.url.toLowerCase().endsWith('.svg')}`));
-
-  // Brand elements: include as inline images (max 2, skip large SVGs)
-  const brandElements = assetList.filter(a => a.type === 'brand-element').slice(0, 2);
-  if (!elementOnly) {
+    if (photoAssetsList.length > 0) {
+      refParts.push({ text: 'ZDJĘCIA / PACKSHOTY MARKI — te produkty/zdjęcia są częścią marki. Możesz je wykorzystać jako elementy wizualne kompozycji:' });
+      for (const p of photoAssetsList) {
+        if (p.url.toLowerCase().endsWith('.svg')) continue;
+        const b64 = await urlToBase64(p.url, true);
+        if (b64) refParts.push({ inlineData: b64 });
+      }
+    }
     for (const el of brandElements) {
       if (el.url.toLowerCase().endsWith('.svg')) continue;
       const b64 = await urlToBase64(el.url);
@@ -386,11 +400,16 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // User-provided photo: include as inline image
-  if (photoUrl && photoMode !== 'none' && !elementOnly) {
+  const imageRefCount = refParts.filter(p => 'inlineData' in p).length;
+
+  // User-provided photo: include as inline image (graphic mode only — photo mode doesn't use this)
+  if (photoUrl && photoMode !== 'none' && !elementOnly && !isPhotoMode) {
     const b64 = await urlToBase64(photoUrl);
     if (b64) imageParts.push({ inlineData: b64 });
   }
+
+  console.log(`[ASSETS] mode=${isPhotoMode ? 'photo' : 'graphic'} | inline images sent: ${imageRefCount} | packshots in DB: ${photoAssetsList.length} | refs in DB: ${allRefs.length} | brand-elements: ${brandElements.length}`);
+  refParts.filter(p => 'text' in p).forEach(p => console.log(`[ASSETS] label: ${(p as { text: string }).text.substring(0, 60)}...`));
 
   // ── Build 3-layer prompt ─────────────────────────────────────────────────
   const sep = '════════════════════════════════════════';

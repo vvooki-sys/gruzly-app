@@ -139,6 +139,10 @@ export default function Generator({
 
   // Derived
   const references = assets.filter(a => a.type === 'reference');
+  const packshots = assets.filter(a => a.type === 'photo');
+  // Photo mode: packshots first, refs as fallback; graphic mode: both
+  const photoModeAssetCount = packshots.length > 0 ? Math.min(packshots.length, 3) : Math.min(references.length, 3);
+  const graphicModeAssetCount = Math.min(references.length, 5) + Math.min(packshots.length, 3);
   const brandSections = ((project as unknown as Record<string, unknown>).brand_sections || []) as Array<{ title: string; content: string }>;
 
   const inputCls = 'w-full bg-offwhite dark:bg-teal-deep text-teal-deep dark:text-offwhite rounded-xl px-4 py-3 text-sm border border-teal-deep/15 dark:border-holo-mint/10 focus:border-holo-mint outline-none transition-colors';
@@ -596,7 +600,16 @@ export default function Generator({
                 {brandSections.length > 0 && (
                   <p className="opacity-50">{brandSections.slice(0, 3).map(s => s.title).join(', ')}{brandSections.length > 3 ? ` +${brandSections.length - 3} więcej` : ''}</p>
                 )}
-                <p className="opacity-30">{references.length} grafik referencyjnych</p>
+                <p className="opacity-30">
+                  {visualType === 'photo'
+                    ? packshots.length > 0
+                      ? `${photoModeAssetCount} packshot${photoModeAssetCount !== 1 ? 'ów' : ''} załączanych`
+                      : references.length > 0
+                        ? `${photoModeAssetCount} referencji załączanych`
+                        : 'Brak zdjęć referencyjnych'
+                    : `${graphicModeAssetCount} grafik załączanych`
+                  }
+                </p>
               </div>
             </div>
           </div>
