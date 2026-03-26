@@ -409,10 +409,27 @@ export default function BrandSettings({
             ))}
           </div>
           <button
-            onClick={() => { setEditLogoPosition('none'); saveProjectMeta('none'); }}
-            className={`text-xs mt-2 hover:opacity-80 transition-opacity ${editLogoPosition === 'none' ? 'text-holo-mint font-bold' : 'opacity-50'}`}
+            onClick={() => {
+              const next = editLogoPosition === 'none' ? 'top-left' : 'none';
+              setEditLogoPosition(next);
+              saveProjectMeta(next);
+            }}
+            className="flex items-center gap-2 mt-3 group cursor-pointer"
           >
-            Bez logo
+            <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${
+              editLogoPosition === 'none'
+                ? 'border-holo-mint bg-holo-mint/20'
+                : 'border-white/20 hover:border-white/40'
+            }`}>
+              {editLogoPosition === 'none' && (
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                  <path d="M2.5 6L5 8.5L9.5 3.5" stroke="rgb(var(--holo-mint))" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              )}
+            </div>
+            <span className={`text-xs transition-opacity ${editLogoPosition === 'none' ? 'text-holo-mint font-semibold' : 'opacity-50 group-hover:opacity-80'}`}>
+              Bez logo na grafice
+            </span>
           </button>
         </div>
 
