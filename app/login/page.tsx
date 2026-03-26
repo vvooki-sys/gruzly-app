@@ -42,7 +42,7 @@ export default function LoginPage() {
           <p className="text-xs opacity-40 mt-1">AI Brand Graphics</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="bg-white dark:bg-teal-mid border border-teal-deep/10 dark:border-holo-mint/10 rounded-2xl p-6 space-y-4 shadow-2xl">
+        <form onSubmit={handleSubmit} className="panel rounded-2xl p-6 space-y-4">
           <div>
             <label className="text-xs opacity-50 mb-1.5 block font-semibold uppercase tracking-wide">Email</label>
             <input

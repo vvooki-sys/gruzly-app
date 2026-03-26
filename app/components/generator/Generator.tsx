@@ -292,7 +292,7 @@ export default function Generator({
             <div className="lg:sticky lg:top-[72px] space-y-3">
               <h2 className="font-black text-base">Podgląd</h2>
 
-              <div className="bg-white dark:bg-teal-mid border border-teal-deep/10 dark:border-holo-mint/10 rounded-2xl overflow-hidden">
+              <div className="panel rounded-2xl overflow-hidden">
                 {generating ? (
                   <div className={`${FORMAT_ASPECT[format] || 'aspect-square'} flex items-center justify-center`}>
                     <div className="text-center space-y-3">

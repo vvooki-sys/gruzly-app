@@ -306,7 +306,7 @@ export default function BrandSettings({
     <div className="space-y-5">
 
       {/* ── Brand Identity ── */}
-      <div className="rounded-2xl border border-teal-deep/10 dark:border-holo-mint/10 bg-white dark:bg-teal-mid p-5 space-y-4">
+      <div className="panel rounded-2xl p-5 space-y-4">
         <p className="text-xs font-bold opacity-30 uppercase tracking-wide">Identyfikacja marki</p>
 
         {/* Icon + Name row */}
@@ -508,7 +508,7 @@ export default function BrandSettings({
       })()}
 
       {/* ── Voice Card ── */}
-      <div className="rounded-2xl border border-teal-deep/15 dark:border-holo-mint/15 bg-white dark:bg-teal-mid p-4 space-y-4">
+      <div className="panel rounded-2xl p-4 space-y-4">
         <div className="flex items-center justify-between gap-2">
           <div>
             <p className="text-sm font-bold flex items-center gap-2">
@@ -678,7 +678,7 @@ export default function BrandSettings({
       </div>
 
       {/* ── Industry Rules ── */}
-      <div className="rounded-2xl border border-teal-deep/15 dark:border-holo-mint/15 bg-white dark:bg-teal-mid p-4 space-y-4">
+      <div className="panel rounded-2xl p-4 space-y-4">
         <div className="flex items-center justify-between gap-2">
           <div>
             <p className="text-sm font-bold flex items-center gap-2">
@@ -805,7 +805,7 @@ export default function BrandSettings({
       </div>
 
       {/* ── Industry Copy Rules (structured patterns) ── */}
-      <div className="rounded-2xl border border-teal-deep/15 dark:border-holo-mint/15 bg-white dark:bg-teal-mid p-4 space-y-4">
+      <div className="panel rounded-2xl p-4 space-y-4">
         <div className="flex items-center justify-between gap-2">
           <div>
             <p className="text-sm font-bold flex items-center gap-2">

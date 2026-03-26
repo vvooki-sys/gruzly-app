@@ -188,7 +188,7 @@ export default function Copywriter({ project, copyGenerations, onCopyGenerations
             {results.length > 0 ? `${results.length} warianty` : 'Wyniki'}
           </h2>
 
-          <div className="bg-white dark:bg-teal-mid border border-teal-deep/10 dark:border-holo-mint/10 rounded-2xl overflow-hidden">
+          <div className="panel rounded-2xl overflow-hidden">
             {results.length === 0 ? (
               <div className="aspect-square flex items-center justify-center">
                 <div className="text-center space-y-3">

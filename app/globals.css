@@ -49,6 +49,25 @@
   backdrop-filter: blur(20px) saturate(1.8);
 }
 
+/* Utility: elevated panel — login-style cards with depth */
+.panel {
+  background: var(--color-offwhite);
+  border: 1px solid rgba(26, 26, 31, 0.08);
+  border-radius: 1rem;
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.05),
+    0 20px 25px -5px rgba(0, 0, 0, 0.08),
+    0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+}
+[data-theme="dark"] .panel {
+  background: var(--color-teal-mid);
+  border-color: rgba(179, 245, 220, 0.08);
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.15),
+    0 20px 25px -5px rgba(0, 0, 0, 0.25),
+    0 0 0 1px rgba(255, 255, 255, 0.03) inset;
+}
+
 body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;

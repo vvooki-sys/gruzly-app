@@ -116,7 +116,7 @@ export default function AssetManager({
 
       {/* Upload form */}
       {assetUploadOpen && (
-        <div className="rounded-2xl border border-holo-mint/20 bg-white dark:bg-teal-mid p-5 space-y-4">
+        <div className="panel rounded-2xl p-5 space-y-4">
           <p className="text-sm font-bold">Nowy asset</p>
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -199,7 +199,7 @@ export default function AssetManager({
       {(() => {
         const logos = assets.filter((a) => a.type === 'logo');
         return (
-          <div className="rounded-2xl border border-teal-deep/10 dark:border-holo-mint/10 bg-white dark:bg-teal-mid p-4 space-y-3">
+          <div className="panel rounded-2xl p-4 space-y-3">
             <p className="text-xs font-bold opacity-40 uppercase tracking-wide">
               Logo ({logos.length})
             </p>
@@ -242,7 +242,7 @@ export default function AssetManager({
       {(() => {
         const elements = assets.filter((a) => a.type === 'brand-element');
         return (
-          <div className="rounded-2xl border border-teal-deep/10 dark:border-holo-mint/10 bg-white dark:bg-teal-mid p-4 space-y-3">
+          <div className="panel rounded-2xl p-4 space-y-3">
             <p className="text-xs font-bold opacity-40 uppercase tracking-wide">
               Elementy graficzne ({elements.length})
             </p>
@@ -287,7 +287,7 @@ export default function AssetManager({
       {(() => {
         const photos = assets.filter((a) => a.type === 'photo');
         return (
-          <div className="rounded-2xl border border-teal-deep/10 dark:border-holo-mint/10 bg-white dark:bg-teal-mid p-4 space-y-3">
+          <div className="panel rounded-2xl p-4 space-y-3">
             <p className="text-xs font-bold opacity-40 uppercase tracking-wide">
               Zdjęcia / Packshoty ({photos.length})
             </p>
@@ -330,7 +330,7 @@ export default function AssetManager({
         const brandbook = assets.find((a) => a.type === 'brandbook');
         const refs = assets.filter((a) => a.type === 'reference');
         return (
-          <div className="rounded-2xl border border-teal-deep/10 dark:border-holo-mint/10 bg-white dark:bg-teal-mid p-4 space-y-3">
+          <div className="panel rounded-2xl p-4 space-y-3">
             <p className="text-xs font-bold opacity-40 uppercase tracking-wide">
               Brandbook & Referencje
             </p>
