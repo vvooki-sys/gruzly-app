@@ -19,11 +19,12 @@ const FORMAT_SIZES: Record<string, string> = {
 };
 
 const CREATIVITY_BLOCKS: Record<number, string> = {
-  1: '',
-  2: 'Dodaj drugorzędne geometryczne lub dekoracyjne elementy uzupełniające styl marki. Wzbogać kompozycję subtelną teksturą lub warstwowością.',
-  3: 'Stwórz wizualnie bogatą kompozycję z wieloma warstwowymi elementami graficznymi. Użyj pełnej palety gradientów marki na wielu dekoracyjnych kształtach i tłach.',
-  4: 'Zaprojektuj uderzającą grafikę na poziomie edytorialnym. Zwiększ złożoność wizualną — warstwowe kształty, głębia, odważna typografia, dynamiczna kompozycja. Pozostań w palecie marki i zasadach layoutu.',
-  5: 'Stwórz premium grafikę wartą nagrody. Maksymalne bogactwo wizualne w ramach zasad marki. Kinowa kompozycja, złożony wielowarstwowy design, immersyjne użycie kolorów i elementów graficznych marki. Każdy piksel celowy.',
+  1: 'Minimalistyczna kompozycja. Jedno tło (solid kolor lub prosty dwukolorowy gradient). Tekst wycentrowany z czystą hierarchią. ZERO elementów dekoracyjnych — żadnych kształtów, ikon, patternów, tekstur. Maksimum negatywnej przestrzeni. Czytelność jest jedynym celem.',
+  2: 'Prosty, uporządkowany design. Tło: gradient brandowy (max 3 kolory). Dozwolony JEDEN element dekoracyjny (kształt geometryczny, linia, subtelny pattern). Dozwolona subtelna tekstura (grain, noise). Kompozycja centralna, bezpieczna. Dużo powietrza wokół tekstu.',
+  3: 'Świadoma, precyzyjna kompozycja z minimalną liczbą elementów — ale każdy doskonale umiejscowiony. Asymetryczny layout. Celowe użycie negatywnej przestrzeni jako elementu designu. Typografia z charakterem — zróżnicowane wielkości, kontrastujące grubości. Max 2-3 elementy dekoracyjne, ale rozmieszczone z intencją. Mniej znaczy więcej — ale to "mniej" musi być perfekcyjne.',
+  4: 'Wielowarstwowy kadr z głębią. Elementy na pierwszym i drugim planie, przywołujące wrażenie głębi ostrości. Tło jest aktywnym elementem kompozycji — nie tylko podkład. Tekstury, nakładające się kształty z różną przezroczystością. 4-6 elementów wizualnych współpracujących ze sobą. Kontrasty wielkości w typografii. Świadoma praca ze światłem i cieniem. Każdy element ma swoje miejsce w hierarchii wizualnej.',
+  5: 'Produkcja na poziomie profesjonalnej sesji reklamowej. Wszystko służy konceptowi kreatywnego briefu. Dramatyczne światło, kierunkowe cienie, kinowa kolorystyka. Editorial layout z odważną typografią zintegrowaną z elementami wizualnymi. Dynamiczna, nieszablonowa kompozycja. Głębia i atmosfera w każdym fragmencie kadru. Zero przypadkowości — każdy element ma uzasadnienie.',
+  6: 'Arcydzieło. Kinowe światło, filmowa kolorystyka, immersyjna wielowarstwowa kompozycja z wyczuwalną głębią ostrości. Typografia i warstwa wizualna tworzą nierozerwalną całość. Atmosfera, emocja i napięcie w każdym centymetrze kadru. Poziom kampanii globalnych marek — grafika, przy której zatrzymujesz scroll. Każdy piksel jest celowy.',
 };
 
 // G7 — Photo-specific creativity blocks (industry-neutral — directives describe TECHNIQUE, not subject)
@@ -45,12 +46,16 @@ Dramatic lighting z wyraźnym kierunkiem i cieniami budującymi głębię.
 Negatywna przestrzeń jako element kompozycji.
 Wielowarstwowa scena: pierwszy plan / obiekt / kontekst / tło.
 Detale tekstur widoczne i celowo podkreślone oświetleniem.`,
-  5: `Premium, award-level photography.
+  5: `Profesjonalna sesja reklamowa — zdjęcie z kampanii.
 Kinematograficzna kompozycja — każdy element kadru celowy i uzasadniony.
 Perfekcyjna równowaga między ostrością a bokeh.
 Oświetlenie na poziomie Leibovitz/Richardson — dramatyczne, ale naturalne.
-Kolor, światło i kompozycja tworzą spójną narrację emocjonalną.
-Zdjęcie, które zatrzymuje scroll.`,
+Kolor, światło i kompozycja tworzą spójną narrację emocjonalną.`,
+  6: `Arcydzieło fotograficzne. Zdjęcie, które zatrzymuje scroll.
+Filmowa kolorystyka, immersyjna wielowarstwowa scena z wyczuwalną głębią.
+Każdy element kadru — światło, rekwizyt, tekstura — jest celowy i uzasadniony.
+Atmosfera, emocja i napięcie w każdym centymetrze kadru.
+Poziom kampanii globalnych marek.`,
 };
 
 // ── Logo compositor ───────────────────────────────────────────────────────────
@@ -616,8 +621,9 @@ ${renderTextRule}
   const creativityBlock = activeBlocks[creativity] ? `
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-${isPhotoMode ? 'DYREKTYWA JAKOŚCI FOTOGRAFICZNEJ' : 'DYREKTYWA BOGACTWA WIZUALNEGO'} (stosuj w ramach ograniczeń marki)
+${isPhotoMode ? 'DYREKTYWA JAKOŚCI FOTOGRAFICZNEJ' : 'DYREKTYWA BOGACTWA WIZUALNEGO'} (poziom ${creativity}/6)
 ${activeBlocks[creativity]}
+Wszystkie zasady Warstwy 1 nadal nadpisują tę dyrektywę.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ` : '';
 
@@ -816,11 +822,12 @@ async function generateWithCompositor({
   };
 
   const CREATIVITY_BLOCKS_ILL: Record<number, string> = {
-    1: 'Czysta, minimalna kompozycja.',
-    2: 'Dodaj subtelne elementy dekoracyjne uzupełniające styl marki.',
-    3: 'Wizualnie bogata kompozycja z warstwowymi elementami graficznymi i pełną paletą marki.',
-    4: 'Edytorialna złożoność — warstwowe kształty, głębia, odważna kompozycja.',
-    5: 'Maksymalne bogactwo wizualne. Kinowe, immersyjne, każdy detal celowy.',
+    1: 'Minimalistyczna kompozycja. Solid tło, czysta hierarchia, zero dekoracji.',
+    2: 'Prosty design. Gradient brandowy, max jeden element dekoracyjny, dużo powietrza.',
+    3: 'Precyzyjna kompozycja. Asymetria, celowa negatywna przestrzeń, typografia z charakterem.',
+    4: 'Wielowarstwowy kadr z głębią. Tekstury, nakładające się kształty, światło i cień.',
+    5: 'Profesjonalna sesja reklamowa. Dramatyczne światło, editorial layout, dynamiczna kompozycja.',
+    6: 'Arcydzieło. Kinowe światło, immersyjna wielowarstwowość, każdy piksel celowy.',
   };
 
   // Collect brand DNA context for illustration prompt

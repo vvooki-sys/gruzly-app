@@ -32,11 +32,12 @@ const FORMAT_ASPECT: Record<string, string> = {
 };
 
 const CREATIVITY_LABELS: Record<number, { name: string; desc: string }> = {
-  1: { name: 'Minimal', desc: 'Czysta kompozycja, ściśle wg brand booka. Minimum dekoracji — logo, tekst, tło.' },
-  2: { name: 'Standard', desc: 'Delikatne elementy graficzne uzupełniające styl marki. Subtelne tekstury lub dodatkowe kształty.' },
-  3: { name: 'Rozbudowany', desc: 'Bogata, wielowarstwowa kompozycja. Pełna paleta kolorów marki, gradient, elementy dekoracyjne.' },
-  4: { name: 'Editorial', desc: 'Odważny, magazynowy layout. Złożona typografia, dynamiczne kształty, głębia warstw.' },
-  5: { name: 'Maksymalny', desc: 'Pełna ekspresja wizualna w ramach brand booka. Kinowy rozmach, wiele warstw, każdy piksel dopracowany.' },
+  1: { name: 'Minimalny', desc: 'Solid tło, wycentrowany tekst, zero dekoracji. Maksimum negatywnej przestrzeni.' },
+  2: { name: 'Prosty', desc: 'Gradient brandowy, jeden element dekoracyjny, subtelna tekstura. Dużo powietrza.' },
+  3: { name: 'Precyzyjny', desc: 'Asymetria, celowa negatywna przestrzeń, typografia z charakterem. Mniej = więcej.' },
+  4: { name: 'Głębia', desc: 'Wielowarstwowy kadr. Tekstury, nakładające się kształty, światło i cień.' },
+  5: { name: 'Reklamowy', desc: 'Profesjonalna sesja. Dramatyczne światło, editorial layout, dynamiczna kompozycja.' },
+  6: { name: 'Arcydzieło', desc: 'Kinowe światło, filmowa kolorystyka, immersyjna kompozycja. Każdy piksel celowy.' },
 };
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -559,7 +560,7 @@ export default function Generator({
                   <span className="text-xs font-semibold text-holo-mint">{CREATIVITY_LABELS[creativity].name}</span>
                 </div>
                 <input
-                  type="range" min={1} max={5} step={1}
+                  type="range" min={1} max={6} step={1}
                   value={creativity}
                   onChange={e => setCreativity(parseInt(e.target.value))}
                   className="w-full h-2 rounded-full appearance-none cursor-pointer bg-teal-mid accent-holo-mint"
