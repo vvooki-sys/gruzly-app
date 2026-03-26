@@ -32,12 +32,12 @@ const FORMAT_ASPECT: Record<string, string> = {
 };
 
 const CREATIVITY_LABELS: Record<number, { name: string; desc: string }> = {
-  1: { name: 'Minimalny', desc: 'Solid tło, wycentrowany tekst, zero dekoracji. Maksimum negatywnej przestrzeni.' },
-  2: { name: 'Prosty', desc: 'Gradient brandowy, jeden element dekoracyjny, subtelna tekstura. Dużo powietrza.' },
-  3: { name: 'Precyzyjny', desc: 'Asymetria, celowa negatywna przestrzeń, typografia z charakterem. Mniej = więcej.' },
-  4: { name: 'Głębia', desc: 'Wielowarstwowy kadr. Tekstury, nakładające się kształty, światło i cień.' },
-  5: { name: 'Reklamowy', desc: 'Profesjonalna sesja. Dramatyczne światło, editorial layout, dynamiczna kompozycja.' },
-  6: { name: 'Arcydzieło', desc: 'Kinowe światło, filmowa kolorystyka, immersyjna kompozycja. Każdy piksel celowy.' },
+  1: { name: 'Minimalny', desc: 'Jak szybkie zdjęcie telefonem — czyste, proste, spełnia zadanie.' },
+  2: { name: 'Prosty', desc: 'Jak amator z dobrym aparatem — widać intencję, staranny kadr.' },
+  3: { name: 'Precyzyjny', desc: 'Jak zawodowiec z komórką — mało elementów, ale każdy perfekcyjnie na miejscu.' },
+  4: { name: 'Głębia', desc: 'Jak fotograf z lustrzanką — warstwy, światło, cień, wszystko pod kontrolą.' },
+  5: { name: 'Reklamowy', desc: 'Jak profesjonalna sesja reklamowa — dramatyczne światło, odważna kompozycja.' },
+  6: { name: 'Arcydzieło', desc: 'Jak zdjęcie, przy którym zatrzymujesz scroll — kinowa atmosfera, każdy detal celowy.' },
 };
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
