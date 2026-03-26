@@ -280,6 +280,7 @@ export async function POST(req: NextRequest) {
     compositorLayout = 'classic',
     compositorCta = '',
     visualType = 'graphic',
+    logoOnPhoto = false,
     isFromCopywriter = false,
   } = await req.json();
 
@@ -653,8 +654,8 @@ ${layer1}${layer2}${layer3}${creativityBlock}${closing}`;
         const p = part as { inlineData?: { data: string; mimeType: string }; text?: string };
         if (p.inlineData) {
           const rawBuffer = Buffer.from(p.inlineData.data, 'base64');
-          // G8 — Skip logo overlay in photo mode (logo on food photo = unprofessional)
-          const finalBuffer = isPhotoMode
+          // G8 — Skip logo overlay in photo mode UNLESS logoOnPhoto is explicitly requested
+          const finalBuffer = isPhotoMode && !logoOnPhoto
             ? rawBuffer
             : await applyLogoOverlay(rawBuffer, assetList, format, logoPosition);
           const filename = `gruzly/${BRAND_ID}/${Date.now()}.png`;
