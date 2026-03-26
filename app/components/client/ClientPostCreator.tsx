@@ -44,11 +44,13 @@ export default function ClientPostCreator({
   const [results, setResults] = useState<CopyVariant[]>([]);
   const [concept, setConcept] = useState('');
   const [selectedVariant, setSelectedVariant] = useState<number | null>(null);
+  const [selectedBrief, setSelectedBrief] = useState<number | null>(null);
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
   const [activeGenerationId, setActiveGenerationId] = useState<number | null>(null);
 
   // Step 2 state (graphic)
   const [quality, setQuality] = useState<1 | 3 | 5>(3);
+  const [editableBrief, setEditableBrief] = useState('');
   const [generatingGraphic, setGeneratingGraphic] = useState(false);
   const [selectedGeneration, setSelectedGeneration] = useState<Generation | null>(null);
   const [editingImage, setEditingImage] = useState<{ url: string; generationId?: number } | null>(null);
@@ -68,6 +70,7 @@ export default function ClientPostCreator({
     setConcept(initialCopyGeneration.concept);
     setActiveGenerationId(initialCopyGeneration.id);
     setSelectedVariant(initialCopyGeneration.selected_variant ?? null);
+    setSelectedBrief(initialCopyGeneration.selected_variant ?? null);
     setStep(1);
     onInitialConsumed?.();
   }, [initialCopyGeneration, onInitialConsumed]);
@@ -79,6 +82,7 @@ export default function ClientPostCreator({
     setConcept('');
     setResults([]);
     setSelectedVariant(null);
+    setSelectedBrief(null);
     try {
       const fd = new FormData();
       fd.append('text', task);
@@ -126,6 +130,13 @@ export default function ClientPostCreator({
       selectVariant(0);
       setSelectedVariant(0);
     }
+    if (selectedBrief === null && results.length > 0) {
+      setSelectedBrief(0);
+    }
+    // Initialize editable brief from selected brief variant
+    const briefIdx = selectedBrief ?? selectedVariant ?? 0;
+    const briefText = results[briefIdx]?.visual_brief || '';
+    setEditableBrief(briefText);
     setStep(2);
   };
 
@@ -147,7 +158,7 @@ export default function ClientPostCreator({
         body: JSON.stringify({
           headline: copy.headline || '',
           subtext: copy.subtext || '',
-          brief: copy.visual_brief || '',
+          brief: editableBrief || copy.visual_brief || '',
           format,
           creativity: quality,
           visualType: 'photo',
@@ -261,13 +272,14 @@ export default function ClientPostCreator({
                       </div>
                     )}
                     {results.map((r, i) => {
-                      const isSelected = selectedVariant === i;
+                      const isCopySelected = selectedVariant === i;
+                      const isBriefSelected = selectedBrief === i;
                       return (
                         <div
                           key={i}
                           className={`border rounded-xl p-4 space-y-3 transition-all ${
-                            isSelected
-                              ? 'border-holo-mint ring-1 ring-holo-mint/30 bg-holo-mint/5'
+                            isCopySelected || isBriefSelected
+                              ? 'border-holo-mint/50 bg-holo-mint/5'
                               : 'border-teal-deep/12 dark:border-holo-mint/20'
                           }`}
                         >
@@ -275,58 +287,78 @@ export default function ClientPostCreator({
                             <span className="text-xs font-bold bg-teal-deep/10 dark:bg-teal-deep px-2 py-0.5 rounded-full">
                               Wariant {i + 1}
                             </span>
-                            {isSelected && (
+                            {isCopySelected && (
                               <span className="text-xs font-bold text-holo-mint flex items-center gap-1">
-                                <CheckCircle2 className="h-3.5 w-3.5" /> Wybrany
+                                <CheckCircle2 className="h-3.5 w-3.5" /> Copy
+                              </span>
+                            )}
+                            {isBriefSelected && (
+                              <span className="text-xs font-bold text-holo-lavender flex items-center gap-1">
+                                <CheckCircle2 className="h-3.5 w-3.5" /> Brief
                               </span>
                             )}
                           </div>
 
+                          {/* Post copy */}
                           <div className="space-y-1.5">
                             <div className="flex items-center justify-between">
                               <p className="text-xs font-bold text-muted uppercase tracking-wide">Treść posta</p>
-                              <button
-                                onClick={() => copyText(r.post_copy, i)}
-                                className={`flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full border transition-all ${
-                                  copiedIdx === i
-                                    ? 'border-holo-mint text-holo-mint bg-holo-mint/10'
-                                    : 'border-teal-deep/12 dark:border-holo-mint/20 text-muted hover:opacity-100'
-                                }`}
-                              >
-                                {copiedIdx === i ? <><Check className="h-3 w-3" /> Skopiowano</> : <><Copy className="h-3 w-3" /> Kopiuj</>}
-                              </button>
+                              <div className="flex items-center gap-1.5">
+                                <button
+                                  onClick={() => copyText(r.post_copy, i)}
+                                  className={`flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full border transition-all ${
+                                    copiedIdx === i
+                                      ? 'border-holo-mint text-holo-mint bg-holo-mint/10'
+                                      : 'border-teal-deep/12 dark:border-holo-mint/20 text-muted hover:opacity-100'
+                                  }`}
+                                >
+                                  {copiedIdx === i ? <><Check className="h-3 w-3" /> Skopiowano</> : <><Copy className="h-3 w-3" /> Kopiuj</>}
+                                </button>
+                                <button
+                                  onClick={() => selectVariant(i)}
+                                  className={`flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full border transition-all ${
+                                    isCopySelected
+                                      ? 'border-holo-mint text-holo-mint bg-holo-mint/10'
+                                      : 'border-holo-mint/30 text-holo-mint hover:bg-holo-mint/10'
+                                  }`}
+                                >
+                                  <CheckCircle2 className="h-3 w-3" /> {isCopySelected ? 'Wybrane' : 'Użyj'}
+                                </button>
+                              </div>
                             </div>
                             <p className="text-sm leading-relaxed whitespace-pre-line">{r.post_copy}</p>
                           </div>
 
+                          {/* Brief */}
                           <div className="space-y-1.5 border-l-2 border-holo-lavender/30 pl-3">
-                            <p className="text-xs font-bold text-muted uppercase tracking-wide">Brief dla fotografa</p>
-                            <p className="text-xs text-muted leading-relaxed">{r.visual_brief}</p>
-                          </div>
-
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => selectVariant(i)}
-                              className={`flex-1 h-8 rounded-full text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors ${
-                                isSelected
-                                  ? 'bg-holo-mint/20 border border-holo-mint text-holo-mint'
-                                  : 'bg-holo-mint/10 hover:bg-holo-mint/20 border border-holo-mint/30 hover:border-holo-mint text-holo-mint'
-                              }`}
-                            >
-                              <CheckCircle2 className="h-3 w-3" /> {isSelected ? 'Wybrany' : 'Wybierz'}
-                            </button>
-                            {isSelected && (
+                            <div className="flex items-center justify-between">
+                              <p className="text-xs font-bold text-muted uppercase tracking-wide">Brief dla fotografa</p>
                               <button
-                                onClick={goToStep2}
-                                className="flex-1 h-8 rounded-full holo-gradient text-teal-deep text-xs font-bold flex items-center justify-center gap-1.5"
+                                onClick={() => setSelectedBrief(i)}
+                                className={`flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full border transition-all ${
+                                  isBriefSelected
+                                    ? 'border-holo-lavender text-holo-lavender bg-holo-lavender/10'
+                                    : 'border-holo-lavender/30 text-holo-lavender hover:bg-holo-lavender/10'
+                                }`}
                               >
-                                Dalej — Grafika <ArrowRight className="h-3 w-3" />
+                                <CheckCircle2 className="h-3 w-3" /> {isBriefSelected ? 'Wybrany' : 'Użyj'}
                               </button>
-                            )}
+                            </div>
+                            <p className="text-xs text-muted leading-relaxed">{r.visual_brief}</p>
                           </div>
                         </div>
                       );
                     })}
+
+                    {/* Go to step 2 — visible when both selections made */}
+                    {selectedVariant !== null && selectedBrief !== null && (
+                      <button
+                        onClick={goToStep2}
+                        className="w-full h-10 rounded-full holo-gradient text-teal-deep text-sm font-bold flex items-center justify-center gap-2 sticky bottom-2"
+                      >
+                        Dalej — Wygeneruj grafikę <ArrowRight className="h-4 w-4" />
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
@@ -512,9 +544,15 @@ export default function ClientPostCreator({
                   </div>
                   <p className="text-sm leading-relaxed whitespace-pre-line">{getSelectedCopy()!.post_copy}</p>
 
-                  <div className="border-l-2 border-holo-lavender/30 pl-3">
-                    <p className="text-xs font-bold text-muted uppercase tracking-wide mb-1">Brief dla fotografa</p>
-                    <p className="text-xs text-muted leading-relaxed">{getSelectedCopy()!.visual_brief}</p>
+                  <div className="border-l-2 border-holo-lavender/30 pl-3 space-y-1.5">
+                    <p className="text-xs font-bold text-muted uppercase tracking-wide">Brief dla fotografa</p>
+                    <textarea
+                      className="w-full text-xs leading-relaxed panel-inset rounded-lg px-3 py-2 border border-teal-deep/12 dark:border-holo-mint/20 focus:border-holo-lavender outline-none transition-colors resize-none text-teal-deep dark:text-offwhite"
+                      rows={4}
+                      value={editableBrief}
+                      onChange={e => setEditableBrief(e.target.value)}
+                    />
+                    <p className="text-xs text-hint">Możesz edytować brief przed generowaniem grafiki</p>
                   </div>
                 </div>
               )}
