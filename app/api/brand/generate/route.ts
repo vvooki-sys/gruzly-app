@@ -149,54 +149,6 @@ async function addLogoBackground(
     .toBuffer();
 }
 
-async function overlayLogoOnPhoto(
-  imageBuffer: Buffer,
-  brandAssets: AssetRow[]
-): Promise<Buffer> {
-  const meta = await sharp(imageBuffer).metadata();
-  const width = meta.width || 1080;
-  const height = meta.height || 1080;
-
-  const logoAsset = await selectLogoAsset(brandAssets, imageBuffer, width, height);
-  if (!logoAsset) {
-    console.log('Photo logo overlay: no logo asset found, skipping');
-    return imageBuffer;
-  }
-
-  try {
-    const logoArrayBuffer = await fetch(logoAsset.url).then(r => r.arrayBuffer());
-    const logoBuffer = Buffer.from(new Uint8Array(logoArrayBuffer));
-
-    const logoWidth = Math.round(width * 0.18);
-    const logoResized = await sharp(logoBuffer)
-      .resize(logoWidth, null, { fit: 'inside', withoutEnlargement: true })
-      .toBuffer();
-
-    const logoMeta = await sharp(logoResized).metadata();
-    const logoH = logoMeta.height || Math.round(height * 0.06);
-
-    const margin = Math.round(width * 0.04);
-    const logoX = margin;
-    const logoY = height - logoH - margin;
-
-    // Subtle background glow behind logo for readability
-    const brightness = await getTopLeftBrightness(imageBuffer, width, height);
-    const withBg = await addLogoBackground(imageBuffer, logoX, logoY, logoWidth, logoH, brightness < 128);
-
-    const result = await sharp(withBg)
-      .composite([{ input: logoResized, top: logoY, left: logoX }])
-      .png()
-      .toBuffer();
-
-    console.log(`Photo logo overlay applied: ${logoAsset.variant || 'default'}, ${logoWidth}px wide, bottom-left`);
-    return result;
-  } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : String(e);
-    console.log('Photo logo overlay failed, returning without logo:', msg);
-    return imageBuffer;
-  }
-}
-
 async function applyLogoOverlay(
   geminiImageBuffer: Buffer,
   brandAssets: AssetRow[],
@@ -702,10 +654,29 @@ ${layer1}${layer2}${layer3}${creativityBlock}${closing}`;
         const p = part as { inlineData?: { data: string; mimeType: string }; text?: string };
         if (p.inlineData) {
           const rawBuffer = Buffer.from(p.inlineData.data, 'base64');
-          // G8 — Photo mode: simple overlay (no zone patching). Graphic mode: full overlay.
+          // G8 — Photo: simple composite (no zone patching). Graphic: full overlay.
           let finalBuffer: Buffer;
           if (isPhotoMode && logoOnPhoto) {
-            finalBuffer = await overlayLogoOnPhoto(rawBuffer, assetList);
+            const meta = await sharp(rawBuffer).metadata();
+            const w = meta.width || 1080;
+            const h = meta.height || 1080;
+            const logoAsset = await selectLogoAsset(assetList, rawBuffer, w, h);
+            if (logoAsset) {
+              const logoArr = await fetch(logoAsset.url).then(r => r.arrayBuffer());
+              const logoRaw = Buffer.from(new Uint8Array(logoArr));
+              const logoWidth = Math.round(w * 0.15);
+              const margin = Math.round(logoWidth / 2);
+              const logoResized = await sharp(logoRaw)
+                .resize(logoWidth, null, { fit: 'inside', withoutEnlargement: true })
+                .toBuffer();
+              finalBuffer = await sharp(rawBuffer)
+                .composite([{ input: logoResized, top: margin, left: margin }])
+                .png()
+                .toBuffer();
+              console.log(`Photo logo: ${logoAsset.variant || 'default'}, ${logoWidth}px, top-left`);
+            } else {
+              finalBuffer = rawBuffer;
+            }
           } else if (!isPhotoMode) {
             finalBuffer = await applyLogoOverlay(rawBuffer, assetList, format, logoPosition);
           } else {
