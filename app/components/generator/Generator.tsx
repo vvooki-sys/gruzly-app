@@ -448,14 +448,14 @@ export default function Generator({
                 </>
               )}
 
-              {/* Zadanie (brief) */}
+              {/* Zadanie (brief) — primary field */}
               <div>
-                <label className="text-xs font-semibold opacity-50 mb-1.5 block uppercase tracking-wide">
+                <label className="text-xs font-semibold mb-1.5 block uppercase tracking-wide">
                   Zadanie
                 </label>
                 <textarea
-                  className={`${inputCls} resize-none`}
-                  rows={2}
+                  className="w-full bg-offwhite dark:bg-teal-deep text-teal-deep dark:text-offwhite rounded-xl px-4 py-3 text-sm border-2 border-holo-mint/30 dark:border-holo-mint/20 focus:border-holo-mint outline-none transition-colors resize-none"
+                  rows={5}
                   placeholder="Opisz nastrój, styl, co ma pokazywać grafika. Copywriter może wygenerować to automatycznie."
                   value={brief}
                   onChange={e => setBrief(e.target.value)}
