@@ -420,6 +420,14 @@ export default function ClientPostCreator({
                 />
               </div>
 
+              {/* Trust badge */}
+              {hasBrandData && (
+                <div className="flex items-center gap-2 text-xs text-holo-mint bg-holo-mint/5 border border-holo-mint/20 px-3 py-2 rounded-xl">
+                  <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+                  <span>AI zna Twoją markę — kolory, styl, ton głosu</span>
+                </div>
+              )}
+
               {/* Platform */}
               <div>
                 <label className="text-xs font-semibold text-muted mb-1.5 block uppercase tracking-wide">Platforma</label>
@@ -477,13 +485,6 @@ export default function ClientPostCreator({
                 }
               </button>
 
-              {/* Trust badge */}
-              {hasBrandData && (
-                <div className="flex items-center gap-2 text-xs text-holo-mint bg-holo-mint/5 border border-holo-mint/20 px-3 py-2 rounded-xl">
-                  <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
-                  <span>AI zna Twoją markę — kolory, styl, ton głosu</span>
-                </div>
-              )}
             </>
           ) : (
             <>
