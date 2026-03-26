@@ -260,7 +260,7 @@ export default function ClientPostCreator({
                     <div className="text-center space-y-3 px-8">
                       <div className="text-5xl mb-3">✍️</div>
                       <p className="font-bold text-sm">Opisz co chcesz opublikować</p>
-                      <p className="text-xs text-hint">AI napisze tekst posta i przygotuje brief do grafiki — w jednym kroku</p>
+                      <p className="text-xs text-hint">Gruzly napisze tekst posta i przygotuje brief do grafiki — w jednym kroku :-)</p>
                     </div>
                   </div>
                 ) : (
