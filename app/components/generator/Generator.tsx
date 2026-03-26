@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import {
   Upload, Wand2, Loader2, Download,
   BookmarkPlus, Trash2, Zap,
-  Camera, X, PenLine, LayoutGrid,
+  Camera, X, PenLine, LayoutGrid, List,
 } from 'lucide-react';
 import type {
   Project,
@@ -97,6 +97,9 @@ export default function Generator({
   const [editingImage, setEditingImage] = useState<{ url: string; generationId?: number } | null>(null);
   const [editInstruction, setEditInstruction] = useState('');
   const [editing, setEditing] = useState(false);
+
+  // History view toggle
+  const [historyView, setHistoryView] = useState<'grid' | 'list'>('grid');
 
   // Copywriter data bridge
   const [fromCopywriter, setFromCopywriter] = useState(false);
@@ -614,93 +617,144 @@ export default function Generator({
             </div>
           </div>
 
-          {/* ── Historia: full-width rows ───────────────────────────────────── */}
+          {/* ── Historia: grid (default) / list toggle ─────────────────────── */}
           {generations.length > 0 && (
             <div>
-              <p className="text-xs font-bold opacity-30 uppercase tracking-wide mb-3">Historia ({generations.length})</p>
-              <div className="space-y-1.5">
-                {generations.map(g => {
-                  const urls: string[] = JSON.parse(g.image_urls || '[]');
-                  const isActive = selectedGeneration?.id === g.id;
-                  const gHeadline = g.brief.split(' | ')[0];
-                  const gSubtext = g.brief.includes(' | ') ? g.brief.split(' | ').slice(1).join(' | ') : null;
-                  const isFast = g.format.endsWith(':fast');
-                  const gCreativity = parseInt(g.format.match(/:c(\d)/)?.[1] || '2');
-
-                  return (
-                    <div
-                      key={g.id}
-                      onClick={() => { setSelectedGeneration(g); setEditingImage(null); }}
-                      className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer border transition-all ${
-                        isActive
-                          ? 'border-holo-mint bg-holo-mint/5'
-                          : 'border-teal-deep/10 dark:border-holo-mint/10 hover:border-holo-mint/30 bg-white dark:bg-teal-mid'
-                      }`}
-                    >
-                      {/* Thumbnail */}
-                      <div className={`w-14 h-14 rounded-lg overflow-hidden border-2 shrink-0 transition-colors ${isActive ? 'border-holo-mint' : 'border-teal-deep/10 dark:border-holo-mint/10'}`}>
-                        {urls[0] && <img src={urls[0]} alt="" className="w-full h-full object-cover" />}
-                      </div>
-
-                      {/* Text */}
-                      <div className="flex-1 min-w-0">
-                        <p className="font-bold text-sm truncate">{gHeadline}</p>
-                        {gSubtext && <p className="text-xs opacity-40 truncate mt-0.5">{gSubtext}</p>}
-                      </div>
-
-                      {/* Format + mode + creativity */}
-                      <div className="hidden sm:flex items-center gap-2 shrink-0">
-                        <span className="text-xs opacity-30">{getFormatLabel(g.format)}</span>
-                        {isFast && (
-                          <span className="flex items-center gap-0.5 text-xs text-holo-yellow">
-                            <Zap className="h-3 w-3" /> Szybki
-                          </span>
-                        )}
-                        {gCreativity === 3 && (
-                          <span className="text-xs text-holo-aqua">Dynamic</span>
-                        )}
-                        {gCreativity === 4 && (
-                          <span className="text-xs text-holo-lavender">Bold</span>
-                        )}
-                        {gCreativity === 5 && (
-                          <span className="text-xs text-holo-pink">Expressive</span>
-                        )}
-                      </div>
-
-                      {/* Date */}
-                      <span className="hidden md:block text-xs opacity-25 whitespace-nowrap shrink-0">
-                        {new Date(g.created_at).toLocaleDateString('pl-PL')}
-                      </span>
-
-                      {/* Action buttons */}
-                      <div className="flex gap-1 shrink-0" onClick={e => e.stopPropagation()}>
-                        <button
-                          onClick={() => {
-                            setSelectedGeneration(g);
-                            const urls2: string[] = JSON.parse(g.image_urls || '[]');
-                            if (urls2[0]) { setEditingImage({ url: urls2[0], generationId: g.id }); setEditInstruction(''); }
-                          }}
-                          title="Edytuj"
-                          className="w-8 h-8 rounded-full border border-teal-deep/15 dark:border-holo-mint/15 flex items-center justify-center opacity-40 hover:opacity-100 hover:border-holo-mint/50 transition-all"
-                        >
-                          <Wand2 className="h-3.5 w-3.5" />
-                        </button>
-                        <button
-                          onClick={() => deleteGeneration(g.id)}
-                          disabled={deletingId === g.id}
-                          title="Usuń"
-                          className="w-8 h-8 rounded-full border border-red-500/20 flex items-center justify-center opacity-40 hover:opacity-100 hover:border-red-500/50 hover:text-red-400 disabled:opacity-20 transition-all"
-                        >
-                          {deletingId === g.id
-                            ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                            : <Trash2 className="h-3.5 w-3.5" />
-                          }
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-xs font-bold opacity-30 uppercase tracking-wide">Historia ({generations.length})</p>
+                <div className="flex gap-1 bg-offwhite dark:bg-teal-deep rounded-lg p-0.5 border border-teal-deep/10 dark:border-holo-mint/10">
+                  <button
+                    onClick={() => setHistoryView('grid')}
+                    className={`w-7 h-7 rounded-md flex items-center justify-center transition-all ${
+                      historyView === 'grid' ? 'bg-white dark:bg-teal-mid shadow-sm opacity-100' : 'opacity-30 hover:opacity-60'
+                    }`}
+                  >
+                    <LayoutGrid className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    onClick={() => setHistoryView('list')}
+                    className={`w-7 h-7 rounded-md flex items-center justify-center transition-all ${
+                      historyView === 'list' ? 'bg-white dark:bg-teal-mid shadow-sm opacity-100' : 'opacity-30 hover:opacity-60'
+                    }`}
+                  >
+                    <List className="h-3.5 w-3.5" />
+                  </button>
+                </div>
               </div>
+
+              {historyView === 'grid' ? (
+                /* ── Grid View ── */
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                  {generations.map(g => {
+                    const urls: string[] = JSON.parse(g.image_urls || '[]');
+                    const isActive = selectedGeneration?.id === g.id;
+                    const gHeadline = g.brief.split(' | ')[0];
+                    const gFormat = g.format.split(':')[0];
+
+                    return (
+                      <div
+                        key={g.id}
+                        onClick={() => { setSelectedGeneration(g); setEditingImage(null); }}
+                        className={`group rounded-xl cursor-pointer border overflow-hidden transition-all ${
+                          isActive
+                            ? 'border-holo-mint ring-2 ring-holo-mint/30'
+                            : 'border-teal-deep/10 dark:border-holo-mint/10 hover:border-holo-mint/30'
+                        }`}
+                      >
+                        <div className={`${FORMAT_ASPECT[gFormat] || 'aspect-square'} bg-offwhite dark:bg-teal-deep overflow-hidden relative`}>
+                          {urls[0] && <img src={urls[0]} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />}
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                          <div className="absolute top-1.5 left-1.5">
+                            <span className="text-[10px] font-bold text-white bg-black/40 backdrop-blur-sm px-1.5 py-0.5 rounded-md">{getFormatLabel(g.format)}</span>
+                          </div>
+                          <div className="absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
+                            <button
+                              onClick={() => deleteGeneration(g.id)}
+                              disabled={deletingId === g.id}
+                              className="w-7 h-7 rounded-full bg-black/50 backdrop-blur-sm text-white flex items-center justify-center hover:bg-red-500/80 transition-colors"
+                            >
+                              {deletingId === g.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
+                            </button>
+                          </div>
+                        </div>
+                        <div className="px-2.5 py-2 bg-white dark:bg-teal-mid">
+                          <p className="text-xs font-semibold truncate">{gHeadline}</p>
+                          <p className="text-[10px] opacity-30 mt-0.5">{new Date(g.created_at).toLocaleString('pl-PL', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                /* ── List View ── */
+                <div className="space-y-1.5">
+                  {generations.map(g => {
+                    const urls: string[] = JSON.parse(g.image_urls || '[]');
+                    const isActive = selectedGeneration?.id === g.id;
+                    const gHeadline = g.brief.split(' | ')[0];
+                    const gSubtext = g.brief.includes(' | ') ? g.brief.split(' | ').slice(1).join(' | ') : null;
+                    const isFast = g.format.endsWith(':fast');
+                    const gCreativity = parseInt(g.format.match(/:c(\d)/)?.[1] || '2');
+
+                    return (
+                      <div
+                        key={g.id}
+                        onClick={() => { setSelectedGeneration(g); setEditingImage(null); }}
+                        className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer border transition-all ${
+                          isActive
+                            ? 'border-holo-mint bg-holo-mint/5'
+                            : 'border-teal-deep/10 dark:border-holo-mint/10 hover:border-holo-mint/30 bg-white dark:bg-teal-mid'
+                        }`}
+                      >
+                        <div className={`w-14 h-14 rounded-lg overflow-hidden border-2 shrink-0 transition-colors ${isActive ? 'border-holo-mint' : 'border-teal-deep/10 dark:border-holo-mint/10'}`}>
+                          {urls[0] && <img src={urls[0]} alt="" className="w-full h-full object-cover" />}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-bold text-sm truncate">{gHeadline}</p>
+                          {gSubtext && <p className="text-xs opacity-40 truncate mt-0.5">{gSubtext}</p>}
+                        </div>
+                        <div className="hidden sm:flex items-center gap-1.5 shrink-0">
+                          <span className="text-xs opacity-30">{getFormatLabel(g.format)}</span>
+                          {isFast && (
+                            <span className="flex items-center gap-0.5 text-xs text-holo-yellow">
+                              <Zap className="h-3 w-3" /> Szybki
+                            </span>
+                          )}
+                          {CREATIVITY_LABELS[gCreativity] && (
+                            <span className="text-[10px] opacity-30 px-1.5 py-0.5 rounded-md border border-current/10">
+                              {CREATIVITY_LABELS[gCreativity].name}
+                            </span>
+                          )}
+                        </div>
+                        <span className="hidden md:block text-xs opacity-25 whitespace-nowrap shrink-0">
+                          {new Date(g.created_at).toLocaleString('pl-PL', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                        <div className="flex gap-1 shrink-0" onClick={e => e.stopPropagation()}>
+                          <button
+                            onClick={() => {
+                              setSelectedGeneration(g);
+                              const urls2: string[] = JSON.parse(g.image_urls || '[]');
+                              if (urls2[0]) { setEditingImage({ url: urls2[0], generationId: g.id }); setEditInstruction(''); }
+                            }}
+                            title="Edytuj"
+                            className="w-8 h-8 rounded-full border border-teal-deep/15 dark:border-holo-mint/15 flex items-center justify-center opacity-40 hover:opacity-100 hover:border-holo-mint/50 transition-all"
+                          >
+                            <Wand2 className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            onClick={() => deleteGeneration(g.id)}
+                            disabled={deletingId === g.id}
+                            title="Usuń"
+                            className="w-8 h-8 rounded-full border border-red-500/20 flex items-center justify-center opacity-40 hover:opacity-100 hover:border-red-500/50 hover:text-red-400 disabled:opacity-20 transition-all"
+                          >
+                            {deletingId === g.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
         </div>
