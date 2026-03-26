@@ -270,12 +270,16 @@ export default function Copywriter({ project, copyGenerations, onCopyGenerations
 
                       {/* Actions */}
                       <div className="flex gap-2">
-                        {activeGenerationId && !isSelected && (
+                        {activeGenerationId && (
                           <button
                             onClick={() => selectVariant(activeGenerationId, i)}
-                            className="flex-1 h-8 bg-holo-mint/10 hover:bg-holo-mint/20 border border-holo-mint/30 hover:border-holo-mint rounded-full text-xs font-semibold text-holo-mint flex items-center justify-center gap-1.5 transition-colors"
+                            className={`flex-1 h-8 rounded-full text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors ${
+                              isSelected
+                                ? 'bg-holo-mint/20 border border-holo-mint text-holo-mint'
+                                : 'bg-holo-mint/10 hover:bg-holo-mint/20 border border-holo-mint/30 hover:border-holo-mint text-holo-mint'
+                            }`}
                           >
-                            <CheckCircle2 className="h-3 w-3" /> Wybierz wariant
+                            <CheckCircle2 className="h-3 w-3" /> {isSelected ? 'Wybrany' : 'Wybierz wariant'}
                           </button>
                         )}
                         <button
