@@ -57,20 +57,63 @@ Zdjęcie, które zatrzymuje scroll.`,
 
 type AssetRow = { type: string; url: string; filename: string; variant?: string; description?: string; mime_type?: string; is_featured?: boolean };
 
-async function getTopLeftBrightness(imageBuffer: Buffer, width: number, height: number): Promise<number> {
+function getLogoCoordinates(
+  position: string,
+  imageWidth: number,
+  imageHeight: number,
+  logoWidth: number,
+  logoHeight: number,
+  margin: number
+): { x: number; y: number } {
+  const left = margin;
+  const centerX = Math.round((imageWidth - logoWidth) / 2);
+  const right = imageWidth - logoWidth - margin;
+  const top = margin;
+  const centerY = Math.round((imageHeight - logoHeight) / 2);
+  const bottom = imageHeight - logoHeight - margin;
+
+  const map: Record<string, { x: number; y: number }> = {
+    'top-left':       { x: left,    y: top },
+    'top-center':     { x: centerX, y: top },
+    'top-right':      { x: right,   y: top },
+    'middle-left':    { x: left,    y: centerY },
+    'middle-center':  { x: centerX, y: centerY },
+    'middle-right':   { x: right,   y: centerY },
+    'bottom-left':    { x: left,    y: bottom },
+    'bottom-center':  { x: centerX, y: bottom },
+    'bottom-right':   { x: right,   y: bottom },
+  };
+
+  return map[position] || map['top-left'];
+}
+
+async function getRegionBrightness(
+  imageBuffer: Buffer,
+  width: number,
+  height: number,
+  position: string
+): Promise<number> {
   try {
+    const isRight = position.includes('right');
+    const isBottom = position.includes('bottom');
+    const isCenterX = position.includes('center') && !position.includes('middle');
+    const isCenterY = position.includes('middle');
+
+    const sampleW = Math.round(width * 0.30);
+    const sampleH = Math.round(height * 0.25);
+
+    const left = isCenterX ? Math.round((width - sampleW) / 2)
+      : isRight ? width - sampleW : 0;
+    const top = isCenterY ? Math.round((height - sampleH) / 2)
+      : isBottom ? height - sampleH : 0;
+
     const region = await sharp(imageBuffer)
-      .extract({
-        left: 0,
-        top: 0,
-        width: Math.round(width * 0.30),
-        height: Math.round(height * 0.25),
-      })
+      .extract({ left, top, width: sampleW, height: sampleH })
       .greyscale()
       .raw()
       .toBuffer();
-    const avg = region.reduce((sum: number, px: number) => sum + px, 0) / region.length;
-    return avg;
+
+    return region.reduce((sum: number, px: number) => sum + px, 0) / region.length;
   } catch {
     return 0;
   }
@@ -95,13 +138,14 @@ async function selectLogoAsset(
   brandAssets: AssetRow[],
   imageBuffer: Buffer,
   width: number,
-  height: number
+  height: number,
+  position: string = 'top-left'
 ): Promise<AssetRow | null> {
   const logoAssets = brandAssets.filter(a => a.type === 'logo');
   if (logoAssets.length === 0) return null;
   if (logoAssets.length === 1) return logoAssets[0];
 
-  const bgBrightness = await getTopLeftBrightness(imageBuffer, width, height);
+  const bgBrightness = await getRegionBrightness(imageBuffer, width, height, position);
   const isDark = bgBrightness < 128;
 
   // Measure actual brightness of each logo — pick the one with best contrast against bg
@@ -164,7 +208,7 @@ async function applyLogoOverlay(
   const width = meta.width || 1080;
   const height = meta.height || 1080;
 
-  const logoAsset = await selectLogoAsset(brandAssets, geminiImageBuffer, width, height);
+  const logoAsset = await selectLogoAsset(brandAssets, geminiImageBuffer, width, height, logoPosition);
   if (!logoAsset) {
     console.log('Logo overlay: no logo asset found, skipping');
     return geminiImageBuffer;
@@ -185,26 +229,25 @@ async function applyLogoOverlay(
     const logoH = logoMeta.height || Math.round(height * 0.08);
 
     const margin = Math.round(width * 0.04);
-    const logoX = logoPosition.includes('right') ? width - logoWidth - margin : margin;
-    const logoY = logoPosition.includes('bottom') ? height - logoH - margin : margin;
-
-    const brightness = await getTopLeftBrightness(geminiImageBuffer, width, height);
+    const { x: logoX, y: logoY } = getLogoCoordinates(logoPosition, width, height, logoWidth, logoH, margin);
 
     // Sharp fix: patch logo zone with sampled adjacent background color
     // This eliminates the "dark rectangle" artifact Gemini renders in the logo zone
     const zoneW = Math.round(width * 0.25);
     const zoneH = Math.round(height * 0.20);
-    const zoneLeft = logoPosition.includes('right') ? width - zoneW : 0;
-    const zoneTop = logoPosition.includes('bottom') ? height - zoneH : 0;
     const isRight = logoPosition.includes('right');
     const isBottom = logoPosition.includes('bottom');
+    const isCenterX = logoPosition.includes('center') && !logoPosition.includes('middle');
+    const isCenterY = logoPosition.includes('middle');
+    const zoneLeft = isCenterX ? Math.round((width - zoneW) / 2) : isRight ? width - zoneW : 0;
+    const zoneTop = isCenterY ? Math.round((height - zoneH) / 2) : isBottom ? height - zoneH : 0;
     const sampleSize = Math.round(Math.min(width, height) * 0.06);
-    const sampleLeft = isRight
+    const sampleLeft = isCenterX
       ? Math.max(0, zoneLeft - sampleSize)
-      : Math.min(width - sampleSize - 1, zoneW + 4);
-    const sampleTop = isBottom
+      : isRight ? Math.max(0, zoneLeft - sampleSize) : Math.min(width - sampleSize - 1, zoneW + 4);
+    const sampleTop = isCenterY
       ? Math.max(0, zoneTop - sampleSize)
-      : Math.min(height - sampleSize - 1, zoneH + 4);
+      : isBottom ? Math.max(0, zoneTop - sampleSize) : Math.min(height - sampleSize - 1, zoneH + 4);
 
     let patchedBuffer = geminiImageBuffer;
     try {
@@ -230,7 +273,7 @@ async function applyLogoOverlay(
       .png()
       .toBuffer();
 
-    console.log(`Logo overlay applied: pos=${logoPosition}, variant=${logoAsset.variant || 'default'}, brightness: ${brightness.toFixed(0)}`);
+    console.log(`Logo overlay applied: pos=${logoPosition}, variant=${logoAsset.variant || 'default'}`);
     return finalImage;
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);
@@ -369,11 +412,16 @@ export async function POST(req: NextRequest) {
   const logoPosition: string = project.logo_position || 'top-left';
 
   const LOGO_EMPTY_ZONE: Record<string, string | null> = {
-    'top-left':     'lewy górny obszar (pierwsze 25% szerokości, pierwsze 20% wysokości)',
-    'top-right':    'prawy górny obszar (ostatnie 25% szerokości, pierwsze 20% wysokości)',
-    'bottom-left':  'lewy dolny obszar (pierwsze 25% szerokości, ostatnie 20% wysokości)',
-    'bottom-right': 'prawy dolny obszar (ostatnie 25% szerokości, ostatnie 20% wysokości)',
-    'none':         null,
+    'top-left':       'lewy górny obszar (pierwsze 25% szerokości, pierwsze 20% wysokości)',
+    'top-center':     'górny środkowy obszar (środkowe 30% szerokości, pierwsze 20% wysokości)',
+    'top-right':      'prawy górny obszar (ostatnie 25% szerokości, pierwsze 20% wysokości)',
+    'middle-left':    'lewy środkowy obszar (pierwsze 25% szerokości, środkowe 20% wysokości)',
+    'middle-center':  'centralny obszar (środkowe 30% szerokości, środkowe 20% wysokości)',
+    'middle-right':   'prawy środkowy obszar (ostatnie 25% szerokości, środkowe 20% wysokości)',
+    'bottom-left':    'lewy dolny obszar (pierwsze 25% szerokości, ostatnie 20% wysokości)',
+    'bottom-center':  'dolny środkowy obszar (środkowe 30% szerokości, ostatnie 20% wysokości)',
+    'bottom-right':   'prawy dolny obszar (ostatnie 25% szerokości, ostatnie 20% wysokości)',
+    'none':           null,
   };
   const emptyZone = LOGO_EMPTY_ZONE[logoPosition] ?? LOGO_EMPTY_ZONE['top-left'];
 
@@ -660,7 +708,7 @@ ${layer1}${layer2}${layer3}${creativityBlock}${closing}`;
             const meta = await sharp(rawBuffer).metadata();
             const w = meta.width || 1080;
             const h = meta.height || 1080;
-            const logoAsset = await selectLogoAsset(assetList, rawBuffer, w, h);
+            const logoAsset = await selectLogoAsset(assetList, rawBuffer, w, h, logoPosition);
             if (logoAsset) {
               const logoArr = await fetch(logoAsset.url).then(r => r.arrayBuffer());
               const logoRaw = Buffer.from(new Uint8Array(logoArr));
@@ -669,11 +717,14 @@ ${layer1}${layer2}${layer3}${creativityBlock}${closing}`;
               const logoResized = await sharp(logoRaw)
                 .resize(logoWidth, null, { fit: 'inside', withoutEnlargement: true })
                 .toBuffer();
+              const logoMeta = await sharp(logoResized).metadata();
+              const logoH = logoMeta.height || Math.round(h * 0.06);
+              const { x, y } = getLogoCoordinates(logoPosition, w, h, logoWidth, logoH, margin);
               finalBuffer = await sharp(rawBuffer)
-                .composite([{ input: logoResized, top: margin, left: margin }])
+                .composite([{ input: logoResized, top: y, left: x }])
                 .png()
                 .toBuffer();
-              console.log(`Photo logo: ${logoAsset.variant || 'default'}, ${logoWidth}px, top-left`);
+              console.log(`Photo logo: ${logoAsset.variant || 'default'}, ${logoWidth}px, ${logoPosition}`);
             } else {
               finalBuffer = rawBuffer;
             }

@@ -96,8 +96,9 @@ export default function BrandSettings({
 
   /* ══════════════════════ Handlers ══════════════════════ */
 
-  const saveProjectMeta = async () => {
+  const saveProjectMeta = async (overrideLogoPosition?: string) => {
     if (!editName.trim()) return;
+    const pos = overrideLogoPosition ?? editLogoPosition;
     setSavingProject(true);
     try {
       const res = await fetch('/api/brand', {
@@ -107,7 +108,7 @@ export default function BrandSettings({
           name: editName.trim(),
           clientName: editClientName || null,
           description: editDescription || null,
-          logoPosition: editLogoPosition,
+          logoPosition: pos,
         }),
       });
       if (res.ok) {
@@ -116,7 +117,7 @@ export default function BrandSettings({
           name: editName.trim(),
           client_name: editClientName || null,
           description: editDescription || null,
-          logo_position: editLogoPosition,
+          logo_position: pos,
         });
         showToast('Zapisano');
       }
@@ -379,6 +380,40 @@ export default function BrandSettings({
             onChange={e => setEditDescription(e.target.value)}
             onBlur={saveProjectMeta}
           />
+        </div>
+
+        {/* Logo position grid */}
+        <div>
+          <label className="text-xs font-semibold opacity-50 uppercase tracking-wide block mb-2">Pozycja logo</label>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 36px)', gap: '4px' }}>
+            {[
+              ['top-left', 'top-center', 'top-right'],
+              ['middle-left', 'middle-center', 'middle-right'],
+              ['bottom-left', 'bottom-center', 'bottom-right'],
+            ].flat().map(pos => (
+              <button
+                key={pos}
+                onClick={() => { setEditLogoPosition(pos); saveProjectMeta(pos); }}
+                className="flex items-center justify-center transition-all"
+                style={{
+                  width: 36, height: 36, borderRadius: 6,
+                  border: editLogoPosition === pos ? '2px solid rgb(var(--holo-mint))' : '1px solid rgba(255,255,255,0.1)',
+                  background: editLogoPosition === pos ? 'rgba(255,255,255,0.15)' : 'transparent',
+                }}
+              >
+                <div style={{
+                  width: 8, height: 8, borderRadius: '50%',
+                  background: editLogoPosition === pos ? 'rgb(var(--holo-mint))' : 'rgba(255,255,255,0.3)',
+                }} />
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={() => { setEditLogoPosition('none'); saveProjectMeta('none'); }}
+            className={`text-xs mt-2 hover:opacity-80 transition-opacity ${editLogoPosition === 'none' ? 'text-holo-mint font-bold' : 'opacity-50'}`}
+          >
+            Bez logo
+          </button>
         </div>
 
         {savingProject && <p className="text-xs text-holo-mint font-bold">Zapisuję...</p>}
