@@ -5,16 +5,18 @@
 
 /* Design system tokens */
 @theme {
-  --color-teal-deep: #1B334B;
-  --color-teal-mid:  #223D55;
+  --color-teal-deep: #1A1A1F;
+  --color-teal-mid:  #242429;
   --color-offwhite:  #F5F5F0;
 
-  --color-holo-mint:     #B3F5DC;
-  --color-holo-lavender: #C8B5E6;
-  --color-holo-pink:     #F5C7D4;
-  --color-holo-aqua:     #9BE5E0;
-  --color-holo-peach:    #FFCBA4;
-  --color-holo-yellow:   #FFE5A8;
+  --color-holo-mint:      #B3F5DC;
+  --color-holo-mint-dark: #1A9A6A;
+  --color-holo-lavender:  #C8B5E6;
+  --color-holo-pink:      #F5C7D4;
+  --color-holo-aqua:      #9BE5E0;
+  --color-holo-peach:     #FFCBA4;
+  --color-holo-peach-dark:#C47A3A;
+  --color-holo-yellow:    #FFE5A8;
 
   --color-plej-navy:  #103958;
   --color-plej-coral: #DF5B3F;
@@ -51,6 +53,10 @@ body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  background-color: var(--color-offwhite);
+}
+[data-theme="dark"] body {
+  background-color: var(--color-teal-deep);
 }
 
 /* Fix 1: inputs inherit text color from parent (prevents invisible text) */

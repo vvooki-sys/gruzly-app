@@ -118,7 +118,6 @@ export default function Copywriter({ project, copyGenerations, onCopyGenerations
         setConcept(data.concept || '');
         setCurrentVisualType(visualType);
         setShowPrompt(false);
-        // Prepend to history
         if (data.generation) {
           onCopyGenerationsUpdate([data.generation, ...copyGenerations]);
         }
@@ -174,17 +173,129 @@ export default function Copywriter({ project, copyGenerations, onCopyGenerations
     }
   };
 
-  // Which variants to render and which generation they belong to
   const activeGenerationId = selectedHistory?.id || copyGenerations[0]?.id;
   const activeSelectedVariant = selectedHistory?.selected_variant ??
     copyGenerations.find(g => g.id === activeGenerationId)?.selected_variant ?? null;
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* ── Left: Input ── */}
+      {/* Main grid: Results LEFT (sticky) | Form RIGHT (420px) — matches Generator */}
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_420px] gap-6 lg:gap-8 items-start">
+
+        {/* ── LEFT: Results (sticky on desktop) ────────────────────────── */}
+        <div className="lg:sticky lg:top-[72px] space-y-3">
+          <h2 className="font-black text-base">
+            {results.length > 0 ? `${results.length} warianty` : 'Wyniki'}
+          </h2>
+
+          <div className="bg-white dark:bg-teal-mid border border-teal-deep/10 dark:border-holo-mint/10 rounded-2xl overflow-hidden">
+            {results.length === 0 ? (
+              <div className="aspect-square flex items-center justify-center">
+                <div className="text-center space-y-3">
+                  <div className="text-5xl mb-3">✍️</div>
+                  <p className="text-sm opacity-30">Wpisz zadanie i wygeneruj copy</p>
+                </div>
+              </div>
+            ) : (
+              <div className="max-h-[calc(100vh-120px)] overflow-y-auto p-4 space-y-3">
+                {/* Concept */}
+                {concept && (
+                  <div className="bg-holo-mint/5 border border-holo-mint/20 rounded-xl px-4 py-3">
+                    <p className="text-xs font-bold uppercase tracking-wide text-holo-mint opacity-70 mb-1">Koncept</p>
+                    <p className="text-sm opacity-80">{concept}</p>
+                  </div>
+                )}
+
+                {/* Variants */}
+                {results.map((r, i) => {
+                  const isSelected = activeSelectedVariant === i;
+                  return (
+                    <div
+                      key={i}
+                      className={`border rounded-xl p-4 space-y-3 transition-all ${
+                        isSelected
+                          ? 'border-holo-mint ring-1 ring-holo-mint/30 bg-holo-mint/5'
+                          : 'border-teal-deep/10 dark:border-holo-mint/10'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold bg-teal-deep/10 dark:bg-teal-deep px-2 py-0.5 rounded-full">
+                          Wariant {i + 1}
+                        </span>
+                        {isSelected && (
+                          <span className="text-xs font-bold text-holo-mint flex items-center gap-1">
+                            <CheckCircle2 className="h-3.5 w-3.5" /> Wybrany
+                          </span>
+                        )}
+                        {r.rationale && <span className="text-xs opacity-30 italic flex-1 truncate">{r.rationale}</span>}
+                      </div>
+
+                      {/* Post copy */}
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs font-bold opacity-40 uppercase tracking-wide">Treść posta</p>
+                          <button
+                            onClick={() => copyTextFn(r.post_copy, i)}
+                            className={`flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full border transition-all ${
+                              copiedIdx === i
+                                ? 'border-holo-mint text-holo-mint bg-holo-mint/10'
+                                : 'border-teal-deep/10 dark:border-holo-mint/10 opacity-50 hover:opacity-90 hover:border-holo-mint/40'
+                            }`}
+                          >
+                            {copiedIdx === i ? <><Check className="h-3 w-3" /> Skopiowano</> : <><Copy className="h-3 w-3" /> Kopiuj</>}
+                          </button>
+                        </div>
+                        <p className="text-sm leading-relaxed whitespace-pre-line">{r.post_copy}</p>
+                      </div>
+
+                      {/* Visual brief */}
+                      <div className="space-y-1.5 border-l-2 border-holo-lavender/30 pl-3">
+                        <p className="text-xs font-bold opacity-40 uppercase tracking-wide">
+                          {currentVisualType === 'graphic' ? '🎨 Brief dla grafika' : '📷 Brief dla fotografa'}
+                        </p>
+                        <p className="text-xs opacity-60 leading-relaxed">{r.visual_brief}</p>
+                      </div>
+
+                      {/* Headline/subtext */}
+                      {currentVisualType !== 'photo' && (r.headline || r.subtext) && (
+                        <div className="space-y-1 bg-offwhite dark:bg-teal-deep rounded-lg px-3 py-2">
+                          <p className="text-[10px] font-bold opacity-30 uppercase tracking-wide">
+                            {currentVisualType === 'photo_text' ? 'Tekst na zdjęcie' : 'Tekst na grafikę'}
+                          </p>
+                          {r.headline && <p className="text-sm font-bold">{r.headline}</p>}
+                          {r.subtext && <p className="text-xs opacity-60">{r.subtext}</p>}
+                          {r.cta && <p className="text-xs text-holo-mint font-medium">{r.cta}</p>}
+                        </div>
+                      )}
+
+                      {/* Actions */}
+                      <div className="flex gap-2">
+                        {activeGenerationId && !isSelected && (
+                          <button
+                            onClick={() => selectVariant(activeGenerationId, i)}
+                            className="flex-1 h-8 bg-holo-mint/10 hover:bg-holo-mint/20 border border-holo-mint/30 hover:border-holo-mint rounded-full text-xs font-semibold text-holo-mint flex items-center justify-center gap-1.5 transition-colors"
+                          >
+                            <CheckCircle2 className="h-3 w-3" /> Wybierz wariant
+                          </button>
+                        )}
+                        <button
+                          onClick={() => onUseCopy?.({ headline: r.headline || '', subtext: r.subtext || '', cta: r.cta, visualBrief: r.visual_brief || '', visualType: (ENABLE_GRAPHIC_MODES ? currentVisualType : 'photo') as 'graphic' | 'photo' | 'photo_text', logoOnPhoto, platform: format })}
+                          className="flex-1 h-8 bg-teal-deep/5 dark:bg-teal-deep hover:bg-holo-mint/20 hover:border-holo-mint border border-teal-deep/10 dark:border-holo-mint/10 rounded-full text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors"
+                        >
+                          <Wand2 className="h-3 w-3" /> Użyj w generatorze
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* ── RIGHT: Form ──────────────────────────────────────────────── */}
         <div className="space-y-4">
-          <h2 className="font-black text-base">Copywriter</h2>
+          <h2 className="font-black text-base">Nowe copy</h2>
 
           {/* Task */}
           <div>
@@ -202,18 +313,16 @@ export default function Copywriter({ project, copyGenerations, onCopyGenerations
           </div>
 
           {/* Brief file */}
-          <div>
-            <label className="cursor-pointer w-full h-12 border border-dashed border-teal-deep/10 dark:border-holo-mint/10 hover:border-holo-mint/30 rounded-xl flex items-center justify-center gap-2 text-xs opacity-50 hover:opacity-80 transition-all">
-              <Upload className="h-3.5 w-3.5" />
-              {briefFile ? `📄 ${briefFile.name}` : 'Opcjonalnie: wgraj brief (PDF, DOCX, TXT)'}
-              <input
-                type="file"
-                accept=".docx,.txt,.pdf"
-                className="hidden"
-                onChange={e => { const f = e.target.files?.[0]; if (f) setBriefFile(f); }}
-              />
-            </label>
-          </div>
+          <label className="cursor-pointer w-full h-12 border border-dashed border-teal-deep/10 dark:border-holo-mint/10 hover:border-holo-mint/30 rounded-xl flex items-center justify-center gap-2 text-xs opacity-50 hover:opacity-80 transition-all">
+            <Upload className="h-3.5 w-3.5" />
+            {briefFile ? `📄 ${briefFile.name}` : 'Opcjonalnie: wgraj brief (PDF, DOCX, TXT)'}
+            <input
+              type="file"
+              accept=".docx,.txt,.pdf"
+              className="hidden"
+              onChange={e => { const f = e.target.files?.[0]; if (f) setBriefFile(f); }}
+            />
+          </label>
 
           {/* Format */}
           <div>
@@ -329,113 +438,6 @@ export default function Copywriter({ project, copyGenerations, onCopyGenerations
               </button>
             )}
           </div>
-        </div>
-
-        {/* ── Right: Results ── */}
-        <div className="space-y-3">
-          <h2 className="font-black text-base">
-            {results.length > 0 ? `${results.length} warianty` : 'Wyniki'}
-          </h2>
-
-          {results.length === 0 ? (
-            <div className="bg-white dark:bg-teal-mid border border-teal-deep/10 dark:border-holo-mint/10 rounded-2xl p-8 text-center">
-              <div className="text-4xl mb-3">✍️</div>
-              <p className="text-sm opacity-30">Wpisz zadanie i wygeneruj copy</p>
-            </div>
-          ) : (
-            <>
-              {/* Concept */}
-              {concept && (
-                <div className="bg-holo-mint/5 border border-holo-mint/20 rounded-xl px-4 py-3">
-                  <p className="text-xs font-bold uppercase tracking-wide text-holo-mint opacity-70 mb-1">Koncept</p>
-                  <p className="text-sm opacity-80">{concept}</p>
-                </div>
-              )}
-
-              {/* Variants */}
-              {results.map((r, i) => {
-                const isSelected = activeSelectedVariant === i;
-                return (
-                  <div
-                    key={i}
-                    className={`bg-white dark:bg-teal-mid border rounded-xl p-4 space-y-3 transition-all ${
-                      isSelected
-                        ? 'border-holo-mint ring-1 ring-holo-mint/30'
-                        : 'border-teal-deep/10 dark:border-holo-mint/10'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold bg-teal-deep/10 dark:bg-teal-deep px-2 py-0.5 rounded-full">
-                        Wariant {i + 1}
-                      </span>
-                      {isSelected && (
-                        <span className="text-xs font-bold text-holo-mint flex items-center gap-1">
-                          <CheckCircle2 className="h-3.5 w-3.5" /> Wybrany
-                        </span>
-                      )}
-                      {r.rationale && <span className="text-xs opacity-30 italic flex-1 truncate">{r.rationale}</span>}
-                    </div>
-
-                    {/* Post copy */}
-                    <div className="space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <p className="text-xs font-bold opacity-40 uppercase tracking-wide">Treść posta</p>
-                        <button
-                          onClick={() => copyTextFn(r.post_copy, i)}
-                          className={`flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full border transition-all ${
-                            copiedIdx === i
-                              ? 'border-holo-mint text-holo-mint bg-holo-mint/10'
-                              : 'border-teal-deep/10 dark:border-holo-mint/10 opacity-50 hover:opacity-90 hover:border-holo-mint/40'
-                          }`}
-                        >
-                          {copiedIdx === i ? <><Check className="h-3 w-3" /> Skopiowano</> : <><Copy className="h-3 w-3" /> Kopiuj</>}
-                        </button>
-                      </div>
-                      <p className="text-sm leading-relaxed whitespace-pre-line">{r.post_copy}</p>
-                    </div>
-
-                    {/* Visual brief */}
-                    <div className="space-y-1.5 border-l-2 border-holo-lavender/30 pl-3">
-                      <p className="text-xs font-bold opacity-40 uppercase tracking-wide">
-                        {currentVisualType === 'graphic' ? '🎨 Brief dla grafika' : '📷 Brief dla fotografa'}
-                      </p>
-                      <p className="text-xs opacity-60 leading-relaxed">{r.visual_brief}</p>
-                    </div>
-
-                    {/* Headline/subtext */}
-                    {currentVisualType !== 'photo' && (r.headline || r.subtext) && (
-                      <div className="space-y-1 bg-offwhite dark:bg-teal-deep rounded-lg px-3 py-2">
-                        <p className="text-[10px] font-bold opacity-30 uppercase tracking-wide">
-                          {currentVisualType === 'photo_text' ? 'Tekst na zdjęcie' : 'Tekst na grafikę'}
-                        </p>
-                        {r.headline && <p className="text-sm font-bold">{r.headline}</p>}
-                        {r.subtext && <p className="text-xs opacity-60">{r.subtext}</p>}
-                        {r.cta && <p className="text-xs text-holo-mint font-medium">{r.cta}</p>}
-                      </div>
-                    )}
-
-                    {/* Actions */}
-                    <div className="flex gap-2">
-                      {activeGenerationId && !isSelected && (
-                        <button
-                          onClick={() => selectVariant(activeGenerationId, i)}
-                          className="flex-1 h-8 bg-holo-mint/10 hover:bg-holo-mint/20 border border-holo-mint/30 hover:border-holo-mint rounded-full text-xs font-semibold text-holo-mint flex items-center justify-center gap-1.5 transition-colors"
-                        >
-                          <CheckCircle2 className="h-3 w-3" /> Wybierz wariant
-                        </button>
-                      )}
-                      <button
-                        onClick={() => onUseCopy?.({ headline: r.headline || '', subtext: r.subtext || '', cta: r.cta, visualBrief: r.visual_brief || '', visualType: (ENABLE_GRAPHIC_MODES ? currentVisualType : 'photo') as 'graphic' | 'photo' | 'photo_text', logoOnPhoto, platform: format })}
-                        className="flex-1 h-8 bg-teal-deep/5 dark:bg-teal-deep hover:bg-holo-mint/20 hover:border-holo-mint border border-teal-deep/10 dark:border-holo-mint/10 rounded-full text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors"
-                      >
-                        <Wand2 className="h-3 w-3" /> Użyj w generatorze
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </>
-          )}
         </div>
       </div>
 
