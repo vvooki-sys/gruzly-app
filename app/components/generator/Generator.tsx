@@ -100,7 +100,7 @@ export default function Generator({
   // Copywriter data bridge
   const [fromCopywriter, setFromCopywriter] = useState(false);
 
-  // Visual type — user can set manually or auto-set from copywriter
+  // Visual type — auto-set from copywriter, fallback to 'graphic' (regex detection on backend)
   const [visualType, setVisualType] = useState<'graphic' | 'photo' | 'photo_text'>('graphic');
 
   useEffect(() => {
@@ -403,33 +403,6 @@ export default function Generator({
                   <span>Dane z Copywritera załadowane — headline, brief, CTA, format</span>
                 </div>
               )}
-              {/* Visual type picker */}
-              <div>
-                <label className="text-xs font-semibold opacity-50 mb-1.5 block uppercase tracking-wide">Tryb wizualny</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {([
-                    { id: 'graphic' as const, label: 'Grafika' },
-                    { id: 'photo' as const, label: 'Zdjęcie' },
-                    { id: 'photo_text' as const, label: 'Zdj + tekst' },
-                  ]).map(vt => (
-                    <button
-                      key={vt.id}
-                      onClick={() => {
-                        setVisualType(vt.id);
-                        if (vt.id === 'photo') { setPhotoMode('none'); setPhotoUrl(''); }
-                      }}
-                      className={`p-2 rounded-xl text-center border text-xs font-semibold transition-all ${
-                        visualType === vt.id
-                          ? 'border-holo-mint bg-holo-mint/10 text-holo-mint'
-                          : 'border-teal-deep/10 dark:border-holo-mint/10 opacity-50 hover:opacity-80'
-                      }`}
-                    >
-                      {vt.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
               {visualType !== 'photo' && (
                 <>
                   {/* 1. Headline — required */}
