@@ -188,16 +188,20 @@ export default function Copywriter({ project, copyGenerations, onCopyGenerations
             {results.length > 0 ? `${results.length} warianty` : 'Wyniki'}
           </h2>
 
-          <div className="panel rounded-2xl overflow-hidden">
+          <div className={`rounded-2xl overflow-hidden transition-all duration-700 ease-out ${
+            results.length === 0
+              ? 'border border-teal-deep/5 dark:border-holo-mint/5 bg-white/30 dark:bg-teal-mid/30'
+              : 'panel opacity-100'
+          }`}>
             {results.length === 0 ? (
-              <div className="aspect-square flex items-center justify-center">
+              <div className="flex items-center justify-center" style={{ minHeight: 'calc(100vh - 180px)' }}>
                 <div className="text-center space-y-3">
                   <div className="text-5xl mb-3">✍️</div>
-                  <p className="text-sm opacity-30">Wpisz zadanie i wygeneruj copy</p>
+                  <p className="text-sm opacity-20">Tutaj powstanie pomysł na Twoją komunikację</p>
                 </div>
               </div>
             ) : (
-              <div className="max-h-[calc(100vh-120px)] overflow-y-auto p-4 space-y-3">
+              <div className="max-h-[calc(100vh-120px)] overflow-y-auto p-4 space-y-3 animate-[fadeIn_0.6s_ease-out]">
                 {/* Concept */}
                 {concept && (
                   <div className="bg-holo-mint/5 border border-holo-mint/20 rounded-xl px-4 py-3">
@@ -303,7 +307,7 @@ export default function Copywriter({ project, copyGenerations, onCopyGenerations
 
           {/* Task */}
           <div>
-            <label className="text-xs font-semibold opacity-50 mb-1.5 block uppercase tracking-wide">
+            <label className="text-xs font-semibold opacity-70 mb-1.5 block uppercase tracking-wide">
               Zadanie *
             </label>
             <textarea
@@ -330,7 +334,7 @@ export default function Copywriter({ project, copyGenerations, onCopyGenerations
 
           {/* Format */}
           <div>
-            <label className="text-xs font-semibold opacity-50 mb-1.5 block uppercase tracking-wide">Platforma</label>
+            <label className="text-xs font-semibold opacity-70 mb-1.5 block uppercase tracking-wide">Platforma</label>
             <div className="flex gap-2">
               {FORMATS.map(f => (
                 <button
@@ -339,7 +343,7 @@ export default function Copywriter({ project, copyGenerations, onCopyGenerations
                   className={`flex-1 py-2 rounded-xl text-xs font-bold border transition-all panel-inset ${
                     format === f.id
                       ? 'border-holo-mint bg-holo-mint/10 text-holo-mint'
-                      : 'border-teal-deep/10 dark:border-holo-mint/10 opacity-50 hover:opacity-80'
+                      : 'border-teal-deep/10 dark:border-holo-mint/10 opacity-70 hover:opacity-100'
                   }`}
                 >
                   {f.icon} {f.label}
@@ -350,7 +354,7 @@ export default function Copywriter({ project, copyGenerations, onCopyGenerations
 
           {/* Visual type */}
           <div>
-            <label className="text-xs font-semibold opacity-50 mb-1.5 block uppercase tracking-wide">Typ wizuala do posta</label>
+            <label className="text-xs font-semibold opacity-70 mb-1.5 block uppercase tracking-wide">Typ wizuala do posta</label>
             <div className={`grid gap-2 ${ENABLE_GRAPHIC_MODES ? 'grid-cols-3' : 'grid-cols-2'}`}>
               {VISUAL_TYPES.map(vt => {
                 const isPhotoLogo = vt.id === 'photo_logo';
