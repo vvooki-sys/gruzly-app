@@ -148,7 +148,7 @@ export default function Generator({
   const graphicModeAssetCount = Math.min(references.length, 5) + Math.min(packshots.length, 3);
   const brandSections = ((project as unknown as Record<string, unknown>).brand_sections || []) as Array<{ title: string; content: string }>;
 
-  const inputCls = 'w-full bg-offwhite dark:bg-teal-deep text-teal-deep dark:text-offwhite rounded-xl px-4 py-3 text-sm border border-teal-deep/15 dark:border-holo-mint/10 focus:border-holo-mint outline-none transition-colors';
+  const inputCls = 'w-full bg-offwhite dark:bg-teal-deep text-teal-deep dark:text-offwhite rounded-xl px-4 py-3 text-sm border border-teal-deep/15 dark:border-holo-mint/10 focus:border-holo-mint outline-none transition-colors panel-inset';
 
   // ── Handler: generate ──────────────────────────────────────────────────────
 
@@ -461,7 +461,7 @@ export default function Generator({
                   Zadanie
                 </label>
                 <textarea
-                  className="w-full bg-offwhite dark:bg-teal-deep text-teal-deep dark:text-offwhite rounded-xl px-4 py-3 text-sm border-2 border-holo-mint/30 dark:border-holo-mint/20 focus:border-holo-mint outline-none transition-colors resize-none"
+                  className="w-full bg-offwhite dark:bg-teal-deep text-teal-deep dark:text-offwhite rounded-xl px-4 py-3 text-sm border-2 border-holo-mint/30 dark:border-holo-mint/20 focus:border-holo-mint outline-none transition-colors resize-none panel-inset"
                   rows={5}
                   placeholder="Opisz nastrój, styl, co ma pokazywać grafika. Copywriter może wygenerować to automatycznie."
                   value={brief}
@@ -516,7 +516,7 @@ export default function Generator({
                     <button
                       key={f.value}
                       onClick={() => setFormat(f.value)}
-                      className={`p-3 rounded-xl text-left border text-sm transition-all ${
+                      className={`p-3 rounded-xl text-left border text-sm transition-all panel-inset ${
                         format === f.value
                           ? 'border-holo-mint bg-holo-mint/10 text-holo-mint'
                           : 'border-teal-deep/10 dark:border-holo-mint/10 bg-white dark:bg-teal-mid opacity-60 hover:opacity-100'
@@ -535,7 +535,7 @@ export default function Generator({
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     onClick={() => { setVisualType('photo'); setLogoOnPhoto(false); }}
-                    className={`p-3 rounded-xl text-center border text-xs font-semibold transition-all ${
+                    className={`p-3 rounded-xl text-center border text-xs font-semibold transition-all panel-inset ${
                       visualType === 'photo' && !logoOnPhoto
                         ? 'border-holo-mint bg-holo-mint/10 text-holo-mint'
                         : 'border-teal-deep/10 dark:border-holo-mint/10 opacity-50 hover:opacity-80'
@@ -547,7 +547,7 @@ export default function Generator({
                   </button>
                   <button
                     onClick={() => { setVisualType('photo'); setLogoOnPhoto(true); }}
-                    className={`p-3 rounded-xl text-center border text-xs font-semibold transition-all ${
+                    className={`p-3 rounded-xl text-center border text-xs font-semibold transition-all panel-inset ${
                       logoOnPhoto
                         ? 'border-holo-mint bg-holo-mint/10 text-holo-mint'
                         : 'border-teal-deep/10 dark:border-holo-mint/10 opacity-50 hover:opacity-80'
@@ -588,7 +588,7 @@ export default function Generator({
               </button>
 
               {/* Brand context indicator */}
-              <div className={`rounded-xl p-4 text-xs space-y-1 border transition-colors ${
+              <div className={`rounded-xl p-4 text-xs space-y-1 border transition-colors panel-inset ${
                 brandSections.length > 0 || project.brand_analysis
                   ? 'border-holo-mint/20 bg-holo-mint/5'
                   : 'border-teal-deep/10 dark:border-holo-mint/10 bg-white dark:bg-teal-mid'

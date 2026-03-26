@@ -13,7 +13,7 @@ interface CopywriterProps {
 }
 
 const inputCls =
-  'w-full bg-offwhite dark:bg-teal-deep text-teal-deep dark:text-offwhite rounded-xl px-4 py-3 text-sm border border-teal-deep/15 dark:border-holo-mint/10 focus:border-holo-mint outline-none transition-colors';
+  'w-full bg-offwhite dark:bg-teal-deep text-teal-deep dark:text-offwhite rounded-xl px-4 py-3 text-sm border border-teal-deep/15 dark:border-holo-mint/10 focus:border-holo-mint outline-none transition-colors panel-inset';
 
 const FORMATS = [
   { id: 'facebook', label: 'Facebook', icon: '📘' },
@@ -336,7 +336,7 @@ export default function Copywriter({ project, copyGenerations, onCopyGenerations
                 <button
                   key={f.id}
                   onClick={() => setFormat(f.id)}
-                  className={`flex-1 py-2 rounded-xl text-xs font-bold border transition-all ${
+                  className={`flex-1 py-2 rounded-xl text-xs font-bold border transition-all panel-inset ${
                     format === f.id
                       ? 'border-holo-mint bg-holo-mint/10 text-holo-mint'
                       : 'border-teal-deep/10 dark:border-holo-mint/10 opacity-50 hover:opacity-80'
@@ -368,7 +368,7 @@ export default function Copywriter({ project, copyGenerations, onCopyGenerations
                         setLogoOnPhoto(isPhotoLogo);
                       }
                     }}
-                    className={`py-3 rounded-xl border-2 transition-all flex flex-col items-center gap-1.5 ${
+                    className={`py-3 rounded-xl border-2 transition-all flex flex-col items-center gap-1.5 panel-inset ${
                       active
                         ? 'border-holo-mint bg-holo-mint/10 text-holo-mint'
                         : 'border-teal-deep/15 dark:border-holo-mint/15 hover:border-holo-mint/40'
