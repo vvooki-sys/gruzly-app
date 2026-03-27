@@ -676,7 +676,7 @@ ELEMENT DO STWORZENIA: "${headline}"
 ${brief ? `KIERUNEK WIZUALNY: "${brief}"` : ''}
 ${brandColors ? `UŻYJ TYCH KOLORÓW: ${brandColors}` : 'Użyj harmonijnych, żywych kolorów.'}`
     : isPhotoMode
-    ? (() => {
+    ? await (async () => {
       // Flat photo prompt — no layers, no meta-instructions
       const photoRules = [
         'Referencje stylistyczne → wyodrębnij paletę, nastrój, styl. NIE kopiuj twarzy, osób, obiektów ani scen.',

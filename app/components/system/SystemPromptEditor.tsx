@@ -182,6 +182,7 @@ export default function SystemPromptEditor({ showToast }: SystemPromptEditorProp
           <p className="text-xs text-hint mb-4">Kliknij &quot;Załaduj domyślne&quot; aby zaimportować obecne hardcoded wartości</p>
         </div>
       ) : (
+        <>
         <div className="flex gap-6 min-h-[600px]">
           {/* Left — Category tree */}
           <div className="w-72 shrink-0 space-y-1">
@@ -393,6 +394,7 @@ export default function SystemPromptEditor({ showToast }: SystemPromptEditorProp
             </div>
           )}
         </div>
+        </>
       )}
     </div>
   );
