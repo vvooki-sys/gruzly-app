@@ -110,7 +110,7 @@ export default function Gallery({
       )}
 
       {/* Header */}
-      <div className="border-b border-teal-deep/10 dark:border-holo-mint/10 bg-offwhite/85 dark:bg-teal-deep/85 backdrop-blur-sm px-4 sm:px-6 py-3 flex items-center gap-3 shrink-0">
+      <div className="border-b border-teal-deep/10 dark:border-holo-mint/15 bg-offwhite/85 dark:bg-teal-deep/85 backdrop-blur-sm px-4 sm:px-6 py-3 flex items-center gap-3 shrink-0">
         <h2 className="font-black text-base flex-1">Galeria <span className="font-normal text-muted text-sm">({tiles.length})</span></h2>
         <button
           onClick={onClose}
@@ -130,7 +130,7 @@ export default function Gallery({
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Szukaj w promptach..."
-            className="w-full bg-white dark:bg-teal-mid rounded-full pl-9 pr-4 py-2 text-sm border border-teal-deep/10 dark:border-holo-mint/10 focus:border-holo-mint outline-none transition-colors"
+            className="w-full bg-white dark:bg-teal-mid rounded-full pl-9 pr-4 py-2 text-sm border border-teal-deep/10 dark:border-holo-mint/15 focus:border-holo-mint outline-none transition-colors"
           />
         </div>
 
@@ -193,7 +193,7 @@ export default function Gallery({
               return (
                 <div
                   key={`${tile.generation.id}-${tile.index}`}
-                  className="break-inside-avoid group relative rounded-xl overflow-hidden border border-teal-deep/10 dark:border-holo-mint/10 bg-white dark:bg-teal-mid cursor-pointer hover:border-holo-mint/50 transition-all"
+                  className="break-inside-avoid group relative rounded-xl overflow-hidden border border-teal-deep/10 dark:border-holo-mint/15 bg-white dark:bg-teal-mid cursor-pointer hover:border-holo-mint/50 transition-all"
                   onClick={() => setLightbox({ url: tile.url, brief: headline })}
                 >
                   <img

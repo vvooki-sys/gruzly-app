@@ -467,7 +467,7 @@ export default function BrandSettings({
                   <div className="flex gap-1 shrink-0">
                     <button
                       onClick={() => { setEditingSectionId(section.id); setEditingSectionContent(section.primaryContent); }}
-                      className="h-7 px-2.5 bg-teal-deep/5 dark:bg-teal-deep hover:bg-holo-mint/10 border border-teal-deep/12 dark:border-holo-mint/20 rounded-lg text-xs font-medium transition-colors"
+                      className="h-7 px-2.5 bg-teal-deep/5 dark:bg-teal-mid hover:bg-holo-mint/10 border border-teal-deep/12 dark:border-holo-mint/20 rounded-lg text-xs font-medium transition-colors"
                     >
                       Edytuj
                     </button>
@@ -483,7 +483,7 @@ export default function BrandSettings({
                 {editingSectionId === section.id && (
                   <div className="mt-3 space-y-2">
                     <textarea
-                      className="w-full bg-offwhite dark:bg-teal-deep text-teal-deep dark:text-offwhite border border-teal-deep/15 dark:border-holo-mint/20 focus:border-holo-mint rounded-xl px-3 py-2 text-sm resize-none outline-none transition-colors"
+                      className="w-full bg-offwhite dark:bg-teal-mid text-teal-deep dark:text-offwhite border border-teal-deep/15 dark:border-holo-mint/20 focus:border-holo-mint rounded-xl px-3 py-2 text-sm resize-none outline-none transition-colors"
                       rows={4}
                       value={editingSectionContent}
                       onChange={e => setEditingSectionContent(e.target.value)}
@@ -535,7 +535,7 @@ export default function BrandSettings({
         {voiceCardEditMode && (
           <div className="space-y-2">
             <textarea
-              className="w-full bg-offwhite dark:bg-teal-deep border border-holo-mint/20 rounded-xl px-3 py-2 text-xs font-mono resize-none outline-none focus:border-holo-mint transition-colors"
+              className="w-full bg-offwhite dark:bg-teal-mid border border-holo-mint/20 rounded-xl px-3 py-2 text-xs font-mono resize-none outline-none focus:border-holo-mint transition-colors"
               rows={16}
               value={voiceCardEditJson}
               onChange={e => setVoiceCardEditJson(e.target.value)}
@@ -568,7 +568,7 @@ export default function BrandSettings({
                     <div key={dim} className="space-y-0.5">
                       <div className="flex items-center gap-2">
                         <span className="text-xs w-28 text-muted">{labels[dim]}</span>
-                        <div className="flex-1 h-1.5 bg-teal-deep/10 dark:bg-teal-deep/40 rounded-full overflow-hidden">
+                        <div className="flex-1 h-1.5 bg-teal-deep/10 dark:bg-teal-mid/40 rounded-full overflow-hidden">
                           <div className="h-full bg-holo-mint rounded-full transition-all" style={{ width: `${(d.score / 10) * 100}%` }} />
                         </div>
                         <span className="text-xs font-mono text-muted w-6 text-right">{d.score}</span>
@@ -654,7 +654,7 @@ export default function BrandSettings({
               <p>LLM przeanalizuje i wygeneruje profil głosu: archetype, reguły, tabu, słownictwo.</p>
             </div>
             <textarea
-              className="w-full bg-offwhite dark:bg-teal-deep text-teal-deep dark:text-offwhite border border-teal-deep/15 dark:border-holo-mint/20 focus:border-holo-mint rounded-xl px-4 py-3 text-sm resize-none outline-none transition-colors font-mono"
+              className="w-full bg-offwhite dark:bg-teal-mid text-teal-deep dark:text-offwhite border border-teal-deep/15 dark:border-holo-mint/20 focus:border-holo-mint rounded-xl px-4 py-3 text-sm resize-none outline-none transition-colors font-mono"
               rows={10}
               placeholder={`Przykładowy post marki z Facebooka\n---\nInny post lub fragment maila\n---\nOpis kampanii lub treść ze strony www\n---\n(minimum 3 próbki, rekomendowane 10+)`}
               value={voiceSamples}
@@ -709,7 +709,7 @@ export default function BrandSettings({
         {rulesEditMode && (
           <div className="space-y-2">
             <textarea
-              className="w-full bg-offwhite dark:bg-teal-deep border border-holo-mint/20 rounded-xl px-3 py-2 text-xs font-mono resize-none outline-none focus:border-holo-mint transition-colors"
+              className="w-full bg-offwhite dark:bg-teal-mid border border-holo-mint/20 rounded-xl px-3 py-2 text-xs font-mono resize-none outline-none focus:border-holo-mint transition-colors"
               rows={16}
               value={rulesEditJson}
               onChange={e => setRulesEditJson(e.target.value)}
@@ -832,7 +832,7 @@ export default function BrandSettings({
         {copyRulesEditMode && (
           <div className="space-y-2">
             <textarea
-              className="w-full bg-offwhite dark:bg-teal-deep border border-holo-mint/20 rounded-xl px-3 py-2 text-xs font-mono resize-none outline-none focus:border-holo-mint transition-colors"
+              className="w-full bg-offwhite dark:bg-teal-mid border border-holo-mint/20 rounded-xl px-3 py-2 text-xs font-mono resize-none outline-none focus:border-holo-mint transition-colors"
               rows={20}
               value={copyRulesEditJson}
               onChange={e => setCopyRulesEditJson(e.target.value)}
@@ -853,7 +853,7 @@ export default function BrandSettings({
                 <p className="text-xs font-bold text-hint uppercase tracking-wide">Zakazane wzorce → zamienniki</p>
                 <div className="space-y-2">
                   {industryCopyRules.banned_patterns.map((bp, i) => (
-                    <div key={i} className="rounded-xl bg-teal-deep/5 dark:bg-teal-deep/30 p-2.5 space-y-1">
+                    <div key={i} className="rounded-xl bg-teal-deep/5 dark:bg-teal-mid/30 p-2.5 space-y-1">
                       <p className="text-xs text-red-400 font-medium">✗ &quot;{bp.pattern}&quot;</p>
                       <p className="text-xs text-holo-mint">→ {bp.substitute}</p>
                     </div>
@@ -901,7 +901,7 @@ export default function BrandSettings({
           <p className="text-xs text-muted mt-0.5">Każda zasada w osobnej linii. Gemini traktuje je jako absolutne ograniczenia.</p>
         </div>
         <textarea
-          className="w-full bg-offwhite dark:bg-teal-deep text-teal-deep dark:text-offwhite border border-red-500/20 rounded-xl px-4 py-3 text-sm resize-none focus:border-red-400 outline-none font-mono transition-colors"
+          className="w-full bg-offwhite dark:bg-teal-mid text-teal-deep dark:text-offwhite border border-red-500/20 rounded-xl px-4 py-3 text-sm resize-none focus:border-red-400 outline-none font-mono transition-colors"
           rows={6}
           placeholder={'np.:\nZawsze białe tło\nMaxymalnie jeden blob/dekoracja na layout\nBlob tylko przy krawędzi, nigdy w centrum\nNie używaj gradientów jako tła\nNie dodawaj przypadkowych ludzi'}
           value={editRules}

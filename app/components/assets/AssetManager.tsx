@@ -13,7 +13,7 @@ interface AssetManagerProps {
 }
 
 const inputCls =
-  'w-full bg-offwhite dark:bg-teal-deep text-teal-deep dark:text-offwhite rounded-xl px-4 py-3 text-sm border border-teal-deep/15 dark:border-holo-mint/20 focus:border-holo-mint outline-none transition-colors';
+  'w-full bg-offwhite dark:bg-teal-mid text-teal-deep dark:text-offwhite rounded-xl px-4 py-3 text-sm border border-teal-deep/15 dark:border-holo-mint/20 focus:border-holo-mint outline-none transition-colors';
 
 export default function AssetManager({
   project,
@@ -209,7 +209,7 @@ export default function AssetManager({
             <div className="space-y-2">
               {logos.map((a) => (
                 <div key={a.id} className="flex items-center gap-3">
-                  <div className="w-16 h-10 rounded-lg bg-teal-deep/5 dark:bg-teal-deep/30 border border-teal-deep/10 dark:border-holo-mint/20 flex items-center justify-center overflow-hidden shrink-0">
+                  <div className="w-16 h-10 rounded-lg bg-teal-deep/5 dark:bg-teal-mid/30 border border-teal-deep/10 dark:border-holo-mint/20 flex items-center justify-center overflow-hidden shrink-0">
                     <img
                       src={a.url}
                       className="max-w-full max-h-full object-contain"
@@ -257,7 +257,7 @@ export default function AssetManager({
                   key={a.id}
                   className="flex items-center gap-2 p-2 rounded-xl border border-teal-deep/10 dark:border-holo-mint/20"
                 >
-                  <div className="w-12 h-12 rounded-lg bg-teal-deep/5 dark:bg-teal-deep/30 border border-teal-deep/10 dark:border-holo-mint/20 flex items-center justify-center overflow-hidden shrink-0">
+                  <div className="w-12 h-12 rounded-lg bg-teal-deep/5 dark:bg-teal-mid/30 border border-teal-deep/10 dark:border-holo-mint/20 flex items-center justify-center overflow-hidden shrink-0">
                     <img
                       src={a.url}
                       className="max-w-full max-h-full object-contain"

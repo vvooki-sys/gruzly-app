@@ -168,7 +168,7 @@ export default function ClientHistory({
         </div>
 
         {/* Section toggle */}
-        <div className="flex gap-1 bg-offwhite dark:bg-teal-deep rounded-full p-0.5 border border-teal-deep/12 dark:border-holo-mint/20">
+        <div className="flex gap-1 bg-offwhite dark:bg-teal-mid rounded-full p-0.5 border border-teal-deep/12 dark:border-holo-mint/20">
           {([
             { id: 'all' as const, label: 'Wszystko' },
             { id: 'graphics' as const, label: 'Grafiki' },
@@ -254,7 +254,7 @@ export default function ClientHistory({
                     onClick={() => urls[0] && setLightbox({ url: urls[0], brief: gHeadline })}
                     className="group rounded-xl cursor-pointer border border-teal-deep/12 dark:border-holo-mint/20 overflow-hidden hover:border-holo-mint/30 transition-all"
                   >
-                    <div className={`${FORMAT_ASPECT[gFormat] || 'aspect-square'} bg-offwhite dark:bg-teal-deep overflow-hidden relative`}>
+                    <div className={`${FORMAT_ASPECT[gFormat] || 'aspect-square'} bg-offwhite dark:bg-teal-mid overflow-hidden relative`}>
                       {urls[0] && <img src={urls[0]} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />}
                       <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                       <div className="absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
@@ -327,7 +327,7 @@ export default function ClientHistory({
                     </div>
 
                     {selectedCopy && (
-                      <div className="bg-offwhite dark:bg-teal-deep rounded-lg px-3 py-2.5 space-y-2">
+                      <div className="bg-offwhite dark:bg-teal-mid rounded-lg px-3 py-2.5 space-y-2">
                         <p className="text-sm leading-relaxed whitespace-pre-line">{selectedCopy.post_copy}</p>
                         <div className="flex items-center gap-2">
                           <button
@@ -360,7 +360,7 @@ export default function ClientHistory({
                           if (idx === g.selected_variant) return null;
                           const isThisCopied = copiedId === g.id * 1000 + idx;
                           return (
-                            <div key={idx} className="bg-offwhite dark:bg-teal-deep rounded-lg px-3 py-2.5 space-y-2 border border-teal-deep/5 dark:border-holo-mint/10">
+                            <div key={idx} className="bg-offwhite dark:bg-teal-mid rounded-lg px-3 py-2.5 space-y-2 border border-teal-deep/5 dark:border-holo-mint/15">
                               <div className="flex items-center gap-2">
                                 <span className="text-xs font-bold text-hint">Wariant {idx + 1}</span>
                               </div>

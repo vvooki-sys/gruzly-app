@@ -417,7 +417,7 @@ export default function BrandScanner({
             </label>
           </div>
           {brandbookAsset ? (
-            <div className="flex items-center justify-between bg-offwhite dark:bg-teal-deep rounded-xl px-3 py-2">
+            <div className="flex items-center justify-between bg-offwhite dark:bg-teal-mid rounded-xl px-3 py-2">
               <span className="text-xs opacity-60 truncate">📄 {brandbookAsset.filename}</span>
               <div className="flex gap-2 shrink-0">
                 <button
@@ -449,7 +449,7 @@ export default function BrandScanner({
             value={brandScanUrl}
             onChange={e => setBrandScanUrl(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && scanBrand()}
-            className="flex-1 bg-offwhite dark:bg-teal-deep text-teal-deep dark:text-offwhite border border-teal-deep/15 dark:border-holo-mint/20 focus:border-holo-mint rounded-xl px-3 py-2 text-sm outline-none transition-colors"
+            className="flex-1 bg-offwhite dark:bg-teal-mid text-teal-deep dark:text-offwhite border border-teal-deep/15 dark:border-holo-mint/20 focus:border-holo-mint rounded-xl px-3 py-2 text-sm outline-none transition-colors"
             disabled={brandScanLoading}
           />
           <button
@@ -548,7 +548,7 @@ export default function BrandScanner({
                 <p className="text-xs font-semibold text-muted uppercase tracking-wide">Słowa kluczowe</p>
                 <div className="flex gap-1.5 flex-wrap">
                   {brandScanResult.brandKeywords.map((kw: string, i: number) => (
-                    <span key={i} className="text-xs bg-teal-deep/5 dark:bg-teal-deep border border-teal-deep/12 dark:border-holo-mint/20 px-2 py-0.5 rounded-full">{kw}</span>
+                    <span key={i} className="text-xs bg-teal-deep/5 dark:bg-teal-mid border border-teal-deep/12 dark:border-holo-mint/20 px-2 py-0.5 rounded-full">{kw}</span>
                   ))}
                 </div>
               </div>
@@ -570,13 +570,13 @@ export default function BrandScanner({
             {(brandScanResult.targetAudience || brandScanResult.photoStyle) && (
               <div className="grid grid-cols-2 gap-2">
                 {brandScanResult.targetAudience && (
-                  <div className="bg-teal-deep/5 dark:bg-teal-deep rounded-xl px-3 py-2">
+                  <div className="bg-teal-deep/5 dark:bg-teal-mid rounded-xl px-3 py-2">
                     <p className="text-xs text-muted mb-0.5">Grupa docelowa</p>
                     <p className="text-xs font-semibold">{brandScanResult.targetAudience}</p>
                   </div>
                 )}
                 {brandScanResult.photoStyle && (
-                  <div className="bg-teal-deep/5 dark:bg-teal-deep rounded-xl px-3 py-2">
+                  <div className="bg-teal-deep/5 dark:bg-teal-mid rounded-xl px-3 py-2">
                     <p className="text-xs text-muted mb-0.5">Styl zdjęć</p>
                     <p className="text-xs font-semibold">{brandScanResult.photoStyle}</p>
                   </div>
@@ -590,7 +590,7 @@ export default function BrandScanner({
                 <p className="text-xs font-semibold text-muted uppercase tracking-wide">Przykłady CTA</p>
                 <div className="flex gap-1.5 flex-wrap">
                   {brandScanResult.ctaExamples.map((cta: string, i: number) => (
-                    <span key={i} className="text-xs bg-teal-deep/5 dark:bg-teal-deep border border-teal-deep/12 dark:border-holo-mint/20 px-2 py-0.5 rounded-full italic opacity-70">&quot;{cta}&quot;</span>
+                    <span key={i} className="text-xs bg-teal-deep/5 dark:bg-teal-mid border border-teal-deep/12 dark:border-holo-mint/20 px-2 py-0.5 rounded-full italic opacity-70">&quot;{cta}&quot;</span>
                   ))}
                 </div>
               </div>
@@ -598,7 +598,7 @@ export default function BrandScanner({
 
             {/* Social media analysis */}
             {brandScanResult.socialMediaAnalysis && (
-              <div className="bg-teal-deep/5 dark:bg-teal-deep rounded-xl px-3 py-2 space-y-1">
+              <div className="bg-teal-deep/5 dark:bg-teal-mid rounded-xl px-3 py-2 space-y-1">
                 <p className="text-xs font-semibold text-muted uppercase tracking-wide">Social media</p>
                 {brandScanResult.socialMediaAnalysis.tone && (
                   <p className="text-xs"><span className="text-muted">Ton: </span><span className="font-semibold">{brandScanResult.socialMediaAnalysis.tone}</span></p>

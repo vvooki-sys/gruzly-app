@@ -284,7 +284,7 @@ export default function ClientPostCreator({
                           }`}
                         >
                           <div className="flex items-center gap-2">
-                            <span className="text-xs font-bold bg-teal-deep/10 dark:bg-teal-deep px-2 py-0.5 rounded-full">
+                            <span className="text-xs font-bold bg-teal-deep/10 dark:bg-teal-mid px-2 py-0.5 rounded-full">
                               Wariant {i + 1}
                             </span>
                             {isCopySelected && (
@@ -559,7 +559,7 @@ export default function ClientPostCreator({
 
               {/* Quality */}
               <div>
-                <label className="text-xs font-semibold text-muted mb-1.5 block uppercase tracking-wide">Jakość grafiki</label>
+                <label className="text-xs font-semibold text-muted mb-1.5 block uppercase tracking-wide">Tryb fotografii</label>
                 <div className="flex gap-2">
                   {([
                     { value: 1 as const, label: 'Szybka' },

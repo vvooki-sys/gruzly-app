@@ -124,12 +124,12 @@ export default function StepLogo({ project, assets, onAssetsUpdate, onProjectUpd
         ) : (
           /* File selected — ask about background */
           <div className="space-y-3">
-            <div className="flex items-center gap-2 bg-offwhite dark:bg-teal-deep rounded-xl px-3 py-2">
+            <div className="flex items-center gap-2 bg-offwhite dark:bg-teal-mid rounded-xl px-3 py-2">
               <span className="text-sm">📄</span>
               <span className="text-xs font-bold flex-1 truncate">{pendingFile.name}</span>
               <button
                 onClick={() => { setPendingFile(null); setSelectedBg(null); }}
-                className="text-xs opacity-40 hover:opacity-80 transition-opacity"
+                className="text-xs opacity-60 hover:opacity-80 transition-opacity"
               >
                 Zmień
               </button>

@@ -146,7 +146,7 @@ export default function StepVoice({ project, sections, onSectionUpdate, showToas
       {mode === 'manual' && (
         <div className="space-y-2">
           <textarea
-            className="w-full bg-offwhite dark:bg-teal-deep rounded-xl px-3 py-2.5 text-sm border border-teal-deep/15 dark:border-holo-mint/20 focus:border-holo-mint outline-none transition-colors resize-none"
+            className="w-full bg-offwhite dark:bg-teal-mid rounded-xl px-3 py-2.5 text-sm border border-teal-deep/15 dark:border-holo-mint/20 focus:border-holo-mint outline-none transition-colors resize-none"
             rows={5}
             placeholder="Opisz ton głosu marki, np.: Marka komunikuje się bezpośrednio, ciepło, z humorem. Używa krótkich zdań. Unika korporacyjnego żargonu. Zwraca się per Ty..."
             value={manualTov}
@@ -165,7 +165,7 @@ export default function StepVoice({ project, sections, onSectionUpdate, showToas
       {mode === 'samples' && (
         <div className="space-y-2">
           <textarea
-            className="w-full bg-offwhite dark:bg-teal-deep rounded-xl px-3 py-2.5 text-sm border border-teal-deep/15 dark:border-holo-mint/20 focus:border-holo-mint outline-none transition-colors resize-none font-mono"
+            className="w-full bg-offwhite dark:bg-teal-mid rounded-xl px-3 py-2.5 text-sm border border-teal-deep/15 dark:border-holo-mint/20 focus:border-holo-mint outline-none transition-colors resize-none font-mono"
             rows={8}
             placeholder={`Wklej minimum 3 próbki tekstu marki oddzielone linią ---\n\nPrzykładowy post na FB o nowym produkcie...\n---\nKolejny post z Instagrama...\n---\nTrzeci tekst ze strony www...`}
             value={samples}

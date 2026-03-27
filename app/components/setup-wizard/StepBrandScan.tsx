@@ -247,7 +247,7 @@ export default function StepBrandScan({
             value={url}
             onChange={e => setUrl(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && scanBrand()}
-            className="flex-1 bg-offwhite dark:bg-teal-deep rounded-xl px-3 py-2 text-sm border border-teal-deep/15 dark:border-holo-mint/20 focus:border-holo-mint outline-none transition-colors"
+            className="flex-1 bg-offwhite dark:bg-teal-mid rounded-xl px-3 py-2 text-sm border border-teal-deep/15 dark:border-holo-mint/20 focus:border-holo-mint outline-none transition-colors"
             disabled={scanning}
           />
           <button
@@ -293,7 +293,7 @@ export default function StepBrandScan({
         </div>
         {brandbookAsset ? (
           <div className="space-y-2">
-            <div className="flex items-center gap-2 bg-offwhite dark:bg-teal-deep rounded-xl px-3 py-2">
+            <div className="flex items-center gap-2 bg-offwhite dark:bg-teal-mid rounded-xl px-3 py-2">
               <span className="text-xs opacity-60">📄 {brandbookAsset.filename}</span>
             </div>
             <button

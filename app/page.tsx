@@ -135,13 +135,13 @@ export default function BrandEditor() {
       )}
 
       {/* ── Header ─────────────────────────────────────────────────────────── */}
-      <header className="glass-nav sticky top-0 z-40 border-b border-teal-deep/10 dark:border-holo-mint/10 bg-offwhite/85 dark:bg-teal-deep/85 px-4 sm:px-6 py-3 flex items-center gap-3">
+      <header className="glass-nav sticky top-0 z-40 border-b border-teal-deep/10 dark:border-holo-mint/15 bg-offwhite/85 dark:bg-teal-deep/85 px-4 sm:px-6 py-3 flex items-center gap-3">
 
         <button
           onClick={() => setTab(isAgency ? 'generate' : 'create')}
           className="flex items-center gap-3 min-w-0 flex-1 text-left cursor-pointer"
         >
-          <div className="w-8 h-8 bg-offwhite dark:bg-teal-mid rounded-lg flex items-center justify-center overflow-hidden border border-teal-deep/10 dark:border-holo-mint/10 shrink-0">
+          <div className="w-8 h-8 bg-offwhite dark:bg-teal-mid rounded-lg flex items-center justify-center overflow-hidden border border-teal-deep/10 dark:border-holo-mint/15 shrink-0">
             {project.logo_url
               ? <img src={project.logo_url} alt={project.name} className="w-6 h-6 object-contain" />
               : <span className="font-black text-sm holo-text">{project.name[0]}</span>

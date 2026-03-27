@@ -5,9 +5,10 @@
 
 /* Design system tokens */
 @theme {
-  --color-teal-deep: #1A1A1F;
-  --color-teal-mid:  #242429;
-  --color-offwhite:  #F5F5F0;
+  --color-teal-deep:   #1A1A1F;
+  --color-teal-mid:    #252530;
+  --color-teal-raised: #2E2E3A;
+  --color-offwhite:    #F5F5F0;
 
   --color-holo-mint:      #B3F5DC;
   --color-holo-mint-dark: #1A9A6A;

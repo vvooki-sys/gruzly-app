@@ -317,7 +317,7 @@ export default function Generator({
                           const urls: string[] = JSON.parse(selectedGeneration.image_urls || '[]');
                           if (urls[0]) window.open(urls[0], '_blank');
                         }}
-                        className="flex-1 h-9 bg-teal-deep/5 dark:bg-teal-deep hover:bg-teal-deep/10 dark:hover:bg-teal-deep/80 border border-teal-deep/12 dark:border-holo-mint/20 rounded-full text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors"
+                        className="flex-1 h-9 bg-teal-deep/5 dark:bg-teal-mid hover:bg-teal-deep/10 dark:hover:bg-teal-deep/80 border border-teal-deep/12 dark:border-holo-mint/20 rounded-full text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors"
                       >
                         <Download className="h-3.5 w-3.5" /> Pobierz
                       </button>
@@ -352,7 +352,7 @@ export default function Generator({
                       </div>
                       <details className="mt-2">
                         <summary className="text-xs text-hint cursor-pointer hover:opacity-60 transition-opacity">Pokaż prompt systemowy</summary>
-                        <p className="mt-2 text-xs text-muted leading-relaxed bg-offwhite dark:bg-teal-deep rounded-xl p-3 whitespace-pre-wrap">{selectedGeneration.prompt}</p>
+                        <p className="mt-2 text-xs text-muted leading-relaxed bg-offwhite dark:bg-teal-mid rounded-xl p-3 whitespace-pre-wrap">{selectedGeneration.prompt}</p>
                       </details>
                     </div>
 
@@ -361,7 +361,7 @@ export default function Generator({
                       <div className="px-4 pb-4 space-y-3 border-t border-holo-lavender/30 pt-3">
                         <p className="text-xs font-bold text-holo-lavender">Instrukcja edycji</p>
                         <textarea
-                          className="w-full bg-offwhite dark:bg-teal-deep text-teal-deep dark:text-offwhite border border-holo-lavender/20 rounded-xl px-3 py-2 text-sm resize-none focus:border-holo-lavender outline-none transition-colors"
+                          className="w-full bg-offwhite dark:bg-teal-mid text-teal-deep dark:text-offwhite border border-holo-lavender/20 rounded-xl px-3 py-2 text-sm resize-none focus:border-holo-lavender outline-none transition-colors"
                           rows={3}
                           placeholder="np. Dodaj logo Plej w prawym górnym rogu, zmień kolor tła na granatowy"
                           value={editInstruction}
@@ -622,7 +622,7 @@ export default function Generator({
             <div>
               <div className="flex items-center justify-between mb-3">
                 <p className="text-xs font-bold text-hint uppercase tracking-wide">Historia ({generations.length})</p>
-                <div className="flex gap-1 bg-offwhite dark:bg-teal-deep rounded-lg p-0.5 border border-teal-deep/12 dark:border-holo-mint/20">
+                <div className="flex gap-1 bg-offwhite dark:bg-teal-mid rounded-lg p-0.5 border border-teal-deep/12 dark:border-holo-mint/20">
                   <button
                     onClick={() => setHistoryView('grid')}
                     className={`w-7 h-7 rounded-md flex items-center justify-center transition-all ${
@@ -662,7 +662,7 @@ export default function Generator({
                             : 'border-teal-deep/12 dark:border-holo-mint/20 hover:border-holo-mint/30'
                         }`}
                       >
-                        <div className={`${FORMAT_ASPECT[gFormat] || 'aspect-square'} bg-offwhite dark:bg-teal-deep overflow-hidden relative`}>
+                        <div className={`${FORMAT_ASPECT[gFormat] || 'aspect-square'} bg-offwhite dark:bg-teal-mid overflow-hidden relative`}>
                           {urls[0] && <img src={urls[0]} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />}
                           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                           <div className="absolute top-1.5 left-1.5 flex gap-1">

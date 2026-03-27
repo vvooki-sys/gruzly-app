@@ -189,7 +189,7 @@ export default function SetupWizard({
               {step === 0 && (
                 <button
                   onClick={() => setStep(s => s + 1)}
-                  className="h-10 px-4 rounded-full border border-teal-deep/15 dark:border-holo-mint/15 text-xs opacity-40 hover:opacity-70 transition-opacity"
+                  className="h-10 px-4 rounded-full border border-teal-deep/15 dark:border-holo-mint/15 text-xs opacity-60 hover:opacity-70 transition-opacity"
                 >
                   Pomiń
                 </button>

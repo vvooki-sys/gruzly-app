@@ -176,7 +176,7 @@ export default function SystemPromptEditor({ showToast }: SystemPromptEditorProp
       </div>
 
       {isEmpty ? (
-        <div className="rounded-2xl border border-teal-deep/10 dark:border-holo-mint/10 panel-inset p-12 text-center">
+        <div className="rounded-2xl border border-teal-deep/10 dark:border-holo-mint/15 panel-inset p-12 text-center">
           <Sparkles className="h-8 w-8 mx-auto mb-3 text-holo-mint opacity-50" />
           <p className="text-sm font-semibold mb-1">Brak promptów w bazie</p>
           <p className="text-xs text-hint mb-4">Kliknij &quot;Załaduj domyślne&quot; aby zaimportować obecne hardcoded wartości</p>
@@ -205,7 +205,7 @@ export default function SystemPromptEditor({ showToast }: SystemPromptEditorProp
                     <ChevronRight className={`h-3 w-3 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
                     <Icon className="h-3.5 w-3.5" />
                     <span className="truncate">{meta?.label || cat}</span>
-                    <span className="ml-auto text-[10px] opacity-50">{items.length}</span>
+                    <span className="ml-auto text-xs opacity-50">{items.length}</span>
                   </button>
 
                   {isExpanded && (
@@ -242,10 +242,10 @@ export default function SystemPromptEditor({ showToast }: SystemPromptEditorProp
                       <p className="text-xs text-hint mt-0.5">{selectedPrompt.description}</p>
                     )}
                     <div className="flex items-center gap-3 mt-1.5">
-                      <span className="text-[10px] px-2 py-0.5 rounded-full border border-teal-deep/10 dark:border-holo-mint/10 font-mono">
+                      <span className="text-xs px-2 py-0.5 rounded-full border border-teal-deep/10 dark:border-holo-mint/15 font-mono">
                         {selectedPrompt.id}
                       </span>
-                      <span className="text-[10px] px-2 py-0.5 rounded-full border border-teal-deep/10 dark:border-holo-mint/10">
+                      <span className="text-xs px-2 py-0.5 rounded-full border border-teal-deep/10 dark:border-holo-mint/15">
                         {selectedPrompt.content_type}
                       </span>
                     </div>
@@ -271,7 +271,7 @@ export default function SystemPromptEditor({ showToast }: SystemPromptEditorProp
                 </div>
 
                 {/* Editor */}
-                <div className="rounded-xl border border-teal-deep/10 dark:border-holo-mint/10 overflow-hidden">
+                <div className="rounded-xl border border-teal-deep/10 dark:border-holo-mint/15 overflow-hidden">
                   <textarea
                     value={editContent}
                     onChange={e => { setEditContent(e.target.value); setIsDirty(e.target.value !== selectedPrompt.content); }}
@@ -281,19 +281,19 @@ export default function SystemPromptEditor({ showToast }: SystemPromptEditorProp
                 </div>
 
                 {/* Meta */}
-                <div className="flex items-center gap-2 text-[10px] text-hint">
+                <div className="flex items-center gap-2 text-xs text-hint">
                   <Clock className="h-3 w-3" />
                   Ostatnia zmiana: {new Date(selectedPrompt.updated_at).toLocaleString('pl-PL')}
                 </div>
 
                 {/* List helper */}
                 {selectedPrompt.content_type === 'list' && (
-                  <p className="text-[10px] text-hint italic">
+                  <p className="text-xs text-hint italic">
                     Typ: lista — każda linia = osobny element
                   </p>
                 )}
                 {selectedPrompt.content_type === 'json' && (
-                  <p className="text-[10px] text-hint italic">
+                  <p className="text-xs text-hint italic">
                     Typ: JSON — upewnij się że format jest poprawny
                   </p>
                 )}
@@ -307,7 +307,7 @@ export default function SystemPromptEditor({ showToast }: SystemPromptEditorProp
         </div>
 
         {/* Preview section */}
-        <div className="mt-8 rounded-2xl border border-teal-deep/10 dark:border-holo-mint/10 panel-inset p-5">
+        <div className="mt-8 rounded-2xl border border-teal-deep/10 dark:border-holo-mint/15 panel-inset p-5">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-black flex items-center gap-2">
               <Eye className="h-4 w-4" />
@@ -374,19 +374,19 @@ export default function SystemPromptEditor({ showToast }: SystemPromptEditorProp
                   }`}
                 >
                   <div className="flex items-center gap-2 mb-1.5">
-                    <span className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded ${
+                    <span className={`text-xs font-bold uppercase px-1.5 py-0.5 rounded ${
                       seg.source === 'system' ? 'bg-emerald-200 dark:bg-emerald-800 text-emerald-800 dark:text-emerald-200'
                       : seg.source === 'brand' ? 'bg-blue-200 dark:bg-blue-800 text-blue-800 dark:text-blue-200'
                       : 'bg-zinc-200 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300'
                     }`}>
                       {seg.source === 'system' ? 'Edytowalne' : seg.source === 'brand' ? 'Dane marki' : 'Dynamiczne'}
                     </span>
-                    <span className="text-[10px] font-semibold opacity-60">{seg.label}</span>
+                    <span className="text-xs font-semibold opacity-60">{seg.label}</span>
                   </div>
                   {seg.content}
                 </div>
               ))}
-              <div className="flex gap-4 text-[10px] mt-3 opacity-60">
+              <div className="flex gap-4 text-xs mt-3 opacity-60">
                 <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-emerald-300 dark:bg-emerald-700" /> Edytowalne (system_prompts)</span>
                 <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-blue-300 dark:bg-blue-700" /> Dane marki</span>
                 <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-zinc-300 dark:bg-zinc-600" /> Dynamiczne (brief, format)</span>

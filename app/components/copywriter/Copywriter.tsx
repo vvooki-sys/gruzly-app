@@ -223,7 +223,7 @@ export default function Copywriter({ project, copyGenerations, onCopyGenerations
                       }`}
                     >
                       <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold bg-teal-deep/10 dark:bg-teal-deep px-2 py-0.5 rounded-full">
+                        <span className="text-xs font-bold bg-teal-deep/10 dark:bg-teal-mid px-2 py-0.5 rounded-full">
                           Wariant {i + 1}
                         </span>
                         {isSelected && (
@@ -262,7 +262,7 @@ export default function Copywriter({ project, copyGenerations, onCopyGenerations
 
                       {/* Headline/subtext */}
                       {currentVisualType !== 'photo' && (r.headline || r.subtext) && (
-                        <div className="space-y-1 bg-offwhite dark:bg-teal-deep rounded-lg px-3 py-2">
+                        <div className="space-y-1 bg-offwhite dark:bg-teal-mid rounded-lg px-3 py-2">
                           <p className="text-xs font-bold text-hint uppercase tracking-wide">
                             {currentVisualType === 'photo_text' ? 'Tekst na zdjęcie' : 'Tekst na grafikę'}
                           </p>
@@ -288,7 +288,7 @@ export default function Copywriter({ project, copyGenerations, onCopyGenerations
                         )}
                         <button
                           onClick={() => onUseCopy?.({ headline: r.headline || '', subtext: r.subtext || '', cta: r.cta, visualBrief: r.visual_brief || '', visualType: (ENABLE_GRAPHIC_MODES ? currentVisualType : 'photo') as 'graphic' | 'photo' | 'photo_text', logoOnPhoto, platform: format })}
-                          className="flex-1 h-8 bg-teal-deep/5 dark:bg-teal-deep hover:bg-holo-mint/20 hover:border-holo-mint border border-teal-deep/12 dark:border-holo-mint/20 rounded-full text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors"
+                          className="flex-1 h-8 bg-teal-deep/5 dark:bg-teal-mid hover:bg-holo-mint/20 hover:border-holo-mint border border-teal-deep/12 dark:border-holo-mint/20 rounded-full text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors"
                         >
                           <Wand2 className="h-3 w-3" /> Użyj w generatorze
                         </button>
@@ -394,7 +394,7 @@ export default function Copywriter({ project, copyGenerations, onCopyGenerations
                 <label className="text-xs font-semibold text-muted uppercase tracking-wide">Prompt (edytowalny)</label>
                 <button
                   onClick={() => setShowPrompt(false)}
-                  className="text-xs opacity-40 hover:opacity-80 transition-opacity"
+                  className="text-xs opacity-60 hover:opacity-80 transition-opacity"
                 >
                   Zamknij
                 </button>
