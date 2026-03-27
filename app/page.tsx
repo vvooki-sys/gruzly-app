@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Wand2, Loader2, Sun, Moon, PenLine,
-  Layers, Settings, LogOut, Settings2, Eye,
+  Layers, Settings, LogOut, Settings2, Eye, Cpu,
 } from 'lucide-react';
 import type { Project, BrandAsset, Generation, CopyGeneration, CopyToGeneratorData } from '@/lib/types';
 import { useAuth } from '@/app/components/AuthProvider';
@@ -15,6 +15,7 @@ import BrandSettings from '@/app/components/settings/BrandSettings';
 import SetupWizard from '@/app/components/setup-wizard/SetupWizard';
 import ClientPostCreator from '@/app/components/client/ClientPostCreator';
 import ClientHistory from '@/app/components/client/ClientHistory';
+import SystemPromptEditor from '@/app/components/system/SystemPromptEditor';
 import { ImageIcon, PlusCircle } from 'lucide-react';
 
 export default function BrandEditor() {
@@ -116,6 +117,7 @@ export default function BrandEditor() {
         { id: 'copy', icon: PenLine, label: 'Copywriter' },
         { id: 'assets', icon: Layers, label: 'Assety' },
         { id: 'settings', icon: Settings, label: 'Ustawienia' },
+        { id: 'system', icon: Cpu, label: 'System' },
       ]
     : [
         { id: 'create', icon: PlusCircle, label: 'Nowy post' },
@@ -249,6 +251,9 @@ export default function BrandEditor() {
             showToast={showToast}
             refreshData={refreshData}
           />
+        )}
+        {tab === 'system' && isAgency && (
+          <SystemPromptEditor showToast={showToast} />
         )}
         {tab === 'create' && !isAgency && (
           <ClientPostCreator

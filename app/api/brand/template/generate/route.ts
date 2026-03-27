@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 import { BRAND_ID, GEMINI_MODEL } from '@/lib/constants';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { getSystemPrompt } from '@/lib/system-prompts';
 
 const FORMAT_DIMENSIONS: Record<string, { width: number; height: number }> = {
   fb_post: { width: 1080, height: 1080 },
@@ -34,99 +35,9 @@ export async function POST(req: NextRequest) {
   const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_KEY!);
   const model = genAI.getGenerativeModel({ model: GEMINI_MODEL });
 
-  const prompt = `You are a graphic design system engineer. Based on the brand identity data below, generate a precise template layout JSON for a ${dims.width}x${dims.height}px social media graphic.
-
-BRAND IDENTITY:
-${brandContext}
-
-BRAND RULES:
-${rules}
-
-FORMAT: ${dims.width}x${dims.height}px
+  const FALLBACK_TEMPLATE_PROMPT = `You are a graphic design system engineer. Based on the brand identity data below, generate a precise template layout JSON for a social media graphic.
 
 CRITICAL: Return JSON using ONLY the zones-based schema below. Do NOT use fields like centralElement, decoration, copy.position, copy.alignment — they are not supported.
-
-Generate this exact structure:
-
-{
-  "background": {
-    "type": "solid",
-    "color": "#hex"
-  },
-  "whiteSpace": {
-    "enabled": false,
-    "position": "bottom",
-    "height": 0,
-    "borderRadius": 0,
-    "color": "#ffffff"
-  },
-  "logo": {
-    "size": 70,
-    "margin": 36,
-    "variant": "default"
-  },
-  "copy": {
-    "fontFamily": "sans-serif",
-    "headlineFontSize": 56,
-    "headlineFontWeight": 800,
-    "headlineColor": "#ffffff",
-    "subtextFontSize": 24,
-    "subtextFontWeight": 400,
-    "subtextColor": "#ffffffcc",
-    "lineHeight": 1.15,
-    "letterSpacing": 0,
-    "textTransform": "none"
-  },
-  "cta": {
-    "enabled": false,
-    "backgroundColor": "#hex",
-    "textColor": "#hex",
-    "fontSize": 18,
-    "borderRadius": 24,
-    "paddingH": 24,
-    "paddingV": 12
-  },
-  "sticker": {
-    "enabled": false,
-    "shape": "circle",
-    "backgroundColor": "#hex",
-    "textColor": "#hex",
-    "fontSize": 14,
-    "size": 100
-  },
-  "legal": { "enabled": false, "fontSize": 11, "color": "#ffffff80" },
-  "padding": { "top": 36, "right": 36, "bottom": 36, "left": 36 },
-  "zones": [
-    {
-      "id": "header",
-      "gridArea": "1 / 1 / 2 / 13",
-      "flexDirection": "row",
-      "justifyContent": "flex-start",
-      "alignItems": "center",
-      "children": [{ "type": "logo" }]
-    },
-    {
-      "id": "central",
-      "gridArea": "2 / 1 / 10 / 13",
-      "flexDirection": "column",
-      "justifyContent": "center",
-      "alignItems": "center",
-      "children": [{ "type": "central-image" }]
-    },
-    {
-      "id": "copy",
-      "gridArea": "10 / 1 / 13 / 13",
-      "flexDirection": "column",
-      "justifyContent": "flex-end",
-      "alignItems": "flex-start",
-      "gap": 12,
-      "children": [
-        { "type": "headline" },
-        { "type": "subtext" }
-      ]
-    }
-  ]
-}
 
 RULES:
 - Return ONLY valid JSON — no markdown, no code blocks, no explanation
@@ -138,6 +49,37 @@ RULES:
 - Adapt zones to brand — if brand uses white space at bottom, enable whiteSpace and add a footer zone
 - DO NOT include centralElement or decoration as top-level fields
 - background.type can be "gradient" — if so add gradientFrom, gradientTo, gradientAngle (degrees)`;
+
+  const templateInstructions = await getSystemPrompt('template.generate_prompt', FALLBACK_TEMPLATE_PROMPT);
+
+  const jsonSchema = `{
+  "background": { "type": "solid", "color": "#hex" },
+  "whiteSpace": { "enabled": false, "position": "bottom", "height": 0, "borderRadius": 0, "color": "#ffffff" },
+  "logo": { "size": 70, "margin": 36, "variant": "default" },
+  "copy": { "fontFamily": "sans-serif", "headlineFontSize": 56, "headlineFontWeight": 800, "headlineColor": "#ffffff", "subtextFontSize": 24, "subtextFontWeight": 400, "subtextColor": "#ffffffcc", "lineHeight": 1.15, "letterSpacing": 0, "textTransform": "none" },
+  "cta": { "enabled": false, "backgroundColor": "#hex", "textColor": "#hex", "fontSize": 18, "borderRadius": 24, "paddingH": 24, "paddingV": 12 },
+  "sticker": { "enabled": false, "shape": "circle", "backgroundColor": "#hex", "textColor": "#hex", "fontSize": 14, "size": 100 },
+  "legal": { "enabled": false, "fontSize": 11, "color": "#ffffff80" },
+  "padding": { "top": 36, "right": 36, "bottom": 36, "left": 36 },
+  "zones": [
+    { "id": "header", "gridArea": "1 / 1 / 2 / 13", "flexDirection": "row", "justifyContent": "flex-start", "alignItems": "center", "children": [{ "type": "logo" }] },
+    { "id": "central", "gridArea": "2 / 1 / 10 / 13", "flexDirection": "column", "justifyContent": "center", "alignItems": "center", "children": [{ "type": "central-image" }] },
+    { "id": "copy", "gridArea": "10 / 1 / 13 / 13", "flexDirection": "column", "justifyContent": "flex-end", "alignItems": "flex-start", "gap": 12, "children": [{ "type": "headline" }, { "type": "subtext" }] }
+  ]
+}`;
+
+  const prompt = `${templateInstructions}
+
+BRAND IDENTITY:
+${brandContext}
+
+BRAND RULES:
+${rules}
+
+FORMAT: ${dims.width}x${dims.height}px
+
+Generate this exact structure:
+${jsonSchema}`;
 
   try {
     const result = await model.generateContent({

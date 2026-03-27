@@ -8,6 +8,7 @@ import { buildCompositeElement, COMPOSITOR_FORMAT_SIZES, type LayoutPreset, type
 import sharp from 'sharp';
 import { mergeBrandSections, getCanonicalTitle } from '@/lib/brand-sections';
 import { BRAND_ID, GEMINI_MODEL } from '@/lib/constants';
+import { getSystemPrompt } from '@/lib/system-prompts';
 
 export const maxDuration = 30;
 
@@ -18,7 +19,8 @@ const FORMAT_SIZES: Record<string, string> = {
   banner:  'wide banner 3:1 aspect ratio, 1200x400px',
 };
 
-const CREATIVITY_BLOCKS: Record<number, string> = {
+// Fallback creativity blocks — overridden by DB values when available
+const CREATIVITY_BLOCKS_FALLBACK: Record<number, string> = {
   1: 'Minimalistyczna kompozycja. Jedno tło (solid kolor lub prosty dwukolorowy gradient). Tekst wycentrowany z czystą hierarchią. ZERO elementów dekoracyjnych — żadnych kształtów, ikon, patternów, tekstur. Maksimum negatywnej przestrzeni. Czytelność jest jedynym celem.',
   2: 'Prosty, uporządkowany design. Tło: gradient brandowy (max 3 kolory). Dozwolony JEDEN element dekoracyjny (kształt geometryczny, linia, subtelny pattern). Dozwolona subtelna tekstura (grain, noise). Kompozycja centralna, bezpieczna. Dużo powietrza wokół tekstu.',
   3: 'Świadoma, precyzyjna kompozycja z minimalną liczbą elementów — ale każdy doskonale umiejscowiony. Asymetryczny layout. Celowe użycie negatywnej przestrzeni jako elementu designu. Typografia z charakterem — zróżnicowane wielkości, kontrastujące grubości. Max 2-3 elementy dekoracyjne, ale rozmieszczone z intencją. Mniej znaczy więcej — ale to "mniej" musi być perfekcyjne.',
@@ -27,8 +29,7 @@ const CREATIVITY_BLOCKS: Record<number, string> = {
   6: 'Arcydzieło projektowania graficznego. Immersyjna, wielowarstwowa kompozycja, w której typografia i warstwa wizualna tworzą nierozerwalną całość. Złożone połączenie ilustracji, tekstur, gradientów i kształtów geometrycznych w jednej spójnej wizji. Każdy centymetr powierzchni zaprojektowany z intencją. Poziom kampanii globalnych marek — grafika, przy której zatrzymujesz scroll. Każdy piksel jest celowy.',
 };
 
-// G7 — Photo-specific creativity blocks (photography technique, not graphic design)
-const PHOTO_CREATIVITY_BLOCKS: Record<number, string> = {
+const PHOTO_CREATIVITY_BLOCKS_FALLBACK: Record<number, string> = {
   1: 'Czysta, minimalna kompozycja fotograficzna. Główny obiekt ostry, centralne kadrowanie, neutralne tło, równomierne miękkie oświetlenie. ZERO rekwizytów, ZERO stylizacji otoczenia. Sam obiekt na czystym tle.',
   2: 'Prosta, uporządkowana kompozycja z kontekstem. Główny obiekt ostry, tło w delikatnym bokeh (f/2.8-4). Ciepłe oświetlenie boczne, miękkie cienie. 1-2 rekwizyty kontekstowe w tle (nieostre, nieprzytłaczające). Naturalna stylizacja — bez nadmiernej inscenizacji.',
   3: 'Precyzyjny, świadomy kadr z minimalną liczbą elementów — ale każdy na idealnym miejscu. Celowa asymetria, negatywna przestrzeń jako element kompozycji. Ostrość krytyczna na głównym obiekcie, reszta podporządkowana. Światło modelowane z jednego kierunku. Mniej elementów niż na poziomie 4, ale każdy perfekcyjnie umiejscowiony.',
@@ -36,6 +37,11 @@ const PHOTO_CREATIVITY_BLOCKS: Record<number, string> = {
   5: 'Produkcja na poziomie profesjonalnej sesji reklamowej. Dramatyczne światło z wyraźnym kierunkiem i kontrowym podświetleniem. Kinowa kolorystyka. Precyzyjna głębia ostrości — ostre detale przechodzą w kremowy bokeh. Dynamiczna, nieszablonowa perspektywa. Stylizacja na poziomie art directora — każdy rekwizyt, tekstura i powierzchnia służy konceptowi. Zero przypadkowości.',
   6: 'Arcydzieło fotograficzne. Kinowe światło, filmowa kolorystyka, immersyjna atmosfera z wyczuwalną głębią ostrości na każdym planie. Perfekcyjna równowaga między ostrością a bokeh. Kompozycja, światło i kolor tworzą spójną narrację emocjonalną. Zdjęcie, przy którym zatrzymujesz scroll. Każdy piksel jest celowy. Poziom kampanii globalnych marek.',
 };
+
+// Load creativity block from DB with fallback
+async function loadCreativityBlock(prefix: string, level: number, fallbacks: Record<number, string>): Promise<string> {
+  return getSystemPrompt(`${prefix}${level}`, fallbacks[level] || '');
+}
 
 // ── Logo compositor ───────────────────────────────────────────────────────────
 
@@ -487,13 +493,8 @@ ${allLayer1Rules.map((r, i) => `${i + 1}. ${r}`).join('\n')}
     : '';
 
   // F1 — Filter non-photo sections in photo mode (copy + typography + colors)
-  const PHOTO_EXCLUDE_KEYWORDS = [
-    'ton', 'tone', 'voice', 'głos', 'komunikac',
-    'cta', 'call to action', 'wezwani',
-    'copy', 'tekst', 'treść', 'wartości', 'values',
-    'typo', 'font', 'czcion', 'typography',
-    'kolor', 'color', 'palette', 'paleta',
-  ];
+  const excludeStr = await getSystemPrompt('gen.photo.layer2_exclude', 'ton\ntone\nvoice\ngłos\nkomunikac\ncta\ncall to action\nwezwani\ncopy\ntekst\ntreść\nwartości\nvalues\ntypo\nfont\nczcion\ntypography\nkolor\ncolor\npalette\npaleta');
+  const PHOTO_EXCLUDE_KEYWORDS = excludeStr.split('\n').map(s => s.trim()).filter(Boolean);
   function isVisualSection(section: { id?: string; title?: string; canonicalType?: string }): boolean {
     const key = `${section.id || ''} ${section.title || ''} ${section.canonicalType || ''}`.toLowerCase();
     return !PHOTO_EXCLUDE_KEYWORDS.some(kw => key.includes(kw));
@@ -623,23 +624,24 @@ ${renderTextRule}
 - Profesjonalna jakość druku`;
 
   // G7 — Creativity directive: photo-specific or graphic-specific
-  const activeBlocks = isPhotoMode ? PHOTO_CREATIVITY_BLOCKS : CREATIVITY_BLOCKS;
-  const creativityBlock = activeBlocks[creativity] ? `
+  const activeFallbacks = isPhotoMode ? PHOTO_CREATIVITY_BLOCKS_FALLBACK : CREATIVITY_BLOCKS_FALLBACK;
+  const activePrefix = isPhotoMode ? 'gen.photo.creativity.' : 'gen.graphic.creativity.';
+  const activeCreativityText = await loadCreativityBlock(activePrefix, creativity, activeFallbacks);
+  const creativityBlock = activeCreativityText ? `
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ${isPhotoMode ? 'DYREKTYWA JAKOŚCI FOTOGRAFICZNEJ' : 'DYREKTYWA BOGACTWA WIZUALNEGO'} (poziom ${creativity}/6)
-${activeBlocks[creativity]}
+${activeCreativityText}
 Wszystkie zasady Warstwy 1 nadal nadpisują tę dyrektywę.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ` : '';
 
-  const closing = `
-
-${sep}
-PRZYPOMNIENIE O PRIORYTETACH: Warstwa 1 > Warstwa 2 > Warstwa 3.
-Jeśli DNA marki koliduje z briefem — DNA marki wygrywa.
-Jeśli zasady bezwzględne kolidują z czymkolwiek — zasady bezwzględne wygrywają.
-Wygeneruj ${isPhotoMode ? 'JEDNO kompletne, gotowe do publikacji zdjęcie' : 'JEDNĄ kompletną, gotową do publikacji grafikę'}.`;
+  const closingId = isPhotoMode ? 'gen.photo.closing' : 'gen.graphic.closing';
+  const closingFallback = isPhotoMode
+    ? 'PRZYPOMNIENIE O PRIORYTETACH: Warstwa 1 > Warstwa 2 > Warstwa 3.\nJeśli DNA marki koliduje z briefem — DNA marki wygrywa.\nJeśli zasady bezwzględne kolidują z czymkolwiek — zasady bezwzględne wygrywają.\nWygeneruj JEDNO kompletne, gotowe do publikacji zdjęcie.'
+    : 'PRZYPOMNIENIE O PRIORYTETACH: Warstwa 1 > Warstwa 2 > Warstwa 3.\nJeśli DNA marki koliduje z briefem — DNA marki wygrywa.\nJeśli zasady bezwzględne kolidują z czymkolwiek — zasady bezwzględne wygrywają.\nWygeneruj JEDNĄ kompletną, gotową do publikacji grafikę.';
+  const closingText = await getSystemPrompt(closingId, closingFallback);
+  const closing = `\n\n${sep}\n${closingText}`;
 
   // For elementOnly: bypass brand hierarchy — use standalone no-branding prompt
   const brandColors = elementOnly
@@ -655,8 +657,7 @@ Wygeneruj ${isPhotoMode ? 'JEDNO kompletne, gotowe do publikacji zdjęcie' : 'JE
       })()
     : '';
 
-  const textPrompt = elementOnly
-    ? `Wygeneruj TYLKO abstrakcyjną ilustrację do użycia jako centralny element dekoracyjny w grafice social media.
+  const elementPromptTemplate = await getSystemPrompt('gen.element.prompt', `Wygeneruj TYLKO abstrakcyjną ilustrację do użycia jako centralny element dekoracyjny w grafice social media.
 
 ZASADY BEZWZGLĘDNE — KAŻDE NARUSZENIE CZYNI OUTPUT BEZUŻYTECZNYM:
 - BEZ logo, BEZ znaków marki, BEZ wordmarków
@@ -666,11 +667,14 @@ ZASADY BEZWZGLĘDNE — KAŻDE NARUSZENIE CZYNI OUTPUT BEZUŻYTECZNYM:
 - BEZ ludzkich twarzy ani rozpoznawalnych osób
 - BEZ rozpoznawalnych produktów ani zdjęć produktów
 
+OUTPUT: Jedna abstrakcyjna ilustracja — kształty, gradienty, organiczne formy, tekstury. Kwadratowa kompozycja. Zero tekstu. Zero brandingu. Odpowiednia do nałożenia na tło w kolorach marki.`);
+
+  const textPrompt = elementOnly
+    ? `${elementPromptTemplate}
+
 ELEMENT DO STWORZENIA: "${headline}"
 ${brief ? `KIERUNEK WIZUALNY: "${brief}"` : ''}
-${brandColors ? `UŻYJ TYCH KOLORÓW: ${brandColors}` : 'Użyj harmonijnych, żywych kolorów.'}
-
-OUTPUT: Jedna abstrakcyjna ilustracja — kształty, gradienty, organiczne formy, tekstury. Kwadratowa kompozycja. Zero tekstu. Zero brandingu. Odpowiednia do nałożenia na tło w kolorach marki.`
+${brandColors ? `UŻYJ TYCH KOLORÓW: ${brandColors}` : 'Użyj harmonijnych, żywych kolorów.'}`
     : isPhotoMode
     ? (() => {
       // Flat photo prompt — no layers, no meta-instructions
@@ -694,7 +698,10 @@ OUTPUT: Jedna abstrakcyjna ilustracja — kształty, gradienty, organiczne formy
         ? `\nTYPY UJĘĆ BRANŻOWYCH: ${ir.photo_brief_types.join(', ')}`
         : '';
 
-      return `Jesteś profesjonalnym fotografem. Generujesz zdjęcia do social media.
+      const photoRole = await getSystemPrompt('gen.photo.role', 'Jesteś profesjonalnym fotografem. Generujesz zdjęcia do social media.');
+      const photoCreativityText = await loadCreativityBlock('gen.photo.creativity.', creativity, PHOTO_CREATIVITY_BLOCKS_FALLBACK);
+
+      return `${photoRole}
 
 ZASADY BEZWZGLĘDNE:
 ${photoRules.map((r, i) => `${i + 1}. ${r}`).join('\n')}
@@ -710,11 +717,12 @@ ${moodLine}${photoTypesLine}
 FORMAT: ${FORMAT_SIZES[format] || '1080x1080px square'}
 
 JAKOŚĆ FOTOGRAFICZNA (${creativity}/6):
-${PHOTO_CREATIVITY_BLOCKS[creativity]}`;
+${photoCreativityText}`;
     })()
-    : `Jesteś profesjonalnym grafikiem tworzącym grafiki do social media.
-Stosuj poniższą trójwarstwową hierarchię instrukcji. Wyższe warstwy nadpisują niższe.
-${layer1}${layer2}${layer3}${creativityBlock}${closing}`;
+    : await (async () => {
+      const graphicRole = await getSystemPrompt('gen.graphic.role', 'Jesteś profesjonalnym grafikiem tworzącym grafiki do social media.\nStosuj poniższą trójwarstwową hierarchię instrukcji. Wyższe warstwy nadpisują niższe.');
+      return `${graphicRole}\n${layer1}${layer2}${layer3}${creativityBlock}${closing}`;
+    })();
 
   // ── TWO-STAGE PIPELINE (useCompositor) ───────────────────────────────────
   if (useCompositor && !elementOnly && (photoMode === 'none' || !photoUrl)) {
@@ -864,7 +872,7 @@ async function generateWithCompositor({
     banner:  '1200x400px wide banner',
   };
 
-  const CREATIVITY_BLOCKS_ILL: Record<number, string> = {
+  const CREATIVITY_BLOCKS_ILL_FALLBACK: Record<number, string> = {
     1: 'Minimalistyczna kompozycja. Solid tło, czysta hierarchia, zero dekoracji.',
     2: 'Prosty design. Gradient brandowy, max jeden element dekoracyjny, dużo powietrza.',
     3: 'Precyzyjna kompozycja. Asymetria, celowa negatywna przestrzeń, typografia z charakterem.',
@@ -883,15 +891,21 @@ async function generateWithCompositor({
         project.color_palette && `Colors: ${project.color_palette}`,
       ].filter(Boolean).join('\n') || '';
 
-  const illustrationPrompt = `Tworzysz ilustrację tła dla grafiki social media.
+  const illPromptTemplate = await getSystemPrompt('gen.compositor.illustration_prompt', `Tworzysz ilustrację tła dla grafiki social media.
 
 ZASADY BEZWZGLĘDNE — nadpisują wszystko:
 1. NIE umieszczaj żadnego tekstu, słów, liter, cyfr ani typografii
 2. NIE umieszczaj żadnych logo, znaków marki ani wordmarków
 3. NIE umieszczaj żadnych elementów UI, przycisków, ramek ani obramowań
-4. Dolne 35% obrazu zostaw względnie proste/nieza zagracone — tekst będzie tam nałożony
+4. Dolne 35% obrazu zostaw względnie proste/niezagracone — tekst będzie tam nałożony
 5. Górne 15% zostaw względnie czyste — logo będzie tam umieszczone
 6. NIE umieszczaj żadnych ludzkich twarzy ani rozpoznawalnych osób
+
+OUTPUT: Jedna ilustracja tła. Czysto wizualna — bez tekstu, bez logo. Ilustracja powinna budować atmosferę i tożsamość marki wyłącznie poprzez kolor, kształt i kompozycję.`);
+
+  const illCreativityText = await loadCreativityBlock('gen.compositor.creativity.', creativity, CREATIVITY_BLOCKS_ILL_FALLBACK);
+
+  const illustrationPrompt = `${illPromptTemplate}
 
 KONTEKST MARKI:
 ${brandContext || `Styl wizualny: profesjonalny, nowoczesny`}
@@ -903,9 +917,7 @@ FORMAT: ${FORMAT_LABELS[format] || '1080x1080px'} — wypełnij dokładnie to p�
 
 BRIEF WIZUALNY: ${brief || headline}
 
-BOGACTWO: ${CREATIVITY_BLOCKS_ILL[creativity] || CREATIVITY_BLOCKS_ILL[2]}
-
-OUTPUT: Jedna ilustracja tła. Czysto wizualna — bez tekstu, bez logo. Ilustracja powinna budować atmosferę i tożsamość marki wyłącznie poprzez kolor, kształt i kompozycję.`;
+BOGACTWO: ${illCreativityText || CREATIVITY_BLOCKS_ILL_FALLBACK[2]}`;
 
   // ── Stage 1: Generate illustration via Gemini ─────────────────────────────
   // For illustration mode: only include brand elements (no logo — handled by compositor)

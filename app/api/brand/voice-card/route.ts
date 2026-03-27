@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 import { BRAND_ID, GEMINI_MODEL } from '@/lib/constants';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { getSystemPrompt } from '@/lib/system-prompts';
 
 export const maxDuration = 60;
 
@@ -23,7 +24,7 @@ export async function POST(req: NextRequest) {
     .map((s, i) => `[${i + 1}] ${s.trim()}`)
     .join('\n\n');
 
-  const analyzerPrompt = `Jesteś światowej klasy lingwistą marki i strategiem komunikacji. Twoim zadaniem jest odtworzenie unikalnego głosu i tonu marki na podstawie prawdziwych próbek treści.
+  const FALLBACK_ANALYZER = `Jesteś światowej klasy lingwistą marki i strategiem komunikacji. Twoim zadaniem jest odtworzenie unikalnego głosu i tonu marki na podstawie prawdziwych próbek treści.
 
 Otrzymasz próbki tekstów marki (posty w social media, teksty ze strony www, e-maile, opisy kampanii). Na ich podstawie wyodrębnij precyzyjną Voice Card — profil czytelny maszynowo, który pozwoli AI pisać NOWE treści nieodróżnialne od autentycznego głosu marki.
 
@@ -66,15 +67,10 @@ Czego ta marka NIGDY nie robi? Co natychmiast brzmiałoby nie-na-miejscu?
 2. Każde twierdzenie musi mieć DOWÓD z próbek. Cytuj konkretne frazy.
 3. Voice Card musi być OPERACYJNA — inne AI czytające tylko tę kartę powinno tworzyć treści nieodróżnialne od oryginału.
 4. Lista tabu jest TAK SAMO WAŻNA jak pozytywne wzorce.
-5. Zwróć CAŁĄ treść (opisy, podsumowania, przykłady) po polsku.
+5. Zwróć CAŁĄ treść (opisy, podsumowania, przykłady) po polsku.`;
 
-## PRÓBKI OD: ${project.name}
-
-${samplesText}
-
-Zwróć WYŁĄCZNIE poprawny JSON, bez markdown, bez wyjaśnień:
-{
-  "brand_name": "${project.name}",
+  const FALLBACK_JSON_SCHEMA = `{
+  "brand_name": "",
   "voice_summary": "Jedno zdanie oddające cały głos marki",
   "archetype": "Archetyp komunikacji (np. 'Ciepły autorytet', 'Prowokujący ekspert', 'Skromny lider')",
   "dimensions": {
@@ -84,47 +80,26 @@ Zwróć WYŁĄCZNIE poprawny JSON, bez markdown, bez wyjaśnień:
     "authority": {"score": 0, "description": ""},
     "directness": {"score": 0, "description": ""}
   },
-  "sentence_style": {
-    "avg_length": "short|medium|long",
-    "structure": "",
-    "rhythm": "",
-    "fragments_ok": true,
-    "questions_frequency": "never|rare|moderate|frequent"
-  },
-  "vocabulary": {
-    "signature_phrases": [],
-    "power_words": [],
-    "forbidden_words": [],
-    "jargon_level": "none|light|moderate|heavy",
-    "english_mixing": "never|rare|moderate|frequent"
-  },
-  "emoji_usage": {
-    "frequency": "never|surgical|decorative|heavy",
-    "function": "",
-    "preferred_emoji": [],
-    "emoji_rules": ""
-  },
-  "person_address": {
-    "self_reference": "I|we|brand name|mixed",
-    "audience_address": "singular you|plural you|name|mixed",
-    "name_usage": ""
-  },
-  "structure_patterns": {
-    "opening_style": "",
-    "closing_style": "",
-    "paragraph_density": "spacious|moderate|dense",
-    "emphasis_tools": []
-  },
-  "persuasion": {
-    "primary_method": "",
-    "qualifier_usage": "",
-    "directness_level": ""
-  },
-  "taboos": [],
-  "golden_rules": [],
-  "example_good": [],
-  "example_bad": []
+  "sentence_style": { "avg_length": "short|medium|long", "structure": "", "rhythm": "", "fragments_ok": true, "questions_frequency": "never|rare|moderate|frequent" },
+  "vocabulary": { "signature_phrases": [], "power_words": [], "forbidden_words": [], "jargon_level": "none|light|moderate|heavy", "english_mixing": "never|rare|moderate|frequent" },
+  "emoji_usage": { "frequency": "never|surgical|decorative|heavy", "function": "", "preferred_emoji": [], "emoji_rules": "" },
+  "person_address": { "self_reference": "I|we|brand name|mixed", "audience_address": "singular you|plural you|name|mixed", "name_usage": "" },
+  "structure_patterns": { "opening_style": "", "closing_style": "", "paragraph_density": "spacious|moderate|dense", "emphasis_tools": [] },
+  "persuasion": { "primary_method": "", "qualifier_usage": "", "directness_level": "" },
+  "taboos": [], "golden_rules": [], "example_good": [], "example_bad": []
 }`;
+
+  const analyzerFramework = await getSystemPrompt('vc.analyzer_prompt', FALLBACK_ANALYZER);
+  const jsonSchema = await getSystemPrompt('vc.json_schema', FALLBACK_JSON_SCHEMA);
+
+  const analyzerPrompt = `${analyzerFramework}
+
+## PRÓBKI OD: ${project.name}
+
+${samplesText}
+
+Zwróć WYŁĄCZNIE poprawny JSON, bez markdown, bez wyjaśnień:
+${jsonSchema.replace(/"brand_name": ""/, `"brand_name": "${project.name}"`)}`;
 
   try {
     const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_KEY!);

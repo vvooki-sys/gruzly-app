@@ -3,10 +3,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 import { BRAND_ID } from '@/lib/constants';
 import Anthropic from '@anthropic-ai/sdk';
+import { getSystemPrompt } from '@/lib/system-prompts';
 
 export const maxDuration = 60;
 
-function buildCopyPrompt(project: Record<string, unknown>, briefText: string, format: string, visualType: string) {
+async function buildCopyPrompt(project: Record<string, unknown>, briefText: string, format: string, visualType: string) {
 
   // ══════════════════════════════════════════════════════════════
   // WARSTWA 2 — MARKA (z Settings, brand_sections, Voice Card)
@@ -173,12 +174,14 @@ WAŻNE: Każdy z 3 briefów MUSI mieć INNY typ ujęcia.
 Dostępne typy ujęć: ${photoTypes}.
 Wybierz 3 RÓŻNE z powyższej listy. NIE powtarzaj tego samego schematu we wszystkich trzech.`;
 
+  const vbGraphic = await getSystemPrompt('copy.visual_brief.graphic', 'Brief dla grafika (3-5 zdań): nastrój, wizualna metafora, typ ilustracji (abstrakcyjna/ikonograficzna/typograficzna/kolażowa), atmosfera. BEZ logo, BEZ hex kolorów, BEZ layoutu.');
+  const vbPhoto = await getSystemPrompt('copy.visual_brief.photo', 'Brief dla fotografa (3-5 zdań): typ zdjęcia, kadrowanie, oświetlenie i mood, stylizacja/props/tło. BEZ logo, BEZ kolorów marki. Na zdjęciu NIE będzie tekstu.');
+  const vbPhotoText = await getSystemPrompt('copy.visual_brief.photo_text', 'Brief dla fotografa pod tekst (3-5 zdań): typ zdjęcia, kadrowanie z przestrzenią na nałożenie tekstu (jasna/ciemna strefa, bokeh, negatywna przestrzeń), oświetlenie, stylizacja. Wskaż gdzie powinien być tekst.');
+
   const visualBriefInstructions: Record<string, string> = {
-    graphic: `Brief dla grafika (3-5 zdań): nastrój, wizualna metafora, typ ilustracji (abstrakcyjna/ikonograficzna/typograficzna/kolażowa), atmosfera. BEZ logo, BEZ hex kolorów, BEZ layoutu. ${platform.photoFormat}`,
-    photo: `Brief dla fotografa (3-5 zdań): typ zdjęcia, kadrowanie, oświetlenie i mood, stylizacja/props/tło. BEZ logo, BEZ kolorów marki. Na zdjęciu NIE będzie tekstu. ${platform.photoFormat}
-${photoDiversityInstruction}`,
-    photo_text: `Brief dla fotografa pod tekst (3-5 zdań): typ zdjęcia, kadrowanie z przestrzenią na nałożenie tekstu (jasna/ciemna strefa, bokeh, negatywna przestrzeń), oświetlenie, stylizacja. Wskaż gdzie powinien być tekst. ${platform.photoFormat}
-${photoDiversityInstruction}`,
+    graphic: `${vbGraphic} ${platform.photoFormat}`,
+    photo: `${vbPhoto} ${platform.photoFormat}\n${photoDiversityInstruction}`,
+    photo_text: `${vbPhotoText} ${platform.photoFormat}\n${photoDiversityInstruction}`,
   };
   const visualBriefInstruction = visualBriefInstructions[visualType] || visualBriefInstructions['graphic'];
 
@@ -197,7 +200,24 @@ ${photoDiversityInstruction}`,
   // ASSEMBLER — łączenie 3 warstw w finalny prompt
   // ══════════════════════════════════════════════════════════════
 
-  return `Jesteś copywriterem marki ${project.name}. Piszesz treści gotowe do publikacji — w głosie marki, bez sztuczności.
+  const copyRole = await getSystemPrompt('copy.role', 'Jesteś copywriterem marki ${project.name}. Piszesz treści gotowe do publikacji — w głosie marki, bez sztuczności.');
+  const marketingRules = await getSystemPrompt('copy.rules.marketing', `MARKETING (promocja, oferta, produkt, kampania):
+- Zdanie 1: nazwij problem lub pragnienie odbiorcy
+- Zdanie 2-3: pokaż rozwiązanie konkretnie, w języku branży
+- Zdanie końcowe: CTA
+- Zakazane: "kompleksowy", "kluczowy", "synergia", "w dzisiejszym świecie"`);
+  const humanRules = await getSystemPrompt('copy.rules.human', `LUDZKI GŁOS (życzenia, podziękowania, kultura firmy, celebracja):
+- Pisz jak człowiek do człowieka — bez frameworków
+- Krótkie zdania, naturalny rytm
+- Podpis: nazwa marki, nigdy "Zespół...", "Dział..."
+- Zakazane: "zasłużona odnowa", "doceniamy waszą pasję", cokolwiek z newslettera HR`);
+  const hook1 = await getSystemPrompt('copy.hook.1', 'hook zmysłowy — otwórz obrazem, doznaniem zmysłowym pasującym do branży. Krótki, punchline.');
+  const hook2 = await getSystemPrompt('copy.hook.2', 'hook nostalgiczny/storytelling — odwołaj się do wspomnienia, tradycji, emocji. Dłuższy.');
+  const hook3 = await getSystemPrompt('copy.hook.3', 'hook pytanie/interakcja — zacznij od KONKRETNEGO pytania, na które łatwo odpowiedzieć (wybór A vs B, dokończ zdanie, podziel się jednym wspomnieniem). Unikaj pytań tak szerokich, że nie dają impulsu do odpowiedzi.');
+
+  const roleLine = copyRole.replace('${project.name}', project.name as string);
+
+  return `${roleLine}
 
 ════════════════════════════════════════
 TOŻSAMOŚĆ MARKI
@@ -211,17 +231,9 @@ ZASADY PISANIA
 ════════════════════════════════════════
 Wykryj typ zadania i dopasuj podejście:
 
-MARKETING (promocja, oferta, produkt, kampania):
-- Zdanie 1: nazwij problem lub pragnienie odbiorcy
-- Zdanie 2-3: pokaż rozwiązanie konkretnie, w języku branży
-- Zdanie końcowe: CTA
-- Zakazane: "kompleksowy", "kluczowy", "synergia", "w dzisiejszym świecie"
+${marketingRules}
 
-LUDZKI GŁOS (życzenia, podziękowania, kultura firmy, celebracja):
-- Pisz jak człowiek do człowieka — bez frameworków
-- Krótkie zdania, naturalny rytm
-- Podpis: nazwa marki, nigdy "Zespół...", "Dział..."
-- Zakazane: "zasłużona odnowa", "doceniamy waszą pasję", cokolwiek z newslettera HR
+${humanRules}
 
 ════════════════════════════════════════
 ZADANIE
@@ -238,9 +250,9 @@ WAŻNE — w KAŻDYM wariancie post_copy zastosuj WSZYSTKIE złote zasady z sekc
 ════════════════════════════════════════
 OUTPUT — 3 WARIANTY (każdy INNY w hooku i podejściu)
 ════════════════════════════════════════
-Wariant 1: hook zmysłowy — otwórz obrazem, doznaniem zmysłowym pasującym do branży. Krótki, punchline. CEL: ${platform.wordRanges[0]} słów.
-Wariant 2: hook nostalgiczny/storytelling — odwołaj się do wspomnienia, tradycji, emocji. Dłuższy. CEL: ${platform.wordRanges[1]} słów.
-Wariant 3: hook pytanie/interakcja — zacznij od KONKRETNEGO pytania, na które łatwo odpowiedzieć (wybór A vs B, dokończ zdanie, podziel się jednym wspomnieniem). Unikaj pytań tak szerokich, że nie dają impulsu do odpowiedzi. CEL: ${platform.wordRanges[2]} słów.
+Wariant 1: ${hook1} CEL: ${platform.wordRanges[0]} słów.
+Wariant 2: ${hook2} CEL: ${platform.wordRanges[1]} słów.
+Wariant 3: ${hook3} CEL: ${platform.wordRanges[2]} słów.
 
 Każdy wariant zawiera: ${variantFields}
 
@@ -305,7 +317,7 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  const copyPrompt = customPrompt || buildCopyPrompt(project, briefText, format, visualType);
+  const copyPrompt = customPrompt || await buildCopyPrompt(project, briefText, format, visualType);
 
   // Preview mode — just return the prompt
   if (mode === 'preview') {

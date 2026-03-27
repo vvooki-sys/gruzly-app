@@ -54,6 +54,20 @@ export async function GET() {
   await getDb()`ALTER TABLE projects ADD COLUMN IF NOT EXISTS voice_card JSONB`.catch(() => {});
   await getDb()`ALTER TABLE projects ADD COLUMN IF NOT EXISTS industry_rules JSONB`.catch(() => {});
 
+  // System prompts table
+  await getDb()`
+    CREATE TABLE IF NOT EXISTS system_prompts (
+      id TEXT PRIMARY KEY,
+      category TEXT NOT NULL,
+      label TEXT NOT NULL,
+      description TEXT,
+      content TEXT NOT NULL,
+      content_type TEXT DEFAULT 'text',
+      sort_order INT DEFAULT 0,
+      updated_at TIMESTAMP DEFAULT NOW()
+    )
+  `.catch(() => {});
+
   // Copy generations table
   await getDb()`
     CREATE TABLE IF NOT EXISTS copy_generations (

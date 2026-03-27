@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 import { BRAND_ID, GEMINI_MODEL } from '@/lib/constants';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { getSystemPrompt } from '@/lib/system-prompts';
 
 export const maxDuration = 300;
 
@@ -57,7 +58,7 @@ export async function POST(req: NextRequest) {
 
     imageParts.push({ inlineData: { data: b64.data, mimeType: 'application/pdf' } });
 
-    analysisPrompt = `Jesteś doświadczonym analitykiem identyfikacji wizualnej marki. Przeczytaj ten brand book (PDF) dla marki "${project.name}" i wyodrębnij WSZYSTKIE informacje o identyfikacji wizualnej w uporządkowane sekcje.
+    const FALLBACK_BB = `Jesteś doświadczonym analitykiem identyfikacji wizualnej marki. Przeczytaj ten brand book (PDF) i wyodrębnij WSZYSTKIE informacje o identyfikacji wizualnej w uporządkowane sekcje.
 
 KRYTYCZNE ZASADY:
 1. Zwróć WYŁĄCZNIE poprawny JSON — bez markdown, bez wyjaśnień, bez tekstu poza JSON-em
@@ -65,10 +66,16 @@ KRYTYCZNE ZASADY:
 3. Dla standardowych sekcji (lista poniżej) użyj dokładnych podanych ID
 4. Dla treści unikalnych/specjalnych spoza listy standardowej — utwórz sekcję niestandardową z id zaczynającym się od "custom_"
 5. Treść musi być precyzyjna i konkretna — podawaj dokładne hex codes, dokładne wymiary, dokładne zasady
-6. Zwróć CAŁĄ treść (tytuły sekcji, opisy, brandRules) po polsku
+6. Zwróć CAŁĄ treść (tytuły sekcji, opisy, brandRules) po polsku`;
 
-STANDARDOWE ID SEKCJI (użyj tych dokładnych id, gdy treść pasuje):
-- "modul" — Moduł konstrukcyjny, marginesy, pola ochronne, wymiary
+    const brandbookInstructions = await getSystemPrompt('brand.analyze.brandbook', FALLBACK_BB);
+    const sectionIdsJson = await getSystemPrompt('brand.analyze.section_ids', '[]');
+    let sectionIdsList: string;
+    try {
+      const ids = JSON.parse(sectionIdsJson) as Array<{ id: string; desc: string }>;
+      sectionIdsList = ids.map(s => `- "${s.id}" — ${s.desc}`).join('\n');
+    } catch {
+      sectionIdsList = `- "modul" — Moduł konstrukcyjny, marginesy, pola ochronne, wymiary
 - "tlo" — Kolor/obróbka tła
 - "gradient" — Gradient marki (kolory, kierunek, zasady użycia)
 - "kolorystyka" — Główna paleta kolorów z hex codes
@@ -81,7 +88,13 @@ STANDARDOWE ID SEKCJI (użyj tych dokładnych id, gdy treść pasuje):
 - "stickery" — Stickery, badge, etykiety, stemple, patki
 - "packshot" — Zasady fotografii produktowej
 - "legal" — Tekst prawny — rozmiar, kolor, umiejscowienie
-- "animacje" — Zasady animacji (jeśli występują)
+- "animacje" — Zasady animacji (jeśli występują)`;
+    }
+
+    analysisPrompt = `${brandbookInstructions.replace(/Przeczytaj ten brand book \(PDF\)/, `Przeczytaj ten brand book (PDF) dla marki "${project.name}"`)}
+
+STANDARDOWE ID SEKCJI (użyj tych dokładnych id, gdy treść pasuje):
+${sectionIdsList}
 
 Zwróć dokładnie taką strukturę JSON:
 {
@@ -89,15 +102,14 @@ Zwróć dokładnie taką strukturę JSON:
     {
       "id": "gradient",
       "title": "Gradient NCO",
-      "content": "Gradient przechodzi od #6e46a0 (jasny, góra) do #2d1464 (ciemny, dół). Dla formatów 1200x1200px i 360x640px: góra jasna, dół ciemna. Dla formatów 336x280px i 750x300px: lewa jasna, prawa ciemna.",
+      "content": "Gradient przechodzi od #6e46a0 (jasny, góra) do #2d1464 (ciemny, dół).",
       "type": "standard",
       "order": 1,
       "icon": "🎨"
     }
   ],
   "brandRules": [
-    "Gradient NCO jest obowiązkowy we wszystkich kampaniach",
-    "Font tylko Manrope Regular i Extra Bold — bez wyjątków"
+    "Gradient NCO jest obowiązkowy we wszystkich kampaniach"
   ]
 }`;
 
@@ -118,7 +130,7 @@ Zwróć dokładnie taką strukturę JSON:
       return NextResponse.json({ error: 'Failed to load reference images' }, { status: 500 });
     }
 
-    analysisPrompt = `Jesteś analitykiem identyfikacji wizualnej marki. Przeanalizuj ${imageParts.length} grafik referencyjnych dla marki "${project.name}".
+    const FALLBACK_REF = `Jesteś analitykiem identyfikacji wizualnej marki. Przeanalizuj grafiki referencyjne.
 
 ZASADY:
 - Zwróć WYŁĄCZNIE poprawny JSON — bez markdown, bez wyjaśnień
@@ -126,7 +138,11 @@ ZASADY:
 - Opisuj tylko powtarzające się, niezmienne wzorce
 - Podawaj dokładne hex codes, dokładne nazwy fontów, dokładne wymiary, gdy są widoczne
 - Im więcej szczegółów, tym lepiej — to napędza jakość generowania grafik przez AI
-- Zwróć CAŁĄ treść (tytuły, opisy) po polsku
+- Zwróć CAŁĄ treść (tytuły, opisy) po polsku`;
+
+    const refInstructions = await getSystemPrompt('brand.analyze.references', FALLBACK_REF);
+
+    analysisPrompt = `${refInstructions.replace(/Przeanalizuj grafiki referencyjne/, `Przeanalizuj ${imageParts.length} grafik referencyjnych dla marki "${project.name}"`)}
 
 Zwróć dokładnie taki JSON:
 {
